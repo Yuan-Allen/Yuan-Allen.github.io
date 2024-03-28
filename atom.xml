@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://alleny.xyz</id>
+    <title>AllenY&apos;s blog</title>
+    <updated>2024-03-28T08:11:26.544Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://alleny.xyz"/>
+    <link rel="self" href="https://alleny.xyz/atom.xml"/>
+    <subtitle>🧑🏻‍💻🎮🍿🎹🗻</subtitle>
+    <logo>https://alleny.xyz/images/avatar.png</logo>
+    <icon>https://alleny.xyz/favicon.ico</icon>
+    <rights>All rights reserved 2024, AllenY&apos;s blog</rights>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（数组篇）（持续更新）]]></title>
+        <id>https://alleny.xyz/post/leetcode-array/</id>
+        <link href="https://alleny.xyz/post/leetcode-array/">
+        </link>
+        <updated>2024-03-25T09:38:03.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录，个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录，个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="704-binary-search">[704] Binary Search</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-search/description/">题目描述</a>。<br>
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不变量贯彻到底即可。</p>
+<pre><code class="language-c++">  int search(vector&lt;int&gt;&amp; nums, int target) {
+    int size = nums.size();
+    int lower = 0;
+    int upper = size - 1;
+    int index = 0;
+    while (true) {
+      if (upper &lt; lower) {
+        return -1;
+      }
+      index = (lower + upper) / 2;
+      int now = nums[index];
+      if (now == target) {
+        return index;
+      }
+      if (target &lt; now) {
+        upper = index - 1;
+      } else {
+        lower = index + 1;
+      }
+    }
+  }
+</code></pre>
+<h2 id="27-remove-element">[27] Remove Element</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-element/description/">题目描述</a>。<br>
+利用元素顺序可以改变的特性，左右指针往中间靠拢即可。</p>
+<pre><code class="language-python">    def removeElement(self, nums, val):
+        &quot;&quot;&quot;
+        :type nums: List[int]
+        :type val: int
+        :rtype: int
+        &quot;&quot;&quot;
+        head_index = 0
+        tail_index = len(nums) - 1
+        while tail_index &gt;= 0 and nums[tail_index] == val:
+            tail_index -= 1
+        while head_index &lt; tail_index:
+            if nums[head_index] == val:
+                nums[head_index] = nums[tail_index]
+                tail_index -= 1
+
+            head_index += 1
+            while head_index &lt;= tail_index and nums[tail_index] == val:
+                tail_index -= 1
+        return tail_index + 1
+</code></pre>
+<h2 id="977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/squares-of-a-sorted-array/description/">题目描述</a>。<br>
+原数组是有序的，因此平方后最大值一定在两端。利用双指针往中间靠拢即可。</p>
+<pre><code class="language-rust">    pub fn sorted_squares(nums: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let (mut left, mut right) = (0, nums.len() - 1);
+        let mut cur_index = right;
+        let mut res: Vec&lt;i32&gt; = vec![0; right + 1];
+        while left &lt;= right {
+            let (left_squares, right_squares) =
+                (nums[left] * nums[left], nums[right] * nums[right]);
+
+            if left_squares &lt; right_squares {
+                right -= 1;
+                res[cur_index] = right_squares;
+            } else {
+                left += 1;
+                res[cur_index] = left_squares
+            };
+
+            cur_index -= 1;
+        }
+        res
+    }
+</code></pre>
+<h2 id="209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-size-subarray-sum/description/">题目描述</a>。<br>
+使用滑动窗口（其实也相当于快慢指针）即可。每次<code>sum &gt;= target</code>了就开始注意更新<code>left</code>指针，最后返回<code>min_len</code>即可。复杂度O(n)。说是Medium但感觉很简单。</p>
+<pre><code class="language-c++">  int minSubArrayLen(int target, vector&lt;int&gt;&amp; nums) {
+    int sum = 0;
+    int left = 0;
+    int right = 0;
+    int n = nums.size();
+    int min_len = n + 1;
+    while (right &lt; n) {
+      sum += nums[right];
+
+      if (sum &gt;= target) {
+        while (sum - nums[left] &gt;=
+               target) {  // if target can be zero, the condition should be
+                          // (left &lt;= right &amp;&amp; sum - nums[left] &gt;= target
+          sum -= nums[left];
+          left++;
+        }
+        if (right - left + 1 &lt; min_len) {
+          min_len = right - left + 1;
+        }
+      }
+      right++;
+    }
+
+    return min_len &gt; n ? 0 : min_len;
+  }
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[OpenHarmony中的应用文件分享机制]]></title>
+        <id>https://alleny.xyz/post/openharmony-share-app-file/</id>
+        <link href="https://alleny.xyz/post/openharmony-share-app-file/">
+        </link>
+        <updated>2024-03-10T07:23:41.000Z</updated>
+        <summary type="html"><![CDATA[<p>应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本文重点介绍URI分享方式。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本文重点介绍URI分享方式。</p>
+<!-- more -->
+<h2 id="应用可分享目录">应用可分享目录</h2>
+<h3 id="从沙箱说起">从沙箱说起</h3>
+<p>应用沙箱是一种以安全防护为目的的隔离机制，避免数据受到恶意路径穿越访问。在这种沙箱的保护机制下，应用可见的目录范围即为“应用沙箱目录”。</p>
+<ul>
+<li>对于每个应用，系统会在内部存储空间映射出一个专属的“应用沙箱目录”，它是“应用文件目录”与一部分系统文件（应用运行必需的少量系统文件）所在的目录组成的集合。</li>
+<li>应用沙箱限制了应用可见的数据的最小范围。在“应用沙箱目录”中，应用仅能看到自己的应用文件以及少量的系统文件（应用运行必需的少量系统文件）。因此，本应用的文件也不为其他应用可见，从而保护了应用文件的安全。</li>
+<li>应用可以在“应用文件目录”下保存和处理自己的应用文件；系统文件及其目录对于应用是只读的；而应用若需访问用户文件，则需要通过特定API同时经过用户的相应授权才能进行。</li>
+</ul>
+<p>下图展示了应用沙箱下，应用可访问的文件范围和方式。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1710049042983.png" alt="" loading="lazy"></figure>
+<p>如前文所述，“应用沙箱目录”内分为两类：<strong>应用文件目录</strong>和<strong>系统文件目录</strong>。</p>
+<p>系统文件目录对应用的可见范围由OpenHarmony系统预置，开发者无需关注。</p>
+<p>在此主要介绍应用文件目录，如下图所示。应用文件目录下某个文件或某个具体目录的路径称为应用文件路径。应用文件目录下的各个文件路径，具备不同的属性和特征。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1710049148238.png" alt="" loading="lazy"></figure>
+<h3 id="可分享目录">可分享目录</h3>
+<p>基于以上背景，应用可分享的目录如下。</p>
+<table>
+<thead>
+<tr>
+<th>沙箱路径</th>
+<th>物理路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/data/storage/el1/base</td>
+<td>/data/app/el1/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el1级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/base</td>
+<td>/data/app/el2/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el2级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/distributedfiles</td>
+<td>/mnt/hmdfs/&lt;currentUserId&gt;/account/device_view/<br>&lt;networkId&gt;/data/&lt;PackageName&gt;</td>
+<td>应用el2加密级别有帐号分布式数据融合目录</td>
+</tr>
+</tbody>
+</table>
+<h2 id="文件uri规范">文件URI规范</h2>
+<p>文件URI的格式为：<br>
+格式为file://&lt;bundleName&gt;/&lt;path&gt;</p>
+<ul>
+<li>file：文件URI的标志。</li>
+<li>bundleName：该文件资源的属主。</li>
+<li>path：文件资源在应用沙箱中的路径。</li>
+</ul>
+<h2 id="分享文件给其他应用">分享文件给其他应用</h2>
+<h3 id="获取文件路径">获取文件路径</h3>
+<p>在分享文件给其他应用前，开发者需要先获取应用文件路径。</p>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>filesDir</td>
+<td>&lt;路径前缀&gt;/&lt;加密等级&gt;/base/files</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<pre><code class="language-typescript">import UIAbility from '@ohos.app.ability.UIAbility';
+import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件的沙箱路径
+    let pathInSandbox = this.context.filesDir + &quot;/test.txt&quot;;
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(pathInSandbox);
+    // 获取的uri为&quot;file://com.example.demo/data/storage/el2/base/files/test.txt&quot;
+  }
+}
+</code></pre>
+<p>具体来说，先通过应用上下文<code>Context</code>获取文件在沙箱中的路径，然后再通过该路径生成对应的的URI</p>
+<h3 id="设置获取文件的权限以及选择要分享的应用">设置获取文件的权限以及选择要分享的应用</h3>
+<blockquote>
+<p>在OpenHarmony中，Ability是应用所具备能力的抽象，也是应用程序的重要组成部分。Ability是系统调度应用的最小单元，是能够完成一个独立功能的组件，一个应用可以包含一个或多个Ability。 类似Android中的Application和Activity的融合。</p>
+</blockquote>
+<p>分享文件给其他应用需要使用<code>startAbility()</code>接口，将获取到的URI填充在<code>want</code>的参数<code>uri</code>中，标注URI的文件类型，<code>type</code>字段可参考<a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/#%E5%B1%9E%E6%80%A7"><code>Want</code>属性</a>，并通过设置<code>want</code>的<code>flag</code>来设置对应的读写权限，<code>action</code>字段配置为<code>ohos.want.action.sendData</code>表示进行应用文件分享，开发示例如下。</p>
+<pre><code class="language-typescript">import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+import wantConstant from '@ohos.app.ability.wantConstant';
+import UIAbility from '@ohos.app.ability.UIAbility';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件沙箱路径
+    let filePath = this.context.filesDir + '/test.txt';
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(filePath);
+    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+      .then(() =&gt; {
+        console.info('Invoke getCurrentBundleStats succeeded.');
+      })
+      .catch((err: BusinessError) =&gt; {
+        console.error(`Invoke startAbility failed, code is ${err.code}, message is ${err.message}`);
+      });
+  }
+  // ...
+}
+</code></pre>
+<h2 id="使用其他应用分享的文件">使用其他应用分享的文件</h2>
+<h3 id="配置modulejson5配置文件">配置module.json5配置文件</h3>
+<blockquote>
+<p>module.json5主要包含以下内容：</p>
+<ul>
+<li>Module的基本配置信息，例如Module名称、类型、描述、支持的设备类型等基本信息。</li>
+<li>应用组件信息，包含UIAbility组件和ExtensionAbility组件的描述信息。</li>
+<li>应用运行过程中所需的权限信息</li>
+</ul>
+</blockquote>
+<p>被分享应用需要在module.json5配置文件的<code>actions</code>标签的值配置为<code>ohos.want.action.sendData</code>，表示接收应用分享文件，配置<code>uris</code>字段，表示接收URI的类型，即只接收其他应用分享该类型的URI，如下表示本应用只接收<code>scheme</code>为<code>file</code>，类型为<code>txt</code>的文件，示例如下。</p>
+<pre><code class="language-json">{
+  &quot;module&quot;: {
+    ...
+    &quot;abilities&quot;: [
+      {
+        ...
+        &quot;skills&quot;: [
+          {
+            ...
+            &quot;actions&quot;: [
+              &quot;ohos.want.action.sendData&quot;
+            ],
+            &quot;uris&quot;: [
+              {
+                &quot;scheme&quot;: &quot;file&quot;,
+                &quot;type&quot;: &quot;text/plain&quot;
+              }
+           ]
+          }
+        ]
+      }
+    ]
+  }
+}
+</code></pre>
+<h3 id="want匹配">Want匹配</h3>
+<p>前面展示的代码中有这么一段未解释完全的地方：</p>
+<pre><code class="language-typescript">    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+    // balabala
+</code></pre>
+<p><code>flag</code>配置读写权限都能理解，那么“隐式拉起规则”是个什么东西？</p>
+<p>我们可以注意到，<code>startAbility</code>接口似乎并没有指定要拉起哪个Ability，这个示例中所有的参数都在<code>want</code>里面，那么很明显，<code>startAbility</code>就是靠这个<code>want</code>参数去匹配Ability的。</p>
+<p>在启动目标应用组件时，会通过<strong>显式Want</strong>或者<strong>隐式Want</strong>进行目标应用组件的匹配，这里说的匹配规则就是调用方传入的want参数中设置的参数如何与目标应用组件声明的配置文件进行匹配。</p>
+<p>显式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1710053916471.png" alt="" loading="lazy"></figure>
+<p>隐式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1710054171962.png" alt="" loading="lazy"></figure>
+<p>简单来说，<code>abilityName</code>是否留空决定了是采用显式匹配还是隐式匹配。<br>
+从隐式<code>Want</code>的定义，可得知：</p>
+<ul>
+<li>调用方传入的<code>want</code>参数，表明调用方需要执行的操作，并提供相关数据以及其他应用类型限制。</li>
+<li>待匹配应用组件的<code>skills</code>配置，声明其具备的能力（<code>module.json5</code>配置文件中的<code>skills</code>标签参数）。</li>
+</ul>
+<p>系统将调用方传入的<code>want</code>参数（包含<code>action</code>、<code>entities</code>、<code>uri</code>和<code>type</code>属性）与已安装待匹配应用组件的<code>skills</code>配置（包含<code>actions</code>、<code>entities</code>、<code>uris</code>和<code>type</code>属性）依次进行匹配。当四个属性匹配均通过，则此应用才会<strong>被应用选择器展示给用户进行选择</strong>。</p>
+<p>因此，在上面的例子中，被分享应用在<code>module.json5</code>配置文件的<code>skills</code>标签填入了与分享方填入的<code>want</code>参数相匹配的值，就能通过隐式匹配的方式成功被<code>startAbility</code>匹配上。</p>
+<h3 id="被分享方获取信息">被分享方获取信息</h3>
+<p>被分享方的UIAbility被启动后，可以在其<code>onCreate()</code>或者<code>onNewWant()</code>回调中获取传入的Want参数信息。</p>
+<blockquote>
+<p><code>onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void;</code><br>
+UIAbility实例处于完全关闭状态下被创建完成后进入该生命周期回调，执行初始化业务逻辑操作。即UIAbility实例冷启动时进入该生命周期回调。</p>
+</blockquote>
+<p>通过接口want的参数获取分享文件的URI，获取文件URI后通过fs.open()接口打开文件，获取对应的file对象后，可对文件进行读写操作。</p>
+<pre><code class="language-typescript">// xxx.ets
+import fs from '@ohos.file.fs';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+function getShareFile() {
+  try {
+    let want: Want = ...; // 获取分享方传递过来的want信息
+
+    // 从want信息中获取uri字段
+    let uri = want.uri;
+    if (uri == null || uri == undefined) {
+      console.info('uri is invalid');
+      return;
+    }
+    try {
+      // 根据需要对被分享文件的URI进行相应操作。例如读写的方式打开URI获取file对象
+      let file = fs.openSync(uri, fs.OpenMode.READ_WRITE);
+      console.info('open file successfully!');
+    } catch (err) {
+      let error: BusinessError = err as BusinessError;
+      console.error(`Invoke openSync failed, code is ${error.code}, message is ${error.message}`);
+    }
+  } catch (error) {
+    let err: BusinessError = error as BusinessError;
+    console.error(`Invoke openSync failed, code is ${err.code}, message is ${err.message}`);
+  }
+}
+</code></pre>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://gitee.com/openharmony/filemanagement_app_file_service/tree/master">filemanagement_app_file_service</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/share-app-file.md/">应用文件分享</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/app-sandbox-directory.md/">应用沙箱目录</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/application-context-stage.md/#%E8%8E%B7%E5%8F%96%E5%BA%94%E7%94%A8%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84">获取应用文件路径</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/">Want</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-inner-application-uiAbilityContext.md/#uiabilitycontextstartability-3">startAbility</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/quick-start/module-configuration-file.md/">module.json5配置文件</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/explicit-implicit-want-mappings.md/">显式Want与隐式Want匹配规则</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-uiAbility.md/#uiabilityoncreate">onCreate</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[个人心得：Git使用与开发规范]]></title>
+        <id>https://alleny.xyz/post/development-standards/</id>
+        <link href="https://alleny.xyz/post/development-standards/">
+        </link>
+        <updated>2023-12-03T06:10:31.000Z</updated>
+        <summary type="html"><![CDATA[<p>长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。</p>
+<!-- more -->
+<h2 id="前言">前言</h2>
+<p><strong>强烈建议</strong>先通过交互式教程 <a href="https://learngitbranching.js.org/?locale=zh_CN">learn git branching</a> 了解Git对于操纵修改提交历史的各种进阶操作。</p>
+<h2 id="提交规范">提交规范</h2>
+<p>参考 <a href="https://www.conventionalcommits.org/zh-hans/v1.0.0/">约定式提交</a> 。</p>
+<h2 id="基本工作流">基本工作流</h2>
+<h3 id="大型项目">大型项目</h3>
+<p>请参照 <a href="https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow">Gitflow</a> 。</p>
+<h3 id="小型项目">小型项目</h3>
+<p>分支命名同 <a href="#%E5%A4%A7%E5%9E%8B%E9%A1%B9%E7%9B%AE">大型项目</a> 。和大型项目唯一的区别是去掉了<code>develop</code>分支，即<code>feature</code>等分支可直接合入到<code>main</code>分支。</p>
+<h3 id="代码审核">代码审核</h3>
+<p>多人合作，无论项目大小，禁止直接将其他分支合入到<code>main</code>分支。必须在仓库对应平台（如Github）上发起分支合并的PR，并指定小组其他剩余成员review，code review通过才可合入。</p>
+<h2 id="保持提交历史干净">保持提交历史干净</h2>
+<h3 id="借助git-stash拉取最新更改">借助git stash拉取最新更改</h3>
+<blockquote>
+<p>你正在a分支上进行工作，做了一些更改并还没有提交。此时你发现a分支上有一个别人上传的新提交，你想把新提交拉下来，基于此继续开发，但同时你本地的工作又还没有做完，你不想直接丢掉本地的更改。</p>
+</blockquote>
+<p>参考以下命令：</p>
+<pre><code class="language-shell">git stash
+git pull
+git stash pop
+</code></pre>
+<p><code>git stash</code>可以把你当前的工作区暂存，然后<code>git pull</code>拉取远程提交，<code>git stash pop</code>再恢复工作区。通俗点就是用草稿纸记一下你的当前状态，然后再从草稿纸恢复过来。</p>
+<p>另一种应用场景是你正在你的分支上做开发，突然你的队友让你去其他分支帮忙看下bug，此时也可以使用<code>git stash</code>暂存一下，看完bug，回到自己的分支，再<code>git stash pop</code>。</p>
+<h3 id="merge还是rebase"><code>merge</code>还是<code>rebase</code></h3>
+<p>分支合入的方式选择<code>merge</code>还是<code>rebase</code>是一个有争议的话题。一般来说，<code>rebase</code>能尽量保持提交历史的干净，而<code>merge</code>能不破坏原有的提交记录。本人更偏向于<code>rebase</code>，因为干净的提交历史非常易于整理和阅读，而<code>rebase</code>能实现这一点。</p>
+<p>基于此，以下讨论开发中<code>rebase</code>的使用。</p>
+<h3 id="使用rebase获取main分支的最新更改">使用<code>rebase</code>获取<code>main</code>分支的最新更改</h3>
+<blockquote>
+<p>你在<code>main</code>分支的<code>M1</code>提交上创建了一个<code>feature</code>分支，并在<code>feature</code>分支上新增了一个提交<code>F1</code>。此时你发现<code>main</code>分支上有了别人上传的一个新提交<code>M2</code>，于是你想把<code>M2</code>的内容拉到你的<code>feature</code>分支上，使你可以在最新的<code>main</code>分支修改上继续做你<code>feature</code>分支的开发。</p>
+</blockquote>
+<p>习惯使用<code>merge</code>而不是<code>rebase</code>的人可能会选择直接把<code>main</code>分支<code>merge</code>到你的<code>feature</code>分支上，但个人不建议这样，因为这可能会让提交历史看起来很怪异（可能导致历史提交记录各种相互交织，看起来异常复杂）。<strong>笔者看来</strong>，良好的提交历史里面应该只有其他分支向<code>main</code>分支方向的<code>merge</code>，而不存在<code>main</code>分支向其他分支方向的<code>merge</code>。也就是，<code>merge</code>应该是单向的。</p>
+<p>一种方式是可以使用<code>cherry-pick</code>，读者可以自行搜索。但这里想要介绍的是<code>rebase</code>的方式。在以上场景下，请把你的<code>feature</code>分支在本地<code>rebase</code>到<code>main</code>分支上（可能需要处理冲突），然后在本地，你的<code>feature</code>分支就从基于<code>M1</code>变成了基于<code>M2</code>，也就是<code>M1&lt;-M2(main)&lt;-F1(feature)</code>这种样子，整个提交历史变成了一条线性，看起来美观许多。</p>
+<p>本地<code>rebase</code>以后，需要将你的本地<code>feature</code>分支force push（<code>--force</code>参数）到远程仓库，这是因为你本地的<code>feature</code>分支已经和你远程的<code>feature</code>分支所在位置不一样了，<strong>需要将本地的<code>rebase</code>也强行推送到远程，这点很重要</strong>。</p>
+<h3 id="在提交pr合并前先rebase">在提交PR/合并前先<code>rebase</code></h3>
+<p>请在你提交PR前（也就是想合并分支前）先把你的个人分支<code>rebase</code>到<code>main</code>分支之上（记得force push），然后再发起PR。这样做的好处有二：</p>
+<ul>
+<li>干净的历史记录。这样做以后，你的第一个修改是接在<code>main</code>分支的最后一个修改后面的，整个提交历史是线性的，没有分叉和交汇，非常干净，易于阅读（特别是对于reviewer）与日后维护。</li>
+<li>无需要再处理的冲突。在你<code>rebase</code>的过程当中，你已经完成了你与<code>main</code>分支的实际代码合并（也就是<a href="#%E4%BD%BF%E7%94%A8rebase%E8%8E%B7%E5%8F%96main%E5%88%86%E6%94%AF%E7%9A%84%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9">上一节</a>提到的，你已经通过<code>rebase</code>获取到了<code>main</code>分支的所有最新修改），同时完成了对于代码冲突的解决。你的reviewer也会知道，你发起的这个PR已经考虑到了所有<code>main</code>分支最新的修改。之后在合并时，由于提交历史已经是线性的，<code>main</code>分支会直接<code>fast-forward</code>到你的<code>feature</code>分支的最新提交上，<s>非常优雅</s>。</li>
+</ul>
+<h3 id="潜在的风险">潜在的风险</h3>
+<p>请确保你要force push的这条分支只有你一个人在开发，没有其他人在上面，否则你的行为可能会让其他人在下次拉取提交时很困扰（直接<code>pull</code>的话会出现很混乱的提交合并，后果很严重！）。因此如果这条分支还有其他人，请务必先做好协商。</p>
+<h2 id="其他习惯技巧">其他习惯/技巧</h2>
+<h3 id="开始工作结束工作-的第一件事git-fetch">开始工作/结束工作 的第一件事：<code>git fetch</code></h3>
+<p>请不要直接无脑<code>git pull</code>，否则可能会产生一些比较严重的后果，例如当别人可能已经通过rebase+force push或者其他方式更改了远程的提交历史/分支结构。</p>
+<p>良好的习惯是先<code>git fetch</code>，获取远程的最新更改，检查一下远程状态，检阅一下别人的最新工作，再决定要做什么操作。</p>
+<p>例如，当你发现你所在的某条分支竟然已经被某个不守规矩的人rebase并force push了，此时你要做的应该是先把你本地的这条分支删除，然后重新去把远程的这条分支拉下来。</p>
+<p>结束工作（commit）前也是如此。请先确认好该分支没有别人上传的新提交再commit。如果有新提交，请参考前面介绍的<a href="#%E5%80%9F%E5%8A%A9git-stash%E6%8B%89%E5%8F%96%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9"><code>git stash</code></a>，把远程的更新拉过来再进行自己的提交，保证自己的commit在远程的这个新提交之后，而不是出现奇怪的分叉。</p>
+<blockquote>
+<p>如果你已经commit了，问题也不大，你可以通过<code>git pull --rebase</code>，把你的commit置于拉取到的远程提交之后。</p>
+</blockquote>
+<h2 id="工具推荐">工具推荐</h2>
+<ul>
+<li><strong>强烈建议</strong>使用可视化工具<strong>查看</strong>本地/远程提交历史以及具体更改，例如vscode插件 <a href="https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph">git graph</a> 。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[使用ssh端口转发让远程服务器访问本地代理]]></title>
+        <id>https://alleny.xyz/post/ssh-remoteforward/</id>
+        <link href="https://alleny.xyz/post/ssh-remoteforward/">
+        </link>
+        <updated>2023-11-09T09:37:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？</p>
+<!-- more -->
+<h1 id="motivation">Motivation</h1>
+<p>最近在实验室的服务器上尝试运行vLLM。由于代码里面需要使用<code>transformers</code>库访问huggingface下载模型，于是在服务器shell里面配置了实验室提供的proxy，但结果代码里面访问huggingface依然报错。尝试curl https://huggingface.co/，结果如下：</p>
+<pre><code class="language-shell">~/Workspace/vllm$ curl https://huggingface.co/
+curl: (56) Received HTTP code 407 from proxy after CONNECT
+</code></pre>
+<p>看来实验室的proxy是用不了。但是我在本地使用自己的proxy可以访问到huggingface，那么能否让ssh的远程服务器直接使用本地的proxy呢？</p>
+<h1 id="solution">Solution</h1>
+<p>修改本地的~/.ssh/config，添加远程端口转发</p>
+<pre><code>Host Name
+  HostName hostip
+  User username
+  RemoteForward 17890 localhost:7890
+</code></pre>
+<p>通过以上配置，远程就能直接通过自身的17890端口，使用本地7890端口提供的proxy。<br>
+可以在服务器的<code>~/.bashrc</code>中再添加如下配置：</p>
+<pre><code class="language-shell">alias setlocalproxy='
+    export https_proxy=http://127.0.0.1:17890 http_proxy=http://127.0.0.1:17890 all_proxy=socks5://127.0.0.1:17890
+'
+</code></pre>
+<p>然后</p>
+<pre><code class="language-shell">~$ setlocalproxy
+</code></pre>
+<p>即可正常使用本地机器提供的代理。<br>
+再次<code>curl https://huggingface.co</code>，成功。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[ASPLOS'23 "DeepUM: Tensor Migration and Prefetching in Unified Memory" 论文解析]]></title>
+        <id>https://alleny.xyz/post/deepum/</id>
+        <link href="https://alleny.xyz/post/deepum/">
+        </link>
+        <updated>2023-10-24T09:17:52.000Z</updated>
+        <summary type="html"><![CDATA[<p>发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制允许内存超额使用，但page migration引入了巨大的开销。DeepUM使用一种新的correlation prefetching技术来隐藏page migration的开销。它是完全自动且对用户透明的。本文还提出了两种优化技术来最小化GPU fault handling time。作者使用来自MLPerf、PyTorch示例和Hugging Face的九个大规模DNN对DeepUM的性能进行评估，并将其性能与六种最先进的GPU内存交换方法进行比较。评估结果表明，DeepUM对于GPU内存超额使用非常有效，并且可以处理其他方法无法处理的更大模型。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制允许内存超额使用，但page migration引入了巨大的开销。DeepUM使用一种新的correlation prefetching技术来隐藏page migration的开销。它是完全自动且对用户透明的。本文还提出了两种优化技术来最小化GPU fault handling time。作者使用来自MLPerf、PyTorch示例和Hugging Face的九个大规模DNN对DeepUM的性能进行评估，并将其性能与六种最先进的GPU内存交换方法进行比较。评估结果表明，DeepUM对于GPU内存超额使用非常有效，并且可以处理其他方法无法处理的更大模型。</p>
+<!-- more -->
+<h1 id="background">Background</h1>
+<h2 id="gpus-and-cuda-programming-model">GPUs and CUDA Programming Model</h2>
+<p>GPGPU允许程序员在GPU上短时间处理大量的计算，这是因为GPU上有成百上千的GPU thread在同时进行计算。为了能高效地利用GPU进行计算，许多编程模型被提出，例如CUDA，oneAPI，openACC和OpenCL。</p>
+<p>这篇论文的工作是基于CUDA的。CUDA是由NVIDIA开发的GPU并行编程模型。程序员需要定义一个CUDA kernel函数，将计算任务卸载到GPU上。然后，CUDA kernel由N个不同的CUDA线程在GPU上并行执行。每个CUDA线程都有一个唯一的thread ID，用于确定控制流和计算要访问的内存地址。CUDA thread被分组为thread block，而thread block则被分组为grid。当程序员启动一个CUDA kernel时，其可以指定grid的配置，例如一个grid上的thread block个数以及一个thread block上的thread个数。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1698048986672.png" alt="" loading="lazy"></figure>
+<p>上图是NVIDIA GPU内存的层级展示。一个GPU包含了数十个streaming multiprocessors（SMs）。每个thread block被map到一个SM上（多个thread block可能被map到一个SM），每个SM内包含了数百个CUDA core，而一个thread就会被map到一个CUDA core上，所以thread block到SM，thread到CUDA core就是对应的软件到硬件的映射关系。</p>
+<p>每个SM具有不同类型的内存单元，如寄存器、L1 cache、shared memory和constant memory（只读内存）。虽然寄存器是每个线程私有的，但其他内存单元在SM内部是共享的。在SM之外，有一个L2 cache在所有SM之间共享。Global memory是一种片外DRAM，通常是几个GB到几十个GB。通常情况下，靠近CUDA核心（SM）的存储单元具有较低的延迟和较小的容量。尽管GPU提供了几十个GB的global memory，但DNN工作负载严重缺乏global memory容量。</p>
+<p>由于GPU线程无法直接访问main memory，除非程序员将CPU内存空间映射到GPU内存空间，程序员必须手动在GPU全局内存和CPU内存之间移动数据。此外，访问映射到GPU内存空间的CPU内存会导致性能下降，因为每次内存访问都会产生PCIe传输。为此，NVIDIA提出了统一内存（UM）的概念。</p>
+<h2 id="cuda-unified-memory">CUDA Unified Memory</h2>
+<p>UM为访问同一系统上GPU和CPU上的内存提供了单一内存空间。从Pascal架构开始，NVIDIA GPU引入了page migration engine，其使用page fault机制使GPU有了虚拟内存系统。一个page fault发生前后的snapshot如图所示。UM使得GPU内存可以超额使用，而无需程序员进行任何干预，因此极大减轻了程序员的负担。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1698050541178.png" alt="" loading="lazy"></figure>
+<p>尽管UM有各种优点，GPU page fault handling的成本很高。当GPU里的一个page fault发生的时候，其对应SM的TLB会被lock住，并且在这个SM里面的所有fault被处理完之前不能做任何新的translation。此外，page faults需要在CPU和GPU之间进行昂贵的I/O操作，因此强烈建议插入CUDA prefetch API函数（例如cudaMemPrefetchAsync()）或CUDA user-hint API函数（例如cudaMemAdvise()），以减少page fault的发生。</p>
+<h2 id="nvidia-page-fault-handler">NVIDIA Page Fault Handler</h2>
+<p>Fault buffer：GPU中的一个循环队列，用于存储fault access informtion。由于GPU可以同时生成多个faults，因此fault buffer中可能包含同一page的多个fault entries。</p>
+<p>UM block：一组最大512个连续的pages，同时也是NVIDIA driver的管理单位。</p>
+<p>下图为NVIDIA page fault handler的一个流程图。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1698051779774.png" alt="" loading="lazy"></figure>
+<h1 id="motivation">Motivation</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，其中就包括关于memory swapping的研究。</p>
+<p>但是之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用，因此还是想使用UM。但是又要想办法hide UM带来的overhead，对此作者设计了DeepUM。</p>
+<h1 id="structure-of-deepum">Structure of DeepUM</h1>
+<p>为了隐藏上述提到UM带来的overhead，作者提出了DeepUM，其核心是对要访问的block做prefetch。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1698051846769.png" alt="" loading="lazy"></figure>
+<p>上图为DeepUM的整体结构，包含了DeepUM runtime和DeepUM driver。</p>
+<ul>
+<li>
+<p>DeepUM runtime的主要作用是为CUDA的内存分配API提供包装函数，从而将GPU内存分配请求转换为UM空间的内存分配请求。其管理了一个名为execution ID table的表，保存了kernel启动的历史记录以及由kernel的名字和参数算得的hash值。当一个新的kernel启动命令发送到DeepUM runtime时，其先为该kernel算一个hash值，然后通过该hash值去execution ID table进行查找。如果找到了，就给这个kernel相同的execution ID，否则为其分配一个新的execution ID并存储到表里面。最后，DeepUM runtime会将一个callback在kernel launch command入队（enqueue）前先入队，这个callback通过Linux ioctl将该execution ID传递给给DeepUM driver以进行后续的correlation prefetching。</p>
+</li>
+<li>
+<p>DeepUM driver的主要作用是处理page faults以及做prefetch。DeepUM driver管理的correlation tables在DNN训练期间记录kernel执行的历史以及其访问的page，其使用这个correlation table来进行prefetch。</p>
+</li>
+</ul>
+<p>DeepUM driver中有四个kernel threads，分别是</p>
+<ul>
+<li>fault handling thread，负责读取fault buffer，将信息传递给其他线程。</li>
+<li>correlator thread，负责管理correlation table。</li>
+<li>prefetching thread，负责查询correlation table，并据此计算要prefetch的UM block地址。</li>
+<li>migration thread，负载在GPU和CPU之间做UM block的迁移。</li>
+</ul>
+<p>图中还有两个queue，分别是fault queue和prefetch queue。fault queue相比prefetch queue拥有更高的优先级（被migration thread执行），以让GPU可以尽快的对faulted accesses进行reply。</p>
+<h1 id="correlation-prefetching-for-gpu-pages">Correlation Prefetching for GPU Pages</h1>
+<h2 id="pair-based-correlation-prefetching">Pair-Based Correlation Prefetching</h2>
+<p>传统的correlation prefetch有两种方法，分别是stride-based和pair-based。DeepUM是基于pair-based的。pair-based correlation prefetching如图所示。NumLevels表示不同的level，比如c是a的后一个的后一个，所以放在第二个level；NumSuccs则是MRU从左到右排序的。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1698053775988.png" alt="" loading="lazy"></figure>
+<h2 id="correlation-prefetching-in-deepum">Correlation Prefetching in DeepUM</h2>
+<h3 id="两种correlation-table">两种Correlation Table</h3>
+<p>和原始的correlation prefetching不一样，DeepUM使用了两种类型的correlation table：execution ID和UM block，两种类型的NumLevels都为1。</p>
+<ul>
+<li>execution ID correlation table (the execution table in short)：记录exexcution ID（也就是对应CUDA kernel）的执行历史。Execution table只存在一个。一个execution table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130115505.png" alt="" loading="lazy"><br>
+由上图可见，每个entry由多组correlated IDs组成，每一组包含了四个execution ID。其中前三个表示在当前kernel之前执行过的kernel，第四个表示预测在当前kernel的下一个要执行的kernel。注意这里下一个kernel预测错误带来的开销是很昂贵的。</li>
+<li>UM block correlation table (a block table in short)：记录UM block的访问历史。相比全局只存在一个的execution table，block table是对于每个execution ID都有一个的。一个block table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130931220.png" alt="" loading="lazy"><br>
+我们提到block table是对于每个execution ID都有一个的，如图所示，其记录的也是相对应的CUDA kernel内的UM block访问历史。可以观察到，虽然这个table和原始的correlation table结构相似，但是多出了一个start UM block和一个end UM block的指针。
+<ul>
+<li>start UM block指向这个kernel执行中第一个发生fault的UM block。</li>
+<li>end UM block指向这个kernel执行中最后一个要prefetch的UM block。end UM block记录的实际就是当前kernel执行结束前最后一个发生fault的UM block。</li>
+</ul>
+</li>
+</ul>
+<h3 id="prefetching-mechanisms-and-chaining">Prefetching Mechanisms and Chaining</h3>
+<p>当page fault发生，DeepUM driver就去查找当前执行的kernel的对应的UM block correlation table，然后去对faulted UM block这条后面记录的correlated UM block内的所有pages做prefetch。</p>
+<p>那么start UM block和end UM block发挥了什么作用呢？当prefetching thread遇到了end block时，就结束对当前kernel的prefetch，然后通过查阅execution ID table预测下一个要执行的kernel，接着对下一个kernel的end block进行prefetch。也就是说，start UM block和end UM block是用来配合之前提到的execution ID correlation table做chaining的。</p>
+<p>那么chaining什么时候结束？关于prefetch和chaining，文中提到了三个时间节点：</p>
+<ul>
+<li>当出现一个新的page fault interrupt signal，或者prefetching thread错误预测了下一个要执行的kernel，<strong>chaining结束</strong>。</li>
+<li>当prefetching thread把后续N个kernel的prefetch commands都已经enqueue了，<strong>chaining暂停</strong>。</li>
+<li>当前正在执行的kernel执行结束后，<strong>prefetching thread继续</strong>。</li>
+</ul>
+<h1 id="optimizations-for-gpu-page-fault-handing">Optimizations for GPU Page Fault Handing</h1>
+<p>文中提到了两种针对page fault handing的优化，分别为page pre-eviction和Invalidating UM Blocks of Inactive PyTorch Blocks。</p>
+<h2 id="page-pre-eviction">Page Pre-eviction</h2>
+<p>当要migrating faulted pages时，GPU内存分配失败，就会触发eviction。正如图中对X，Y的eviction，page eviction的发生会增大fault handling的时间。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1698133876496.png" alt="" loading="lazy"></figure>
+<p>因此，作者想到在GPU内存空间不足时去做pre-eviction。具体来说，当page满足下列两个条件时，就会被evict。</p>
+<ul>
+<li>最久未迁移（Least recently migrated）</li>
+<li>预计不会被当前正在执行的kernel以及接下来的N个被预测将执行的kernel访问</li>
+</ul>
+<h2 id="invalidating-um-blocks-of-inactive-pytorch-blocks">Invalidating UM Blocks of Inactive PyTorch Blocks</h2>
+<h3 id="pytorch-memory-pool与pt-block">Pytorch Memory Pool与PT Block</h3>
+<p>PyTorch通过管理memory pools的方式来最小化内存的分配和释放的时间，同时减小内存碎片。PyTorch中的memory pool有两种：large和small。PyTorch中的内存对象也叫做block，为了和UM block作区分，我们称其为PT block。large pool包含了超过1MB的PT blocks，而small pool包含了小于或等于1MB的PT blocks。PyTorch的内存分配器会返回最小可用的PT block，并且如果PT block的size还是太大，则会将其做split。</p>
+<p>这里的关键在于，当PT block被DNN模型使用结束，返回到内存分配器时，内存分配器只会将其mark成inactive（当然还要放回合适的memory pool）而不是直接free掉（对于设备来说），除非pool中没有可用的内存空间了，才会把inactive的PT block释放掉来生成新的内存空间。</p>
+<h3 id="invalidating-um-blocks">Invalidating UM Blocks</h3>
+<p>上面的机制被放在与UM一起使用时就会出现问题，即inactive的PT blocks也会被evicted到CPU内存上，造成不必要的数据传输开销。并且，这还占用了CPU的内存空间。更严重的场景是，当这些inactive的PT blocks又被mark成active，那还要再把这些PT blocks从CPU迁移到GPU，造成更多不必要的数据传输。</p>
+<p>因此，作者的思路很简单，也就是在PyTorch的内存分配器中加入少量代码，来告诉DeepUM driver何时一个PT block被标记成了inactive。如果一个将要evict的page属于一个inactive PT block，那么DeepUM driver就直接简单将其对应的UM block invalidate就好。</p>
+<h1 id="evaluation">Evaluation</h1>
+<p>限于篇幅原因，对这部分内容只给出一些大概的结论总结，如果对具体的实验数据或者实验细节感兴趣可以去阅读论文原文。</p>
+<p>作者首先将将DeepUM与Naive UM和IBM LMS做了一个对比。结果显示：</p>
+<ul>
+<li>和其他内存预取策略一样，DeepUM的性能依赖于应用的memory access patterns以及内存迁移时间和计算时间相比的比例。例如在DLRM这样的模型上，内存的访问模式不规则（因为高度依赖输入数据），导致LMS与DeepUM在上面都运行得不好。</li>
+<li>DeepUM相比LMS和LMS-mod（LMS的修改版本，速度慢一些但是能比LMS运行更大的batch size）能运行更大的batch size。这是通过虚拟内存的支持做到的。</li>
+<li>平均来看，DeepUM有着最好的性能，相比UM有3.06✕的加速比，相比LMS有1.11✕的加速比。</li>
+<li>虽然LMS有着最好的能耗，但是LMS与DeepUM之间的差距很小</li>
+</ul>
+<p>作者还进了其他的一些测试，例如：</p>
+<ul>
+<li>作者评估了存储correlation table所用的大小。这个大小随着模型与batch size而变化。注意correlation table是存储在CPU内存的。</li>
+<li>作者评估了page faults发生的次数，结果显示DeepUM的prefetch相当精准，并且能大量减少page fault发生的次数。</li>
+<li>作者评估了prefetching和optimizations所带来的效果，结果显示prefetching，prefetching+preeviction和prefetching+preeviction+invalidate分别平均减小了45.6%，63.7%和66.7%的运行时间。</li>
+<li>作者评估了预取的不同程度（即N的大小）带来的的影响，结果显示，当N=32时，加速比最高，同时能耗最低。</li>
+<li>作者评估了UM Block Correlation Table的不同参数配置带来的影响，结果显示，当Assoc为2，NumSuccs为4，NumRows为2048时，能带来相对最好的效果。</li>
+</ul>
+<p>作者还将DeepUM与5个TensorFlow-Based的研究的实验数据进行了比较，结果显示DeepUM拥有与Sentinel相当的性能，比剩余其他的几个都快。但是Sentinel是需要手动优化的，而DeepUM是对用户透明的。并且，DeepUM相比之前的方法能允许更大的batch size。作者将这种性能的差别归于DeepUM对数据移动的更小的粒度。</p>
+<h1 id="related-work">Related Work</h1>
+<p>作者回顾了以前的研究，最后将多个工作放在一起进行了一个比较，结果如图所示。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1698138077614.png" alt="" loading="lazy"></figure>
+<h1 id="conclusions">Conclusions</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，本文便是一篇关于memory swapping的文章。</p>
+<p>之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用。对此作者设计了DeepUM。</p>
+<p>为了隐藏UM带来的overhead，DeepUM通过prefetch策略，减少page fault的发生，同时提出了pre-eviction和invalidate block两种优化来减小处理page fault时的开销。</p>
+<p>测试显示，DeepUM能达到与需要手动优化的Sentinel相当的性能，并比其他几个baseline的性能都要好。同时，DeepUM也能处理其他几个方法处理不了的更大的模型。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Using Proxy for SSH]]></title>
+        <id>https://alleny.xyz/post/ssh-over-proxy/</id>
+        <link href="https://alleny.xyz/post/ssh-over-proxy/">
+        </link>
+        <updated>2023-03-01T06:44:02.000Z</updated>
+        <summary type="html"><![CDATA[<p>如果我们直接使用ssh连接国外的服务器，会被GFW检测出，出现干扰、丢包等问题。因此使用proxy进行ssh连接变得很有必要。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>如果我们直接使用ssh连接国外的服务器，会被GFW检测出，出现干扰、丢包等问题。因此使用proxy进行ssh连接变得很有必要。</p>
+<!-- more -->
+<h2 id="背景">背景</h2>
+<p>最近在使用<a href="https://www.utah.edu/">Utah</a>的<a href="https://www.cloudlab.us/">Cloudlab</a>，由于提供的服务器部署在美国，在使用ssh连接时会经常断掉，甚至长时间连接不上，对工作形成了很大的干扰，于是萌生了让ssh走proxy的想法。</p>
+<h2 id="环境">环境</h2>
+<ul>
+<li>系统：macOS 13.2.1 (22D68)</li>
+<li>ssh version: OpenSSH_9.0p1, LibreSSL 3.3.6</li>
+<li>使用的proxy方案：ClashX (Version 1.96.2) &amp; 机场</li>
+</ul>
+<h2 id="做法">做法</h2>
+<h3 id="命令">命令</h3>
+<p>查询资料，得到使用代理的ssh命令如下：</p>
+<pre><code class="language-shell">ssh -o ProxyCommand=&quot;nc -X 5 -x 127.0.0.1:7890 %h %p&quot; user@server
+</code></pre>
+<h3 id="参数解释">参数解释</h3>
+<h4 id="翻看文档">翻看文档</h4>
+<blockquote>
+<p>太长不看可以跳到<a href="#%E6%80%BB%E7%BB%93">参数总结</a></p>
+</blockquote>
+<p><code>man ssh</code>，我们可以得到相关参数信息：</p>
+<pre><code>-o option
+             Can be used to give options in the format used in the
+             configuration file.  This is useful for specifying options for
+             which there is no separate command-line flag.  For full details
+             of the options listed below, and their possible values, see
+             ssh_config(5).
+</code></pre>
+<p><code>man ssh_config</code>，得到：</p>
+<pre><code>ProxyCommand
+             Specifies the command to use to connect to the server.  The
+             command string extends to the end of the line, and is executed
+             using the user's shell ‘exec’ directive to avoid a lingering
+             shell process.
+
+             Arguments to ProxyCommand accept the tokens described in the
+             TOKENS section.  The command can be basically anything, and
+             should read from its standard input and write to its standard
+             output.  It should eventually connect an sshd(8) server running
+             on some machine, or execute sshd -i somewhere.  Host key
+             management will be done using the Hostname of the host being
+             connected (defaulting to the name typed by the user).  Setting
+             the command to none disables this option entirely.  Note that
+             CheckHostIP is not available for connects with a proxy command.
+
+             This directive is useful in conjunction with nc(1) and its proxy
+             support.  For example, the following directive would connect via
+             an HTTP proxy at 192.0.2.0:
+
+                ProxyCommand /usr/bin/nc -X connect -x 192.0.2.0:8080 %h %p
+</code></pre>
+<p><code>man nc</code>：</p>
+<pre><code>-X proxy_version
+             Requests that nc should use the specified protocol when talking
+             to the proxy server.  Supported protocols are “4” (SOCKS v.4),
+             “5” (SOCKS v.5) and “connect” (HTTPS proxy).  If the protocol is
+             not specified, SOCKS version 5 is used.
+
+-x proxy_address[:port]
+             Requests that nc should connect to hostname using a proxy at
+             proxy_address and port.  If port is not specified, the well-known
+             port for the proxy protocol is used (1080 for SOCKS, 3128 for
+             HTTPS).
+</code></pre>
+<h4 id="总结">总结：</h4>
+<ul>
+<li><code>-o</code>参数用于提供配置选项。</li>
+<li><code>ProxyCommand</code>指定用于连接Server的命令。</li>
+<li><code>nc</code>是一个可以用来在网络上读写数据的命令行工具。
+<ul>
+<li><code>-X</code>指定与proxy使用的protocol，4代表SOCKS V.4，5代表SOCKS v.5，connect代表使用HTTPS proxy。实际上，该参数的默认值是5。</li>
+<li><code>-x</code>指定proxy的addr与port。</li>
+</ul>
+</li>
+</ul>
+<p>由于使用的是ClashX，默认的混合代理端口为7890。在使用时，请根据你的实际情况填写代理端口。</p>
+<h2 id="这就结束了">这就结束了？</h2>
+<p>如果你在Google搜索“如何让ssh走代理”，那么教程多半在你得到<a href="#%E5%91%BD%E4%BB%A4">这条命令</a>后就结束了。于是你兴冲冲的去terminal尝试，结果被现实狠狠打脸：</p>
+<pre><code>kex_exchange_identification: Connection closed by remote host
+Connection closed by UNKNOWN port 65535
+</code></pre>
+<p>可是你已经在网上找了各种“如何让ssh走代理”的教程，你发现得到的内容与上面的命令都别无二致。那么究竟是哪里出错了？</p>
+<h3 id="回到端口">回到端口</h3>
+<p>由于<a href="https://www.ssh.com/academy/ssh/port">历史原因</a>，ssh的默认端口为22。如果你使用的是机场代理，那么很有可能是机场由于自身原因关闭了22端口。<br>
+网上关于上述报错的场景多在于访问Github仓库失败，<a href="https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port">解决方案为改为使用443端口访问ssh.github.com</a>。如果你想访问的就是Github，那么这或许能解决你的问题。<br>
+但很遗憾，我访问的不是Github，并不能直接用443端口去ssh连接远程的服务器。所以我们还有一个方法：修改远程服务器的ssh端口。</p>
+<h3 id="修改ssh端口">修改ssh端口</h3>
+<p>进入服务器，打开<code>/etc/ssh/sshd_config</code>，找到</p>
+<pre><code>#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+</code></pre>
+<p>这里<code>Port 22</code>被注释掉，因为原本22就是默认端口。将这里修改为</p>
+<pre><code>Port 22
+Port 10022
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+</code></pre>
+<p>这里10022仅做示例，你可以修改为你想要设置的其他端口，但是请注意端口不要冲突。22端口同样打开，这样你可以同时在这两个端口中选择使用进行ssh连接。<br>
+重启ssh服务：</p>
+<pre><code class="language-shell">sudo systemctl restart sshd
+</code></pre>
+<p>现在我们将<a href="#%E5%91%BD%E4%BB%A4">命令</a>修改成如下</p>
+<pre><code>ssh -o ProxyCommand=&quot;nc -X 5 -x 127.0.0.1:7890 %h %p&quot; user@server -p 10022
+</code></pre>
+<p>指定了10022端口，发现连接成功！</p>
+<h3 id="vs-code">VS code</h3>
+<p>如果你使用的是<a href="https://code.visualstudio.com/">VS code</a>，你可以在<code>~/.ssh/config</code>中作如下配置：</p>
+<pre><code>Host server
+  HostName server
+  User user
+  Port 10022
+  ProxyCommand nc -X 5 -x 127.0.0.1:7890 %h %p
+</code></pre>
+<p>注意这里<code>Port</code>与<code>ProxyCommand</code>的设置。</p>
+<h2 id="总结-2">总结</h2>
+<p>由于需要连接到国外的服务器，为了ssh连接的稳定性，我们想到使用代理来协助ssh连接。根据查找资料，我们得到了让ssh使用本机ClashX代理的命令。但是代理提供商可能会把22端口封掉，导致连接失败。此时我们可以修改服务器的ssh端口，然后重新用新的端口进行连接。如果使用VS code进行远程连接，也可以修改<code>.ssh</code>目录下的config文件从而不用反复输入命令。</p>
+<p>Done!</p>
+]]></content>
+    </entry>
+</feed>
