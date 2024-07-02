@@ -1,0 +1,350 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（哈希表篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1719904788579">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（哈希表篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（哈希表篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[242] Valid Anagram
+
+难度：Easy
+语言：C++
+
+题目描述。
+题目限定了字符串里字符只能是小写英文字符，因此可以使..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1719904788579" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（哈希表篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-04-15
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="242-valid-anagram">[242] Valid Anagram</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-anagram/description/">题目描述</a>。<br>
+题目限定了字符串里字符只能是小写英文字符，因此可以使用长度为26的数组直接当哈希表。若字符串可能包含Unicode字符，则把数组替换成<code>unordered_map</code>使用即可。<br>
+若大多数是短字符串，则<code>s</code>一个循环，<code>t</code>一个循环同时检查<code>table[t[i]]</code>是否小于0应该开销更小（两个次数为<code>size</code>的循环）。若大多数是长字符串，那么如下所示的一个循环写<code>table</code>，一个循环检查<code>table</code>应该开销更小（一个次数为<code>size</code>的循环和一个次数为26的循环）。虽然实际上长度超过26的单词应该非常稀有，但作为LeetCode题目，反而应该长字符串的测试用例比较多。</p>
+<pre><code class="language-c++">  bool isAnagram(string s, string t) {
+    int table[26] = {0};
+    int size = s.size();
+    if (t.size() != size) {
+      return false;
+    }
+    for (int i = 0; i &lt; size; ++i) {
+      table[s[i] - 'a']++;
+      table[t[i] - 'a']--;
+    }
+    for (int i = 0; i &lt; 26; ++i) {
+      if (table[i] != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+</code></pre>
+<h2 id="1002-find-common-characters">[1002] Find Common Characters</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-common-characters/description/">题目描述</a>。<br>
+“Easy”题并不Easy。<br>
+这道题的特殊点在于字符在结果中是可以重复的。一开始想到的是用一个<code>multimap</code>来做，但是感觉代码会比较麻烦，而且寻思Python也没有<code>multimap</code>的方便替代，于是好奇网上是怎么写的。关键点是为每个word都统计一个hash table，然后再取这些hash table之间的最小值。<br>
+用多个hash table取交集（取最小值）的想法确实不容易想到，如果思维被局限于只使用一个hash table，估计会被困扰很久。</p>
+<pre><code class="language-python">    def commonChars(self, words: List[str]) -&gt; List[str]:
+        min_count = [0] * 26
+        for c in words[0]:
+            min_count[ord(c) - ord(&quot;a&quot;)] += 1
+
+        for word in words[1:]:
+            count = [0] * 26
+            for c in word:
+                count[ord(c) - ord(&quot;a&quot;)] += 1
+            for i, cur in enumerate(min_count):
+                min_count[i] = min(cur, count[i])
+
+        ret = []
+        for i, num in enumerate(min_count):
+            for _ in range(num):
+                ret.append(chr(ord(&quot;a&quot;) + i))
+        return ret
+</code></pre>
+<h2 id="349-intersection-of-two-arrays">[349] Intersection of Two Arrays</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-arrays/description/">题目描述</a>。<br>
+把第一个array先做成hash set，再把第二个array对着第一个array做成的hash set来查，查完插入返回结果的hash set即可。基本没有难度。</p>
+<pre><code class="language-rust">use std::collections::HashSet;
+
+impl Solution {
+    pub fn intersection(nums1: Vec&lt;i32&gt;, nums2: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut ret_set: HashSet&lt;i32&gt; = HashSet::with_capacity(1000);
+        let mut set1: HashSet&lt;i32&gt; = nums1.into_iter().collect();
+
+        nums2
+            .iter()
+            .filter(|num| set1.contains(num))
+            .for_each(|&amp;num| {
+                ret_set.insert(num);
+            });
+
+        ret_set.into_iter().collect()
+    }
+}
+</code></pre>
+<h2 id="202-happy-number">[202] Happy Number</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/happy-number/description/">题目描述</a>。<br>
+没有难度。就是判断一个数字有没有出现过，用<code>unordered_set</code>即可（<code>set</code>用的是红黑树，<code>unordered_set</code>才是哈希），在此之上又套了一个数学计算的壳子。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool isHappy(int n) {
+    unordered_set&lt;int&gt; visited;
+    int cur = n;
+    while (visited.find(cur) == visited.end()) {
+      visited.insert(cur);
+      int sum = 0;
+      while (cur &gt; 0) {
+        sum += (cur % 10) * (cur % 10);
+        cur = cur / 10;
+      }
+      if (sum == 1) {
+        return true;
+      }
+      cur = sum;
+    }
+    return false;
+  }
+};
+</code></pre>
+<h2 id="1-two-sum">[1] Two Sum</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/two-sum/description/">题目描述</a>。<br>
+这道题的核心是只算两个数字的和而不是多个数字，所以一旦扫描到一个数字就能通过差值知道另一个需要的数字是多少。当我们扫描到一个数字，发现对应的另一个数字也已经遇到过了，就说明找到解了。<br>
+把<code>num1</code>需要的另一个数字<code>num2</code>作为key，自身<code>num1</code>的<code>index</code>作为value即可使用hash表存储需要的信息。对于遍历到的数字<code>num</code>，先查看当前数字是否在hash表中存在（被遍历过的另一个数字需要），若是则返回hash表对应的value（另一个数字的index）和当前index，否则将<code>target-num</code>与当前index插入hash表。<br>
+也可以选择插入的时候用<code>num</code>作为key，然后查找的时候查找<code>target-num</code>，没有什么本质区别。</p>
+<pre><code class="language-python">class Solution:
+    def twoSum(self, nums: List[int], target: int) -&gt; List[int]:
+        hash_table = {}
+        for i, num in enumerate(nums):
+            if num in hash_table:
+                return [hash_table[num], i]
+            hash_table[target - num] = i
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#242-valid-anagram">[242] Valid Anagram</a></li>
+<li><a href="#1002-find-common-characters">[1002] Find Common Characters</a></li>
+<li><a href="#349-intersection-of-two-arrays">[349] Intersection of Two Arrays</a></li>
+<li><a href="#202-happy-number">[202] Happy Number</a></li>
+<li><a href="#1-two-sum">[1] Two Sum</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/selinux/">
+              <h3 class="post-title">
+                Linux 内核中的 SELinux 机制
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
