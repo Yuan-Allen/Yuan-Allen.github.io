@@ -1,0 +1,1963 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://alleny.xyz</id>
+    <title>AllenY&apos;s blog</title>
+    <updated>2024-08-09T06:42:15.161Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://alleny.xyz"/>
+    <link rel="self" href="https://alleny.xyz/atom.xml"/>
+    <subtitle>🧑🏻‍💻🎮🍿🎹🗻</subtitle>
+    <logo>https://alleny.xyz/images/avatar.png</logo>
+    <icon>https://alleny.xyz/favicon.ico</icon>
+    <rights>All rights reserved 2024, AllenY&apos;s blog</rights>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（字符串篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-string/</id>
+        <link href="https://alleny.xyz/post/leetcode-string/">
+        </link>
+        <updated>2024-08-09T06:32:58.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（字符串篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（字符串篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="344-reverse-string">[344] Reverse String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-string/description/">题目描述</a>。<br>
+左右指针往中间靠拢即可，无难度。</p>
+<pre><code class="language-c++">  void reverseString(vector&lt;char&gt;&amp; s) {
+    char tmp;
+
+    for (int left = 0, right = s.size() - 1; left &lt; right; left++, right--) {
+      tmp = s[left];
+      s[left] = s[right];
+      s[right] = tmp;
+    }
+  }
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[踩坑记录：相同数据，两次plt画图结果不一致]]></title>
+        <id>https://alleny.xyz/post/plt-plot-bug/</id>
+        <link href="https://alleny.xyz/post/plt-plot-bug/">
+        </link>
+        <updated>2024-08-02T06:05:12.000Z</updated>
+        <summary type="html"><![CDATA[<p>使用完全相同的数据，plt画图却能得到不同的图像。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>使用完全相同的数据，plt画图却能得到不同的图像。</p>
+<!-- more -->
+<h2 id="问题">问题</h2>
+<p>笔者使用<code>plt</code>画柱状图，代码如下：</p>
+<pre><code class="language-python">def plot_activation_frequencies():
+    if not os.path.exists(&quot;img&quot;):
+        os.makedirs(&quot;img&quot;)
+    for layer_name, activations in layer_activations.items():
+
+        input_data = flatten_activations(activations[&quot;inputs&quot;])
+        output_data = flatten_activations(activations[&quot;outputs&quot;])
+
+        input_activation_freq = (input_data &gt; 0).mean(axis=0)
+        output_activation_freq = (output_data &gt; 0).mean(axis=0)
+
+        plt.figure(figsize=(12, 6))
+
+        plt.subplot(1, 2, 1)
+        plt.bar(
+            range(len(input_activation_freq)),
+            input_activation_freq,
+            color=&quot;blue&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Input Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.subplot(1, 2, 2)
+        plt.bar(
+            range(len(output_activation_freq)),
+            output_activation_freq,
+            color=&quot;green&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Output Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.tight_layout()
+        plt.savefig(f&quot;img/{layer_name}_activation_frequency.png&quot;)
+        plt.close()
+</code></pre>
+<p>通过<code>print</code>打印中间数据，可得到<code>input_activation_freq</code>和<code>output_activation_freq</code>的内容完全一样。也就是说，两次<code>plt.bar</code>的参数除了颜色都是一样的。但是，画出来的两个图像却长得不一样！</p>
+<h2 id="解决过程">解决过程</h2>
+<ol>
+<li>笔者又直接把第二个<code>plt.bar</code>的参数也换成<code>input_activation_freq</code>，也就是说直接用相同的<code>input_activation_freq</code>连续画两次图，可得到的两个图仍然不一样。</li>
+<li>笔者又注释掉第二次<code>plt.bar</code>，只画一次图，结果得到的图甚至和之前得到的两种图都不一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>np.arange(0, 3000, 6)</code>，两边画的图一样了</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:2]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:100]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:1000]</code>，两边画的图又不一样了（<strong>重要</strong>）。</li>
+</ol>
+<p>也就是说，两次画图得到的图是否一样，竟然和数据量有关系？</p>
+<h2 id="原因">原因</h2>
+<p>原因其实是画的图横坐标太长（3072），也就是说有三千多条柱子，而图又太小（<code>plt.figure(figsize=(12, 6))</code>），而一条柱子的宽度起码要占一个像素点，就导致<strong>这么小的图其实无法完全展示所有的柱子</strong>。而左右两个<code>plt.subplot</code>画图时可能对柱子采的样不同（毕竟要在这么小的图内显示这么多柱子是不可能的，其实只能展示一部分柱子），就导致相同数据左右画的图不一致。</p>
+<h2 id="解决方案">解决方案</h2>
+<p>可以扩大图的大小，即调整<code>plt.figure</code>的参数大小。<br>
+更好的方式是把<code>png</code>换成使用<code>pdf</code>存储，即可解决问题。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（哈希表篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-hash-table/</id>
+        <link href="https://alleny.xyz/post/leetcode-hash-table/">
+        </link>
+        <updated>2024-04-15T11:04:07.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="242-valid-anagram">[242] Valid Anagram</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-anagram/description/">题目描述</a>。<br>
+题目限定了字符串里字符只能是小写英文字符，因此可以使用长度为26的数组直接当哈希表。若字符串可能包含Unicode字符，则把数组替换成<code>unordered_map</code>使用即可。<br>
+若大多数是短字符串，则<code>s</code>一个循环，<code>t</code>一个循环同时检查<code>table[t[i]]</code>是否小于0应该开销更小（两个次数为<code>size</code>的循环）。若大多数是长字符串，那么如下所示的一个循环写<code>table</code>，一个循环检查<code>table</code>应该开销更小（一个次数为<code>size</code>的循环和一个次数为26的循环）。虽然实际上长度超过26的单词应该非常稀有，但作为LeetCode题目，反而应该长字符串的测试用例比较多。</p>
+<pre><code class="language-c++">  bool isAnagram(string s, string t) {
+    int table[26] = {0};
+    int size = s.size();
+    if (t.size() != size) {
+      return false;
+    }
+    for (int i = 0; i &lt; size; ++i) {
+      table[s[i] - 'a']++;
+      table[t[i] - 'a']--;
+    }
+    for (int i = 0; i &lt; 26; ++i) {
+      if (table[i] != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+</code></pre>
+<h2 id="1002-find-common-characters">[1002] Find Common Characters</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-common-characters/description/">题目描述</a>。<br>
+“Easy”题并不Easy。<br>
+这道题的特殊点在于字符在结果中是可以重复的。一开始想到的是用一个<code>multimap</code>来做，但是感觉代码会比较麻烦，而且寻思Python也没有<code>multimap</code>的方便替代，于是好奇网上是怎么写的。关键点是为每个word都统计一个hash table，然后再取这些hash table之间的最小值。<br>
+用多个hash table取交集（取最小值）的想法确实不容易想到，如果思维被局限于只使用一个hash table，估计会被困扰很久。</p>
+<pre><code class="language-python">    def commonChars(self, words: List[str]) -&gt; List[str]:
+        min_count = [0] * 26
+        for c in words[0]:
+            min_count[ord(c) - ord(&quot;a&quot;)] += 1
+
+        for word in words[1:]:
+            count = [0] * 26
+            for c in word:
+                count[ord(c) - ord(&quot;a&quot;)] += 1
+            for i, cur in enumerate(min_count):
+                min_count[i] = min(cur, count[i])
+
+        ret = []
+        for i, num in enumerate(min_count):
+            for _ in range(num):
+                ret.append(chr(ord(&quot;a&quot;) + i))
+        return ret
+</code></pre>
+<h2 id="349-intersection-of-two-arrays">[349] Intersection of Two Arrays</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-arrays/description/">题目描述</a>。<br>
+把第一个array先做成hash set，再把第二个array对着第一个array做成的hash set来查，查完插入返回结果的hash set即可。基本没有难度。</p>
+<pre><code class="language-rust">use std::collections::HashSet;
+
+impl Solution {
+    pub fn intersection(nums1: Vec&lt;i32&gt;, nums2: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut ret_set: HashSet&lt;i32&gt; = HashSet::with_capacity(1000);
+        let mut set1: HashSet&lt;i32&gt; = nums1.into_iter().collect();
+
+        nums2
+            .iter()
+            .filter(|num| set1.contains(num))
+            .for_each(|&amp;num| {
+                ret_set.insert(num);
+            });
+
+        ret_set.into_iter().collect()
+    }
+}
+</code></pre>
+<h2 id="202-happy-number">[202] Happy Number</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/happy-number/description/">题目描述</a>。<br>
+没有难度。就是判断一个数字有没有出现过，用<code>unordered_set</code>即可（<code>set</code>用的是红黑树，<code>unordered_set</code>才是哈希），在此之上又套了一个数学计算的壳子。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool isHappy(int n) {
+    unordered_set&lt;int&gt; visited;
+    int cur = n;
+    while (visited.find(cur) == visited.end()) {
+      visited.insert(cur);
+      int sum = 0;
+      while (cur &gt; 0) {
+        sum += (cur % 10) * (cur % 10);
+        cur = cur / 10;
+      }
+      if (sum == 1) {
+        return true;
+      }
+      cur = sum;
+    }
+    return false;
+  }
+};
+</code></pre>
+<h2 id="1-two-sum">[1] Two Sum</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/two-sum/description/">题目描述</a>。<br>
+这道题的核心是只算两个数字的和而不是多个数字，所以一旦扫描到一个数字就能通过差值知道另一个需要的数字是多少。当我们扫描到一个数字，发现对应的另一个数字也已经遇到过了，就说明找到解了。<br>
+把<code>num1</code>需要的另一个数字<code>num2</code>作为key，自身<code>num1</code>的<code>index</code>作为value即可使用hash表存储需要的信息。对于遍历到的数字<code>num</code>，先查看当前数字是否在hash表中存在（被遍历过的另一个数字需要），若是则返回hash表对应的value（另一个数字的index）和当前index，否则将<code>target-num</code>与当前index插入hash表。<br>
+也可以选择插入的时候用<code>num</code>作为key，然后查找的时候查找<code>target-num</code>，没有什么本质区别。</p>
+<pre><code class="language-python">class Solution:
+    def twoSum(self, nums: List[int], target: int) -&gt; List[int]:
+        hash_table = {}
+        for i, num in enumerate(nums):
+            if num in hash_table:
+                return [hash_table[num], i]
+            hash_table[target - num] = i
+</code></pre>
+<h2 id="454-4sum-ii">[454] 4Sum II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum-ii/description/">题目描述</a>。<br>
+相比之前的两个数字，这里变为了四个数字，但是分布在四个array里。最坏的情况是暴力遍历一遍，复杂度为<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。这里我们可以把计算内容拆为两半，前两个array的数字两两相加的和放在<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>里，然后后两个array的数字两两相加的和被零减去，再去<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>中查找即可。这样一来，要算的就变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><msup><mi>n</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">n^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141079999999999em;vertical-align:0em;"></span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>，复杂度变为了<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum_count(
+        nums1: Vec&lt;i32&gt;,
+        nums2: Vec&lt;i32&gt;,
+        nums3: Vec&lt;i32&gt;,
+        nums4: Vec&lt;i32&gt;,
+    ) -&gt; i32 {
+        let mut map: HashMap&lt;i32, i32&gt; = HashMap::new();
+        let mut count = 0;
+
+        for a in &amp;nums1 {
+            for b in &amp;nums2 {
+                let value = map.entry(a + b).or_insert(0);
+                *value += 1;
+            }
+        }
+
+        for c in &amp;nums3 {
+            for d in &amp;nums4 {
+                if let Some(value) = map.get(&amp;(0 - (c + d))) {
+                    count += value;
+                }
+            }
+        }
+
+        count
+    }
+}
+</code></pre>
+<h2 id="383-ransom-note">[383] Ransom Note</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/ransom-note/description/">题目描述</a>。<br>
+没有难度的题。用第二个字符串做一个哈希表，再拿第一个字符串去查一遍即可。<br>
+题目限制了只有英文小写字符。如果是任意字符，把<code>int</code>数组换成使用<code>unordered_map</code>即可。</p>
+<pre><code class="language-c++">  bool canConstruct(string ransomNote, string magazine) {
+    int umap[26] = {0};
+    for (char c : magazine) {
+      umap[c - 'a']++;
+    }
+
+    for (char c : ransomNote) {
+      umap[c - 'a']--;
+      if (umap[c - 'a'] &lt; 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+</code></pre>
+<h2 id="15-3sum">[15] 3Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/3sum/description/">题目描述</a>。<br>
+不太好做的一道题。咋一看只要把两个数字的和算出来，再拿第三个数字查哈希就可以，但实际上这道题要求要去重，而这个去重就是难度的来源。<br>
+可以把题目要求的去重理解成两个维度：</p>
+<ol>
+<li>同一个index位置的数字不能在一个3 sum中使用两次（但是输入是可能有重复的数字的，也就是说某数字在输入中有几个重复的，该数字在一次求和中就最多只能用几次）</li>
+<li>结果中的顺序是无所谓的，也就是说[0, 1, -1]和[0, -1, 1]是一样的，因此顺序不同导致的结果重复也要去掉。</li>
+</ol>
+<p>由此，可得到如下代码。<br>
+解法的关键在于对list做了排序，这样一来同样的数字就会被排列到一起，方便做去重。<br>
+首先，<code>j</code>从<code>i+1</code>开始，<code>n3</code>的index又要求大于<code>j</code>，防止了选择同一index位置的元素，避免出现第一种重复。<code>n1==nums[i-1]</code>和<code>n2=nums[j-1]</code>时的跳过避免了出现同样的解（通过n1不选重复选过的数字，n2也不选重复选过的数字），最后<code>n1</code>，<code>n2</code>和<code>n3</code>的index严格有序保证了不出现顺序打乱出现的重复。<br>
+另外，最后的early stop是源于，数组是排过序的，而<code>n3</code>又是从<code>0 - n1 - n2</code>得到。在第二个循环中，<code>n2</code>不断递增，因此<code>n3</code>严格减小。如果某一时刻<code>n3</code>的index小于<code>n2</code>，那么后面<code>n3</code>的index也都会一直小于<code>n2</code>，也就没必要再算了，可以提前退出。<br>
+实际上，这道题网上更广泛的解法是使用双指针，可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0015.%E4%B8%89%E6%95%B0%E4%B9%8B%E5%92%8C.md">这篇solution</a>。其如果用哈希表来做会比较麻烦。但是在本人所看的刷题攻略中，这道题被放在了哈希表部分，所以就当用来锻炼了。</p>
+<pre><code class="language-python">class Solution:
+    def threeSum(self, nums: List[int]) -&gt; List[List[int]]:
+        num_table = {}
+        res = []
+        nums.sort()
+        for i, n in enumerate(nums):
+            num_table[n] = i
+
+        for i, n1 in enumerate(nums):
+            if i &gt; 0 and n1 == nums[i - 1]:
+                continue
+            for j, n2 in enumerate(nums[i + 1 :], i + 1):
+                if j &gt; i + 1 and n2 == nums[j - 1]:
+                    continue
+                n3 = 0 - n1 - n2
+                if n3 in num_table:
+                    if num_table[n3] &gt; j:
+                        res.append([n1, n2, n3])
+                    else:
+                        # Early stop
+                        break
+
+        return res
+</code></pre>
+<h2 id="18-4sum">[18] 4Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言： Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum/description/">题目描述</a>。<br>
+相比<a href="#15-3sum">3Sum</a>只是多了一层循环，其他没有太大区别。中间转成64位是为了防止溢出。<br>
+此外，这道题同样可以（并更推荐）使用双指针法来做。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum(nums: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;Vec&lt;i32&gt;&gt; {
+        let mut nums = nums;
+        let mut num_table: HashMap&lt;i32, usize&gt; = HashMap::new();
+        let mut res: Vec&lt;Vec&lt;i32&gt;&gt; = Vec::new();
+        let len = nums.len();
+        nums.sort();
+        for (i, n) in nums.iter().enumerate() {
+            num_table.insert(*n, i);
+        }
+
+        for i in 0..len {
+            if i &gt; 0 &amp;&amp; nums[i] == nums[i - 1] {
+                continue;
+            }
+            for j in i + 1..len {
+                if j &gt; i + 1 &amp;&amp; nums[j] == nums[j - 1] {
+                    continue;
+                }
+                for k in j + 1..len {
+                    if k &gt; j + 1 &amp;&amp; nums[k] == nums[k - 1] {
+                        continue;
+                    }
+                    let n = target as i64 - nums[i] as i64 - nums[j] as i64 - nums[k] as i64;
+                    if n &lt; i32::MIN as i64 || n &gt; i32::MAX as i64 {
+                        continue;
+                    }
+                    let n = n as i32;
+                    if num_table.contains_key(&amp;n) {
+                        if *num_table.get(&amp;n).unwrap() &gt; k {
+                            res.push(vec![nums[i], nums[j], nums[k], n]);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+}
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>只需要key，可以使用set；同时需要key和value，可使用map。<br>
+其中C++只有<code>std::unordered_map</code>和<code>std::unordered_set</code>底层是哈希实现，其他的例如<code>std::map</code>是红黑树实现，key是有序的，且查询、增删效率是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>l</mi><mi>o</mi><mi>g</mi><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(log n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>而不是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>。<br>
+如果key的范围很小，数量也不多且固定，可以考虑使用数组作为哈希表，例如用长度为26的数组表示所有的英文小写字母，以节省开销。更复杂的场景则使用标准库中的类型即可。<br>
+部分题目比较简单，也有些题目有不好想到的内容，例如：</p>
+<ol>
+<li><a href="#1002-find-common-characters">[1002] Find Common Characters</a>使用了多个哈希表而不是一个哈希表。</li>
+<li>有一些“NSum”类的题，比较相似又各有区别。<a href="#1-two-sum">[1] Two Sum</a>因为只会有一个答案，所以只要查一遍即可。<a href="#454-4sum-ii">[454] 4Sum II</a>需要前两个数组做一个哈希表，后两个数组再去查，把<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>，又因为四个数组来自四个不同的数组，所以不用考虑去重的问题。而<a href="#15-3sum">[15] 3Sum</a>的数组来自同一个数组，所以需要考虑到同样的value，但是打乱顺序的重复问题。<a href="#18-4sum">[18] 4Sum</a>则只是在3Sum上面多包了一层，无本质区别。</li>
+</ol>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Linux 内核中的 SELinux 机制]]></title>
+        <id>https://alleny.xyz/post/selinux/</id>
+        <link href="https://alleny.xyz/post/selinux/">
+        </link>
+        <updated>2024-04-15T02:45:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。</p>
+<!-- more -->
+<h2 id="能力">能力</h2>
+<h3 id="selinux-是什么">SELinux 是什么</h3>
+<p>SELinux 是一个灵活的强制访问控制（MAC）系统，内置于 Linux 内核中。SELinux 为管理员提供了一种全面的访问控制机制，使其能够比现有的 Linux 自主访问控制（DAC）更精细地管理权限，并存在于许多主要的 Linux 发行版中。</p>
+<blockquote>
+<p>它最初是作为 Linux 内核的一系列补丁，由美国国家安全局（NSA）利用 Linux 安全模块（LSM）开发而成。<br>
+SELinux 于 2000 年发布到开源社区，并于 2003 年集成到上游 Linux 内核中。</p>
+</blockquote>
+<h4 id="dacdiscretionary-access-control自主访问控制">DAC（Discretionary Access Control，自主访问控制）</h4>
+<p>对于 DAC 而言，文件和进程都有相应的所有者。您可以让用户拥有某个文件，让群组拥有某个文件，或让其他人（可以是其他任何人）拥有某个文件。用户可以更改自己文件的权限。在没有使用 SELinux 的操作系统中，决定一个资源是否能被访问的因素是：某个资源是否拥有对应用户的权限（读、写、执行）。只要访问这个资源的进程符合以上的条件就可以被访问。</p>
+<p>根用户对 DAC 系统拥有完全访问控制权。如果拥有根访问权限，则可以访问其他任何用户的文件，或在系统上执行任何操作，这也是最致命的问题。</p>
+<h4 id="macmandatory-access-control强制访问控制">MAC（Mandatory Access Control，强制访问控制）</h4>
+<p>传统上， Linux 和 UNIX 系统都采用 DAC，而 <strong>SELinux 是 Linux 采用 MAC 系统的示例</strong>。</p>
+<p>强制访问控制模型 (MAC, Mandatory Access Control), 是为了弥补 DAC 权限控制过于分散的问题而诞生的。在计算机安全领域指一种由操作系统约束的访问控制，目标是限制主体或发起者访问或对对象或目标执行某种操作的能力。任何主体对任何对象的任何操作都将根据一组**授权规则（也称策略）**进行测试，决定操作是否允许。</p>
+<p>即使是以 root 身份运行的服务进程，一般也只能访问到它所需要的资源。即使程序出了漏洞，影响范围也只有在其允许访问的资源范围内。安全性大大增加。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1713149204595.png" alt="" loading="lazy"></figure>
+<p>MAC 的目的是弥补 DAC 的不足，而不是用來取代 DAC。</p>
+<h3 id="使用-selinux-的好处">使用 SELinux 的好处</h3>
+<ul>
+<li>所有进程和文件都被标记。SELinux 策略规则定义了进程如何与文件交互，以及进程如何相互交互。只有存在明确允许的 SELinux 策略规则时，才能允许访问。</li>
+<li>精细访问控制。传统的 UNIX 通过用户的授权、基于 Linux 的用户和组进行控制。而 SELinux 的访问控制基于所有可用信息，如 SELinux 用户、角色、类型以及可选的安全级别。</li>
+<li>SELinux 策略由系统管理员进行定义，并在系统范围内强制执行。</li>
+<li>改进了权限升级攻击的缓解方案。进程在域中运行，因此是相互分离的。SELinux 策略规则定义了如何处理访问文件和其它进程。如果某个进程被破坏，攻击者只能访问该进程的正常功能，而且只能访问已被配置为可以被该进程访问的文件。例如：如果 Apache HTTP 服务器被破坏，攻击者无法使用该进程读取用户主目录中的文件，除非添加或者配置了特定的 SELinux 策略规则允许这类访问。</li>
+<li>SELinux 可以用来强制实施数据机密性和完整性，同时保护进程不受不可信输入的影响。</li>
+</ul>
+<h2 id="接口和使用方法">接口和使用方法</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>SELinux 通过 MAC 方式来管控进程，进程是主体，而目标则是该进程想要读取的资源。</p>
+<ul>
+<li>
+<p><strong>主体 Subject</strong>：可以看成就是进程。</p>
+</li>
+<li>
+<p><strong>目标 Object</strong>：目标资源，被主体访问的资源。可以是文件、目录、端口等。</p>
+</li>
+<li>
+<p><strong>政策 Policy</strong>：<br>
+系统中通常有大量的文件和进程，为了节省时间和开销，通常我们只是选择性地对某些进程进行管制。<br>
+而哪些进程需要管制、要怎么管制是由政策决定的。<br>
+一套政策里面有多个规则。部分规则可以按照需求启用或禁用（以下把该类型的规则称为布尔型规则）。<br>
+在 CentOS 7 系统中，有三套政策，分别为：</p>
+<ul>
+<li><code>targeted</code>：对大部分网络服务进程进行管制。这是系统<strong>默认使用</strong>的政策（下文均使用此政策）。</li>
+<li><code>minimum</code>：以 <code>targeted</code> 为基础，仅对选定的网络服务进程进行管制。一般不用。</li>
+<li><code>mls</code>：多级安全保护。对所有的进程进行管制。这是最严格的政策，配置难度非常大。一般不用，除非对安全性有极高的要求。</li>
+</ul>
+</li>
+<li>
+<p><strong>安全上下文 security context：</strong><br>
+只有两者的安全上下文对应上了，主题才能访问目标。它们的对应关系由政策中的规则决定。</p>
+</li>
+</ul>
+<h3 id="selinux-状态和模式">SELinux 状态和模式</h3>
+<p>SELinux 可使用三种模式之一运行： enforcing（强制）、permissive（宽容）或 disabled（禁用）。</p>
+<ul>
+<li>Enforcing 模式是默认操作模式，在 enforcing 模式下 SELinux 可正常运行，并在整个系统中强制实施载入的安全策略。</li>
+<li>在 permissive 模式中，系统会象 enforcing 模式一样加载安全策略，包括标记对象并在日志中记录访问拒绝条目，但它并不会拒绝任何操作。不建议在生产环境系统中使用 permissive 模式，但 permissive 模式对 SELinux 策略开发和调试很有帮助。</li>
+<li>强烈建议不要使用禁用（disabled）模式。它不仅会使系统避免强制使用 SELinux 策略，还会避免为任何持久对象（如文件）添加标签，这使得在以后启用 SELinux 非常困难。</li>
+</ul>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1713149237443.png" alt="" loading="lazy"></figure>
+<h4 id="检查-selinux-的运行模式">检查 SELinux 的运行模式</h4>
+<p>使用 <code>getenforce</code> 或 <code>sestatus</code> 命令检查 SELinux 的运行模式。</p>
+<p><code>getenforce</code> 命令返回 <code>Enforcing</code>、<code>Permissive</code> 或 <code>Disabled</code>。</p>
+<p><code>sestatus</code> 命令返回 SELinux 状态以及正在使用的 SELinux 策略：</p>
+<pre><code>$ sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      31
+</code></pre>
+<h4 id="更改-selinux-状态和模式">更改 SELinux 状态和模式</h4>
+<p>使用 <code>setenforce</code> 实用程序在 enforcing 模式和 permissive 模式之间切换。使用 <code>setenforce</code> 所做的更改在重新引导后不会保留。要更改为 enforcing 模式，以 Linux root 用户身份输入 <code>setenforce 1</code> 命令。要更改为 permissive 模式，输入 <code>setenforce 0</code> 命令。</p>
+<pre><code># setenforce 0
+# getenforce
+Permissive
+</code></pre>
+<pre><code># setenforce 1
+# getenforce
+Enforcing
+</code></pre>
+<p>也可以通过更改配置文件来永久更改 SELinux 模式。</p>
+<pre><code># vi /etc/selinux/config
+</code></pre>
+<pre><code># This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#       enforcing - SELinux security policy is enforced.
+#       permissive - SELinux prints warnings instead of enforcing.
+#       disabled - No SELinux policy is loaded.
+SELINUX=permissive
+# SELINUXTYPE= can take one of these two values:
+#       targeted - Targeted processes are protected,
+#       mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+</code></pre>
+<pre><code># reboot
+</code></pre>
+<p>需要注意的是，如果系统已经在关闭 SELinux 的状态下运行了一段时间，再打开 SELinux 之后的第一次重启速度可能会比较慢。因为系统必须为磁盘中的文件创建安全上下文。</p>
+<h3 id="安全上下文">安全上下文</h3>
+<h4 id="格式">格式</h4>
+<p>每个进程和系统资源都有一个特殊的安全性标签,称为 <em>SELinux 上下文（context）</em>。SELinux 上下文有时被称为 <em>SELinux 标签</em>，它是一个提取系统级别细节并专注于实体的安全属性的<strong>标识符</strong>。这不仅提供了在 SELinux 策略中引用对象的一个一致方法，而且消除了在其他身份识别系统中可能存在的模糊性。例如，某个文件可以在使用绑定挂载的系统中有多个有效的路径名称。</p>
+<p><strong>SELinux 策略在一系列规则中使用这些上下文</strong>，它们定义进程如何相互交互以及与各种系统资源进行交互。默认情况下,策略不允许任何交互,除非规则明确授予了相应的权限。</p>
+<p>Linux 用户的安全上下文由 SELinux 用户、SELinux 角色和 SELinux 类型组成。例如：</p>
+<pre><code>User:Role:Type:Level
+</code></pre>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1713149279655.png" alt="" loading="lazy"></figure>
+<p>需要注意的是，第三个域即类型域在进程和文件上又有不同的称呼</p>
+<ul>
+<li>type：在文件资源（object）上面称为类型（type）</li>
+<li>domain：在主体进程（subject）则称为域（domain）</li>
+</ul>
+<h4 id="查询安全上下文">查询安全上下文</h4>
+<pre><code># 查询进程的安全上下文
+[root@localhost ~]# ps -auxZ | egrep 'bash|chronyd|LABEL'
+LABEL                                                 USER   ...  COMMAND
+system_u:system_r:chronyd_t:s0                        chrony ...  /usr/sbin/chronyd -F 2
+unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 root   ...  -bash
+
+# 查询文件的安全上下文
+[root@localhost ~]# ll -Z /usr/sbin/chronyd /etc/chrony.keys
+-rw-r-----. 1 root chrony system_u:object_r:chronyd_keys_t:s0    540 Aug 29  2022 /etc/chrony.keys
+-rwxr-xr-x. 1 root root   system_u:object_r:chronyd_exec_t:s0 353408 Apr 17 07:40 /usr/sbin/chronyd
+
+[root@localhost ~]# ll -Zd /root/anaconda-ks.cfg /home/vbird
+drwx------. 2 vbird vbird unconfined_u:object_r:user_home_dir_t:s0  113 Aug  4 13:43 /home/vbird
+-rw-------. 1 root  root  system_u:object_r:admin_home_t:s0        1204 Aug  4 13:05 /root/anaconda-ks.cfg
+</code></pre>
+<h4 id="安全上下文的修改">安全上下文的修改</h4>
+<h5 id="手动修改">手动修改</h5>
+<p>使用 <code>chcon</code> 手动修改安全上下文类型。</p>
+<pre><code>[root@localhost ~]# chcon [OPTION]... [-t TYPE] FILE...
+[root@localhost ~]# chcon [OPTION]... --reference=RFILE FILE...
+选项与参数：
+-t  ：后面接安全上下文的类型，例如 httpd_sys_content_t
+--reference=RFILE：用文件名为 RFILE 当范例來修改后续接的文件的类型
+
+# 将 /etc/hosts 复制到 /dev/shm/hosts，并修改类型为 etc_t
+[root@localhost ~]# cd /dev/shm
+[root@localhost shm]# cp -a /etc/hosts .
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:net_conf_t:s0 158 Jun 23  2020 hosts
+
+[root@localhost shm]# chcon -t etc_t hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:etc_t:s0 158 Jun 23  2020 hosts
+
+# 将类型改成与 /var/spool/mail 相同
+[root@localhost shm]# ll -Zd /var/spool/mail/
+drwxrwxr-x. 2 root mail system_u:object_r:mail_spool_t:s0 19 Jul 21 15:01 /var/spool/mail/
+
+[root@localhost shm]# chcon --reference=/var/spool/mail hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:mail_spool_t:s0 158 Jun 23  2020 hosts
+</code></pre>
+<h5 id="使用目录的默认安全上下文来修改">使用目录的默认安全上下文来修改</h5>
+<p>目录是有默认的安全上下文的。可以使用 <code>semanage</code> 来查询和修改目录的默认安全上下文。</p>
+<pre><code class="language-bash">semanage {login|user|port|interface|fcontext|translation} -l
+semanage fcontext -{a|d|m} [-frst] file_spec
+
+选项与参数：
+        fcontext：主要用在安全上下文方面的用途， -l 为查询
+        -a：增加；可以增加一些目录的默认安全上下文类型设置
+        -m：修改
+        -d：删除
+</code></pre>
+<p>例如查询 <code>/etc/sysconfig</code> 相关的默认 SELinux 安全上下文类型：</p>
+<pre><code>[root@localhost ~]# semanage fcontext --list | grep /etc/sysconfig
+SELinux fcontext              type           Context
+/etc/sysconfig/.*l2tpd        regular file   system_u:object_r:l2tp_conf_t:s0
+/etc/sysconfig/MailScanner    regular file   system_u:object_r:mscan_etc_t:s0
+</code></pre>
+<p>假设我们想要创建一个名为 <code>/www</code> 的目录，我们想要指定其安全上下文默认值与 <code>/var/www</code> 目录相同：</p>
+<pre><code># 1. 先找到 /var/www 的类型是什么
+[root@localhost ~]# semanage fcontext -l | grep '/var/www('
+/var/www(/.*)?              all files   system_u:object_r:httpd_sys_content_t:s0
+/var/www(/.*)?/logs(/.*)?   all files   system_u:object_r:httpd_log_t:s0
+
+# 2. 建立所需目录，并且查看其预设的安全上下文的值
+[root@localhost ~]# mkdir /www
+[root@localhost ~]# echo check &gt; /www/index.html
+[root@localhost ~]# ll -Zd /www /www/index.html
+drwxr-xr-x. 2 root root unconfined_u:object_r:default_t:s0 24 Jul 22 14:40 /www
+-rw-r--r--. 1 root root unconfined_u:object_r:default_t:s0  6 Jul 22 14:40 /www/index.html
+# 值为 default_t
+
+# 3. 增加 /www 默认为 httpd_sys_content_t 的类型
+[root@localhost ~]# semanage fcontext -a -t httpd_sys_content_t &quot;/www(/.*)?&quot;
+[root@localhost ~]# semanage fcontext -l | grep '^/www'
+/www(/.*)?    all files     system_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<p>现在，我们已经设置好了 <code>/www</code> 的默认类型，可以使用 <code>restorecon</code> 直接把文件或目录的安全上下文恢复到默认值。</p>
+<pre><code>[root@localhost ~]# restorecon -Rv /www
+Relabeled /www from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+Relabeled /www/index.html from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<h4 id="端口安全上下文查询与修改-使用-semanage-port">端口安全上下文查询与修改 -- 使用 <code>semanage port</code></h4>
+<p>一个端口的 SELinux 安全上下文通常只包括类型信息。</p>
+<p><code>semanage port -l</code> 用于查看所有端口的安全上下文，例如：</p>
+<pre><code class="language-cpp">[root@localhost ~]# semanage port --list | grep http
+http_cache_port_t  tcp  8080, 8118, 8123, 10001-10010
+http_cache_port_t  udp  3130
+http_port_t        tcp  80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<p>也可以添加某类进程允许访问的端口，例如：</p>
+<pre><code>[root@localhost ~]# semanage port -a -t TYPE -p [tcp|udp] port_range
+-a   新增一个记录
+-t   修改的端口类型，例如 httpd_port_t
+-p   使用 tcp 或 udp 协议
+port_range 使用的端口号
+
+# 加入 port 98 的使用到 http 中
+[root@localhost ~]# semanage port -a -t http_port_t -p tcp 98
+[root@localhost ~]# semanage port --list | grep http
+http_port_t    tcp     98, 80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<h3 id="selinux-政策内的规则管理"><strong>SELinux 政策内的规则管理</strong></h3>
+<p><code>getsebool -a</code> 命令列出规则布尔值（规则是打开还是关闭状态）。</p>
+<pre><code>~]$ getsebool -a
+cvs_read_shadow --&gt; off
+daemons_dump_core --&gt; on
+</code></pre>
+<p><code>setsebool</code> 修改 SELinux 规则的布尔值。</p>
+<pre><code>setsebool [-p] [规则名称][0|1]
+
+-P：直接将设置值写入配置文件，该设置数据未来会生效
+</code></pre>
+<pre><code># 范例：查询 httpd_enable_homedirs 这个规则的状态，并且修改这个规则为不同的布尔值
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; off                        # 关闭状态
+[root@study ~]# setsebool -P httpd_enable_homedirs 1                # 开启它
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; on
+</code></pre>
+<p><code>seinfo</code> 可用于描述策略的细分，如类、类型、布尔值、允许规则等。</p>
+<pre><code class="language-sql">seinfo [-Atrub]
+
+选项与参数：
+        -A：列出 SELinux 的状态、规则布尔值、身份识别、角色、类型等所有信息
+        -u：列出 SELinux 的所有身份识别 user 种类
+        -r：列出 SELinux 的所有角色 role 种类
+        -t：列出 SELinux 的所有类型 type 种类
+        -b：列出所有规则的种类（布尔值）
+</code></pre>
+<pre><code class="language-sql">~]# seinfo
+
+Statistics for policy file: /sys/fs/selinux/policy
+Policy Version &amp; Type: v.28 (binary, mls)
+
+   Classes:            77    Permissions:       229
+   Sensitivities:       1    Categories:       1024
+   Types:            3001    Attributes:        244
+   Users:               9    Roles:              13
+   Booleans:          158    Cond. Expr.:       193
+   Allow:          262796    Neverallow:          0
+   Auditallow:         44    Dontaudit:      156710
+   Type_trans:      10760    Type_change:        38
+   Type_member:        44    Role allow:         20
+   Role_trans:        237    Range_trans:      2546
+   Constraints:        62    Validatetrans:       0
+   Initial SIDs:       27    Fs_use:             22
+   Genfscon:           82    Portcon:           373
+   Netifcon:            0    Nodecon:             0
+   Permissives:        22    Polcap:              2
+</code></pre>
+<p><code>sesearch</code> 搜索策略中的特定规则。</p>
+<pre><code class="language-sql">sesearch [-A] [-s 主体类别] [-t 目标类别] [-b 布尔值]
+
+选项与参数：
+        -A：列出后面数据中，允许「读取或放行」的相关数据
+        -t：后面还要接 type、例如 -t httpd_t
+        -b：后面接 SELinux 的规则，例如 -b httpd_enable_ftp_server
+</code></pre>
+<pre><code># 范例：找出 crond_t 主体进程能够读取的文件 SELinux type
+[root@study ~]# sesearch -A -s crond_t | grep spool
+   allow crond_t var_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t system_cron_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t user_cron_spool_t : lnk_file { read getattr } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t var_spool_t : file { ioctl read getattr lock open } ; 
+   allow crond_t cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow daemon user_cron_spool_t : file { ioctl read write getattr lock append } ; 
+   allow crond_t cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ;
+</code></pre>
+<h3 id="案例当-port-出问题时让-httpd-开放在非正规端口">案例：当 port 出问题时：让 httpd 开放在非正规端口</h3>
+<p>如果 <code>auditd</code> 守护进程正在运行，则 SELinux 拒绝信息会默认写入 <code>/var/log/audit/audit.log</code> ：</p>
+<pre><code>type=AVC msg=audit(1223024155.684:49): avc:  denied  { getattr } for  pid=2000 comm=&quot;httpd&quot; path=&quot;/var/www/html/file1&quot; dev=dm-0 ino=399185 scontext=unconfined_u:system_r:httpd_t:s0 tcontext=system_u:object_r:samba_share_t:s0 tclass=file
+</code></pre>
+<p>另外，类似以下的消息被写入 <code>/var/log/message</code> 文件中：</p>
+<pre><code>May 7 18:55:56 localhost setroubleshoot: SELinux is preventing httpd (httpd_t) &quot;getattr&quot; to /var/www/html/file1 (samba_share_t). For complete SELinux messages. run sealert -l de7e30d6-5488-466d-a606-92c9f40d316d
+</code></pre>
+<p>接下来我们模拟一个场景，让 <code>httpd</code> 使用非正规的 377 端口：</p>
+<pre><code># 1. 修改端口号码
+[root@localhost ~]# vim /etc/httpd/conf/httpd.conf
+Listen 377
+
+# 2. 尝试启动 httpd 服务
+[root@localhost ~]# systemctl start httpd
+Job for httpd.service failed because the control process exited with error code.
+See &quot;systemctl status httpd.service&quot; and &quot;journalctl -xeu httpd.service&quot; for details.
+_# 如上所示，提示出现错误_
+
+# 3. 确认 /var/log/messages 是否记录错误解决方案
+[root@localhost ~]# grep setrouble /var/log/messages | grep sealert
+Aug  4 22:13:38 localhost setroubleshoot[3553]: SELinux is preventing /usr/sbin/httpd
+  from name_bind access on the tcp_socket port 377. For complete SELinux messages
+  run: sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+# 找到 sealert 关键字
+
+# 4. 运行找到的 sealert 指令，并依据提示处理问题
+[root@localhost ~]# sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+SELinux is preventing /usr/sbin/httpd from name_bind access on the tcp_socket port 377.
+
+*****  Plugin bind_ports (99.5 confidence) suggests   ************************
+
+If you want to allow /usr/sbin/httpd to bind to network port 377
+Then you need to modify the port type.
+Do
+# semanage port -a -t PORT_TYPE -p tcp 377
+    where PORT_TYPE is one of the following: http_cache_port_t, http_port_t, ...
+
+***  Plugin catchall (1.49 confidence) suggests   **************************
+....
+</code></pre>
+<p><code>sealert</code> 是 <code>setroubleshoot</code> 包提供的工具。<code>sealert</code> 可能会提供好几个解决方案，选择置信度最高的即可。</p>
+<pre><code>[root@localhost ~]# semanage port -a -t http_port_t -p tcp 377
+[root@localhost ~]# systemctl restart httpd
+</code></pre>
+<h2 id="原理">原理</h2>
+<h3 id="lsm">LSM</h3>
+<h4 id="overview">Overview</h4>
+<p>Linux 安全模块（英语：Linux Security Modules，简称 LSM）是 Linux 内核中用于支持各种计算机安全模型的框架，它与任何单独的安全实现无关。这个框架使用 GNU 通用公共许可证授权，并且从 Linux 2.6 开始成为官方 Linux 内核的一部分。目前，AppArmor、SELinux、Smack、TOMOYO Linux 和 Yama 是官方 Linux 内核中支持的安全模块。</p>
+<blockquote>
+<p>简单来说，LSM 是目前 linux 的安全框架，而 SELinux 是其中的一个 modules。</p>
+</blockquote>
+<p>LSM 在 linux 安全体系中所处位置可以用下图表述：</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1713149321948.png" alt="" loading="lazy"></figure>
+<p>LSM 在内核系统调用逻辑中提供了一套钩子（hooks）。LSM hook 会插入到访问 kernel 对象前面，DAC 检查之后，然后 LSM 调用系统中启用的访问控制模块，检查是否可以访问。若有多个访问控制模块，会根据初始化的优先顺序执行，都允许访问才能进一步访问 kernel 对象。</p>
+<h4 id="lsm-中的接口管理"><strong>LSM 中的接口管理</strong></h4>
+<p>LSM 中使用 <code>security_hook_heads</code> 将各访问控制模块的接口管理起来。</p>
+<pre><code>struct security_hook_heads {
+        #define LSM_HOOK(RET, DEFAULT, NAME, ...) struct hlist_head NAME; // 此处定义 LSM_HOOK 为只取接口名字
+        #include &quot;lsm_hook_defs.h&quot; // 包含接口文件
+        #undef LSM_HOOK
+} __randomize_layout;
+</code></pre>
+<p>接口文件 <code>lsm_hook_defs.h</code> 中的内容是这样的：</p>
+<pre><code class="language-cpp">... ...
+LSM_HOOK(int, 0, file_permission, struct file *file, int mask)
+LSM_HOOK(int, 0, file_alloc_security, struct file *file)
+LSM_HOOK(int, 0, file_ioctl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_mprotect, struct vm_area_struct *vma, unsigned long reqprot, unsigned long prot)
+LSM_HOOK(int, 0, file_lock, struct file *file, unsigned int cmd)
+LSM_HOOK(int, 0, file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_receive, struct file *file)
+LSM_HOOK(int, 0, file_open, struct file *file)
+... ...
+</code></pre>
+<p>因此实际 <code>security_hook_heads</code> 是这样的：</p>
+<pre><code class="language-cpp">struct security_hook_heads {
+        ... ...
+    struct hlist_head file_permission;
+    struct hlist_head file_alloc_security;
+    struct hlist_head file_ioctl;
+    struct hlist_head file_mprotect;
+    struct hlist_head file_lock;
+    struct hlist_head file_fcntl;
+    struct hlist_head file_receive;
+    struct hlist_head file_open;
+    ... ...
+} __randomize_layout;
+</code></pre>
+<p>每个访问控制模块需要定义 <code>security_hook_list</code> 数组，<code>security_hook_list</code> 记录单个接口的信息，然后模块初始化函数中会调用 <code>security_add_hooks</code> 将 <code>security_hook_list</code> 数组链接到上面的 <code>security_hook_heads</code> 上。</p>
+<pre><code>struct security_hook_list {
+        struct hlist_node                list; // 会将该 hlist_node 链接到 security_hook_heads.接口 上
+        struct hlist_head                *head; // 指向 security_hook_heads.接口
+        union security_list_options        hook; // 接口函数实现
+        char                                *lsm; // 该模块名字
+} __randomize_layout;
+</code></pre>
+<p><code>security_hook_list</code> 是通过 LSM_HOOK_INIT 宏赋值的，调用方法为 <code>LSM_HOOK_INIT(接口, 接口实现)</code>，会赋值 <code>head</code> 和 <code>hook</code> 成员变量。</p>
+<pre><code class="language-cpp">#define LSM_HOOK_INIT(HEAD, HOOK) \
+        { .head = &amp;security_hook_heads.HEAD, .hook = { .HEAD = HOOK } }
+</code></pre>
+<p><code>security_add_hooks</code> 将每个接口的 <code>security_hook_list.list</code> 实际添加到 <code>security_hook_heads.接口</code> 的末尾。</p>
+<pre><code class="language-cpp">void __init security_add_hooks(struct security_hook_list *hooks, int count,
+                                char *lsm)
+{
+        int i;
+
+        for (i = 0; i &lt; count; i++) {
+                hooks[i].lsm = lsm;
+                hlist_add_tail_rcu(&amp;hooks[i].list, hooks[i].head);
+        }
+
+... ...
+}
+</code></pre>
+<h4 id="从-lsm-到-selinux">从 LSM 到 SELinux</h4>
+<p>当我们想要调用 <code>open</code> 打开一个文件，其简化版的调用路径如下所示：</p>
+<pre><code>open
+-------
+    sys_open
+        do_filp_open
+            path_openat
+                do_open
+                    vfs_open
+                        do_dentry_open
+                            security_file_open
+    error = security_file_open(f);
+    if (error)
+        goto cleanup_all;
+</code></pre>
+<p>其中 <code>security_file_open</code> 就是 open 系统调用的一个 LSM Hook 点，当执行到此处的时候，它会执行所有挂在此 hook 点上的安全检查函数。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1713149344001.png" alt="" loading="lazy"></figure>
+<p>以 SELinux 为例，最终会调用到 <code>selinux_file_open</code> 函数。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1713149360497.png" alt="" loading="lazy"></figure>
+<h3 id="selinux-内部结构">SELinux 内部结构</h3>
+<p>在看 <code>selinux_file_open</code> 的代码之前，我们先看一下 SELinux 的内部结构。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1713149373507.png" alt="" loading="lazy"></figure>
+<p>根据上图，我们可以把操作分为以下几个步骤。</p>
+<ol>
+<li>操作系统主体尝试访问特定对象（文件、套接字）上的某个操作，这在 Linux 标准自主安全系统（DAC）中是允许的。这将向对象发起一个请求流。</li>
+<li>每个要求对对象执行操作的请求都由 Linux Security Modules 截获并传递给 SELinux Abstraction &amp; Hook Logic 子系统，同时还包括主体和对象的安全上下文，SELinux Abstraction &amp; Hook Logic 子系统负责与 LSM 交互。</li>
+<li>从 SELinux Abstraction and Hook Logic 子系统接收到的信息将转发给基本的 Policy Enforcement Server 模块，后者负责确定是否允许主体访问该对象。</li>
+<li>要接收是否允许或禁止该操作的决定，策略实施服务器将与 Access Vector Cache 子系统通信，后者通常会缓存要使用的规则。</li>
+<li>如果 AVC 没有包含相关策略的缓存规则，对所需的安全策略的请求将再次转发给安全策略数据库。</li>
+<li>在找到安全策略后，该策略将被传递给接收决策的策略服务器。</li>
+<li>如果所请求的操作符合找到的策略，那么将允许执行该操作。反之，将禁止执行该操作，并且所有决策制定信息将被写入到 SELinux 日志文件中。</li>
+</ol>
+<p>除了判断是否允许或禁止某些操作外，Policy Enforcement Server 模块还负责执行一些辅助任务，例如安全标签管理（分配和移除）。</p>
+<blockquote>
+<p>一句话总结：请求来了去 AVC（以及后面的 database）查一下，比对是否有权限即可。</p>
+</blockquote>
+<figure data-type="image" tabindex="8"><img src="https://alleny.xyz/post-images/1713149392656.png" alt="" loading="lazy"></figure>
+<p>现在我们再来看 <code>selinux_file_open</code> 的代码，其实就是一个去 AVC 查找，然后比对权限，返回结果的过程。</p>
+<pre><code class="language-cpp">static int selinux_file_open(struct file *file)
+{
+        struct file_security_struct *fsec;
+        struct inode_security_struct *isec;
+
+        fsec = selinux_file(file);
+        isec = inode_security(file_inode(file));
+        /*
+         * Save inode label and policy sequence number
+         * at open-time so that selinux_file_permission
+         * can determine whether revalidation is necessary.
+         * Task label is already saved in the file security
+         * struct as its SID.
+         */
+        fsec-&gt;isid = isec-&gt;sid;
+        fsec-&gt;pseqno = avc_policy_seqno();
+        /*
+         * Since the inode label or policy seqno may have changed
+         * between the selinux_inode_permission check and the saving
+         * of state above, recheck that access is still permitted.
+         * Otherwise, access might never be revalidated against the
+         * new inode label or new policy.
+         * This check is not redundant - do not remove.
+         */
+        return file_path_has_perm(file-&gt;f_cred, file, open_file_to_av(file));
+}
+</code></pre>
+<p><code>selinux_file_open</code> 会调用到 <code>file_path_has_perm</code></p>
+<pre><code class="language-cpp">/* Same as path_has_perm, but uses the inode from the file struct. */
+static inline int file_path_has_perm(const struct cred *cred,
+                                     struct file *file,
+                                     u32 av)
+{
+        struct common_audit_data ad;
+
+        ad.type = LSM_AUDIT_DATA_FILE;
+        ad.u.file = file;
+        return inode_has_perm(cred, file_inode(file), av, &amp;ad);
+}
+</code></pre>
+<p>再调用到 <code>inode_has_perm</code></p>
+<pre><code class="language-cpp">/* Check whether a task has a particular permission to an inode.
+   The 'adp' parameter is optional and allows other audit
+   data to be passed (e.g. the dentry). */
+static int inode_has_perm(const struct cred *cred,
+                          struct inode *inode,
+                          u32 perms,
+                          struct common_audit_data *adp)
+{
+        struct inode_security_struct *isec;
+        u32 sid;
+
+        if (unlikely(IS_PRIVATE(inode)))
+                return 0;
+
+        sid = cred_sid(cred);
+        isec = selinux_inode(inode);
+
+        return avc_has_perm(sid, isec-&gt;sid, isec-&gt;sclass, perms, adp);
+}
+</code></pre>
+<p>再调用到 <code>avc_has_perm</code></p>
+<pre><code class="language-cpp">int avc_has_perm(u32 ssid, u32 tsid, u16 tclass,
+                 u32 requested, struct common_audit_data *auditdata)
+{
+        struct av_decision avd;
+        int rc, rc2;
+
+        rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, 0,
+                                  &amp;avd);
+
+        rc2 = avc_audit(ssid, tsid, tclass, requested, &amp;avd, rc,
+                        auditdata);
+        if (rc2)
+                return rc2;
+        return rc;
+}
+</code></pre>
+<p>再到 <code>avc_has_perm_noaudit</code></p>
+<pre><code class="language-cpp">inline int avc_has_perm_noaudit(u32 ssid, u32 tsid,
+                                u16 tclass, u32 requested,
+                                unsigned int flags,
+                                struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_node *node;
+
+        if (WARN_ON(!requested))
+                return -EACCES;
+
+        rcu_read_lock();
+        node = avc_lookup(ssid, tsid, tclass);
+        if (unlikely(!node)) {
+                rcu_read_unlock();
+                return avc_perm_nonode(ssid, tsid, tclass, requested,
+                                       flags, avd);
+        }
+        denied = requested &amp; ~node-&gt;ae.avd.allowed;
+        memcpy(avd, &amp;node-&gt;ae.avd, sizeof(*avd));
+        rcu_read_unlock();
+
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>如果 AVC 没查找到，还会调用到 <code>avc_perm_nonode</code></p>
+<pre><code class="language-cpp">static noinline int avc_perm_nonode(u32 ssid, u32 tsid, u16 tclass,
+                                    u32 requested, unsigned int flags,
+                                    struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_xperms_node xp_node;
+
+        avc_compute_av(ssid, tsid, tclass, avd, &amp;xp_node);
+        denied = requested &amp; ~(avd-&gt;allowed);
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>注意上面两个函数中的 <code>denied = requested &amp; ~node-&gt;ae.avd.allowed;</code> 和 <code>denied = requested &amp; ~(avd-&gt;allowed);</code> 就是在检查权限了。如果权限不满足，就会返回 <code>avc_denied(ssid, tsid, tclass, requested, 0, 0, flags, avd)</code>。</p>
+<p>最后放一张更全面的图，上面是用户态，下面是内核态。</p>
+<figure data-type="image" tabindex="9"><img src="https://alleny.xyz/post-images/1713149411256.png" alt="" loading="lazy"></figure>
+<h2 id="参考文献">参考文献</h2>
+<ul>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/8/html/using_selinux/index">使用 SELinux - Red Hat</a></li>
+<li><a href="https://wizardforcel.gitbooks.io/vbird-linux-basic-4e/content/143.html">SELinux 初探</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html-single/selinux_users_and_administrators_guide/index">SELinux 用户和管理员指南 -  Red Hat</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/352103792">Linux Security Modules 框架源码分析 - 知乎</a></li>
+<li><a href="https://saucer-man.com/operation_and_maintenance/84.html#cl-13">SELinux 的工作模式和架构</a></li>
+<li><a href="https://liwugang.github.io/2020/10/18/introduce_lsm.html">Linux Security Module 框架介绍</a></li>
+<li><a href="https://github.com/torvalds/linux/blob/20cb38a7af88dc40095da7c2c9094da3873fea23/security/selinux/hooks.c#L3962"><code>selinux_file_open</code>源码</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（链表篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-linked-list/</id>
+        <link href="https://alleny.xyz/post/leetcode-linked-list/">
+        </link>
+        <updated>2024-03-31T06:47:20.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（链表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（链表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="203-remove-linked-list-elements">[203] Remove Linked List Elements</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-linked-list-elements/description/">题目描述</a>。<br>
+基本的数据结构操作，按道理没有难度可言。问题是如果用Rust来写，难度就会暴增。</p>
+<pre><code class="language-rust">    pub fn remove_elements(head: Option&lt;Box&lt;ListNode&gt;&gt;, val: i32) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+        let mut dummy_head = Box::new(ListNode::new(0));
+        dummy_head.next = head;
+
+        let mut cur = dummy_head.as_mut();
+        while let Some(nxt) = cur.next.as_mut() {
+            if nxt.val == val {
+                cur.next = nxt.next.take();
+            } else {
+                cur = cur.next.as_mut().unwrap();
+            }
+        }
+
+        dummy_head.next
+    }
+</code></pre>
+<h2 id="707-design-linked-list">[707] Design Linked List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/design-linked-list/description/">题目描述</a>。<br>
+实现一个链表，可以是单向链表或双向链表。基本的数据结构实现，这居然是Medium？<br>
+虽然如此，还是需要注意一些细节，不能看错题目，例如<code>addAtIndex</code>是在指定节点之前而不是之后插入；以及当<code>index</code>等于<code>length</code>时需要在链表尾部插入。<br>
+本人这里实现的是双链表。相比题目要求实现的函数，额外增加实现了可复用函数<code>get_node</code>用来精简代码。实际上这里<code>addAtHead</code>和<code>addAtTail</code>函数还可以复用<code>addAtIndex</code>的代码，但是没有必要了，因为这两个函数本身就很简单，也不需要一些多余的条件判断，不复用可以提升一下性能。<br>
+此外，这里的实现还加了一个优化，即<code>get_node</code>的时候会判断一下目标是在链表前半段还是后半段，即从<code>head</code>遍历过去快还是从<code>tail</code>遍历过去快，充分榨干双向链表性能。</p>
+<pre><code class="language-c++">class MyLinkedList {
+ public:
+  struct Node {
+    int val;
+    Node* next;
+    Node* prev;
+    Node(int val) : val(val), next(nullptr), prev(nullptr) {}
+  };
+
+  Node* head;
+  Node* tail;
+  int length;
+
+  MyLinkedList() {
+    head = new Node(0);
+    tail = new Node(0);
+    length = 0;
+
+    head-&gt;next = tail;
+    tail-&gt;prev = head;
+  }
+
+  Node* get_node(int index) {
+    if (index &lt; 0 || index &gt;= length) {
+      return nullptr;
+    }
+
+    Node* curr = head-&gt;next;
+    if (index &lt; length / 2) {
+      for (int i = 0; i &lt; index; ++i) {
+        curr = curr-&gt;next;
+      }
+    } else {
+      // Opt: near to tail
+      curr = tail-&gt;prev;
+      for (int i = 0; i &lt; length - index - 1; ++i) {
+        curr = curr-&gt;prev;
+      }
+    }
+
+    return curr;
+  }
+
+  int get(int index) {
+    Node* node = get_node(index);
+
+    return node != nullptr ? node-&gt;val : -1;
+  }
+
+  void addAtHead(int val) {
+    Node* node = new Node(val);
+    head-&gt;next-&gt;prev = node;
+    node-&gt;next = head-&gt;next;
+    node-&gt;prev = head;
+    head-&gt;next = node;
+
+    length++;
+  }
+
+  void addAtTail(int val) {
+    Node* node = new Node(val);
+    tail-&gt;prev-&gt;next = node;
+    node-&gt;prev = tail-&gt;prev;
+    node-&gt;next = tail;
+    tail-&gt;prev = node;
+
+    length++;
+  }
+
+  void addAtIndex(int index, int val) {
+    Node* node = new Node(val);
+    Node* curr = tail;
+
+    if (index != length) {
+      curr = get_node(index);
+    }
+    if (curr == nullptr) {
+      return;
+    }
+
+    node-&gt;prev = curr-&gt;prev;
+    curr-&gt;prev-&gt;next = node;
+    node-&gt;next = curr;
+    curr-&gt;prev = node;
+    length++;
+  }
+
+  void deleteAtIndex(int index) {
+    Node* curr = get_node(index);
+    if (curr == nullptr) {
+      return;
+    }
+
+    curr-&gt;prev-&gt;next = curr-&gt;next;
+    curr-&gt;next-&gt;prev = curr-&gt;prev;
+    delete curr;
+    length--;
+  }
+};
+</code></pre>
+<h2 id="206-reverse-linked-list">[206] Reverse Linked List</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-linked-list/description/">题目描述</a>。<br>
+没有任何难度的极简题目，包含<code>return</code>一共只用八行代码。遍历链表，每次记录一下下一个节点（<code>succ</code>），然后翻转当前节点指针即可。</p>
+<pre><code class="language-python">    def reverseList(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        prev = None
+        curr = head
+
+        while curr is not None:
+            succ = curr.next
+            curr.next = prev
+            prev = curr
+            curr = succ
+
+        return prev
+</code></pre>
+<h2 id="24-swap-nodes-in-pairs">[24] Swap Nodes in Pairs</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/swap-nodes-in-pairs/description/">题目描述</a>。<br>
+题目不难，脑里想好每次循环时要做的操作即可。<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0024.%E4%B8%A4%E4%B8%A4%E4%BA%A4%E6%8D%A2%E9%93%BE%E8%A1%A8%E4%B8%AD%E7%9A%84%E8%8A%82%E7%82%B9.md">网上有解法</a>是把每次操作分为三个步骤。本人的解法只把操作分为两个步骤，缺点是每次要检查一下<code>curr-&gt;next</code>是否存在，即元素个数是否是奇数个。</p>
+<pre><code class="language-c++">  ListNode* swapPairs(ListNode* head) {
+    ListNode* dummy_head = new ListNode(0, head);
+    ListNode* prev = dummy_head;
+    ListNode* curr = head;
+    ListNode* next_pair = nullptr;
+    while (curr) {
+      if (!(curr-&gt;next)) {
+        prev-&gt;next = curr;
+        prev = curr;
+        break;
+      }
+      next_pair = curr-&gt;next-&gt;next;
+
+      curr-&gt;next-&gt;next = curr;
+      prev-&gt;next = curr-&gt;next;
+
+      prev = curr;
+      curr = next_pair;
+    }
+    prev-&gt;next = nullptr;
+
+    ListNode* result = dummy_head-&gt;next;
+    delete dummy_head;
+    return result;
+  }
+</code></pre>
+<h2 id="19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-nth-node-from-end-of-list/description/">题目描述</a>。<br>
+小学生都会的最直观的想法就是先扫一遍得出size再遍历第二遍找要删除的node，但是要扫描两遍，不够优雅。网上的解法是使用快慢指针，一前一后保持距离，就可以找到倒数第N个node。这种解法看似只用了一次遍历，但每次循环从一次操作变成了两次操作，本质其实是一样的，看起来花里胡哨了而已（毫无含金量的Medium）。但循环变量更新和条件判断本身也是有开销的，快慢指针这种解法把两个循环拍扁合成一个循环，也不能说没有提升吧。<br>
+真正的只需要一次Walk的解法应该是使用哈希表把node存起来，但是这需要O(n)的空间复杂度，性价比貌似不是很高。</p>
+<pre><code class="language-python">    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -&gt; Optional[ListNode]:
+        dummy_head = ListNode(0, head)
+        fast = dummy_head
+        slow = dummy_head
+        for _ in range(0, n):
+            fast = fast.next
+            if fast is None:
+                # Actually this will not happen because 1 &lt;= n &lt;= sz
+                return None
+        fast = fast.next
+        while fast is not None:
+            slow = slow.next
+            fast = fast.next
+        slow.next = slow.next.next
+        return dummy_head.next
+</code></pre>
+<h2 id="160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/description/">题目描述</a>。<br>
+题目要求O(m+n)的时间复杂度和O(1)的空间复杂度，因此哈希表之类的把节点存下来的解法是不能用的。一种容易想到的做法是先算一下两个链表的长度，然后把链表尾部对齐，从短链表的头部开始依次对比两个链表对应位置的节点是否相同（说人话就是把长链表开头超出的部分截断）。<br>
+网上也有一种<a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/solutions/811625/xiang-jiao-lian-biao-by-leetcode-solutio-a8jn/">双指针的解法</a>，用了一点数学技巧，说实话真的到了面试笔试临时很难想出来。对齐链表的方法虽然代码长了一些但思路很简单，个人还是更推荐。</p>
+<pre><code class="language-c++">  ListNode *getIntersectionNode(ListNode *headA, ListNode *headB) {
+    int size_a = 0;
+    int size_b = 0;
+    int diff = 0;
+    ListNode *tmp_a = headA;
+    ListNode *tmp_b = headB;
+    while (tmp_a) {
+      tmp_a = tmp_a-&gt;next;
+      size_a++;
+    }
+    while (tmp_b) {
+      tmp_b = tmp_b-&gt;next;
+      size_b++;
+    }
+
+    tmp_a = headA;
+    tmp_b = headB;
+    diff = size_a - size_b;
+    while (diff &gt; 0) {
+      tmp_a = tmp_a-&gt;next;
+      --diff;
+    }
+    while (diff &lt; 0) {
+      tmp_b = tmp_b-&gt;next;
+      ++diff;
+    }
+    while (tmp_a &amp;&amp; tmp_b) {
+      if (tmp_a == tmp_b) {
+        return tmp_a;
+      }
+      tmp_a = tmp_a-&gt;next;
+      tmp_b = tmp_b-&gt;next;
+    }
+    return nullptr;
+  }
+</code></pre>
+<h2 id="142-linked-list-cycle-ii">[142] Linked List Cycle II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/linked-list-cycle-ii/description/">题目描述</a>。<br>
+较有难度的一道题。<br>
+图论中，环是只有首末顶点重复的非空路径。直观想法是判断遍历中是否会第二次经过同一个点，但由于题目要求O(1)的空间复杂度，我们显然并不能用哈希表之类的数据结构把见过的点都存下来。因此这道题只能用一些数学推断来解，而难度也源于此。<br>
+数学推倒的具体过程可以参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0142.%E7%8E%AF%E5%BD%A2%E9%93%BE%E8%A1%A8II.md">这篇解答</a>。简单来说，关键在于通过以下两点</p>
+<ul>
+<li>快指针走过的长度是慢指针的两倍</li>
+<li>把快指针和慢指针走过的长度都用<code>x</code>，<code>y</code>和<code>z</code>表示出来</li>
+</ul>
+<p>来共同解出从头节点到环入口的距离<code>x</code>。由于通过第一次快慢指针的相遇，<code>y</code>和<code>z</code>都已经是已知值，所以我们就可以成功找出<code>x</code>，并且发现<code>x</code>原来就等于<code>z</code>再加上若干圈环的长度。最后，同时从头结点和相遇节点出发，找出<code>x</code>对应位置的节点即可。</p>
+<pre><code class="language-python">    def detectCycle(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        slow = head
+        fast = head
+        while True:
+            if fast is None or fast.next is None:
+                return None
+            fast = fast.next.next
+            slow = slow.next  # No need to check slow
+            if slow == fast:
+                break
+        slow = head
+        while slow != fast:
+            slow = slow.next
+            fast = fast.next
+        return slow
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>涉及链表基本操作的题（如<a href="#203-remove-linked-list-elements">203</a>、<a href="#707-design-linked-list">707</a>、<a href="#206-reverse-linked-list">206</a>和<a href="#24-swap-nodes-in-pairs">24</a>）基本没有难度，要点就是加一个<code>dummy_head</code>可以大大减小代码的复杂程度（避免对头结点特殊情况的判断）。<br>
+涉及算法的题目则都会要求O(1)的空间复杂度，也就是我们不能把节点都存下来。在链表有限的遍历方式下，大多数题目都会使用双指针来解，通过推导以及利用多个指针之间的关系来达成我们想要的目的，例如</p>
+<ul>
+<li><a href="#19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</a><br>
+两个指针间的距离保持固定，因此前一个指针就是倒数第N个节点。</li>
+<li><a href="#160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</a><br>
+两个指针从不同链表开始交错遍历，到相交节点走过的距离相同。</li>
+<li><a href="#142-linked-list-cycle-ii">[142] Linked List Cycle II</a>
+<ul>
+<li>两个指针走过的距离有两倍的关系，可以列方程把<code>x</code>用已知的<code>y</code>和<code>z</code>表示。</li>
+<li>两个指针走过的距离相同，来找到<code>x</code>对应的节点。</li>
+</ul>
+</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（数组篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-array/</id>
+        <link href="https://alleny.xyz/post/leetcode-array/">
+        </link>
+        <updated>2024-03-25T09:38:03.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（数组篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（数组篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="704-binary-search">[704] Binary Search</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-search/description/">题目描述</a>。<br>
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不变量贯彻到底即可。</p>
+<pre><code class="language-c++">  int search(vector&lt;int&gt;&amp; nums, int target) {
+    int size = nums.size();
+    int lower = 0;
+    int upper = size - 1;
+    int index = 0;
+    while (true) {
+      if (upper &lt; lower) {
+        return -1;
+      }
+      index = (lower + upper) / 2;
+      int now = nums[index];
+      if (now == target) {
+        return index;
+      }
+      if (target &lt; now) {
+        upper = index - 1;
+      } else {
+        lower = index + 1;
+      }
+    }
+  }
+</code></pre>
+<h2 id="27-remove-element">[27] Remove Element</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-element/description/">题目描述</a>。<br>
+利用元素顺序可以改变的特性，左右指针往中间靠拢即可。</p>
+<pre><code class="language-python">    def removeElement(self, nums, val):
+        &quot;&quot;&quot;
+        :type nums: List[int]
+        :type val: int
+        :rtype: int
+        &quot;&quot;&quot;
+        head_index = 0
+        tail_index = len(nums) - 1
+        while tail_index &gt;= 0 and nums[tail_index] == val:
+            tail_index -= 1
+        while head_index &lt; tail_index:
+            if nums[head_index] == val:
+                nums[head_index] = nums[tail_index]
+                tail_index -= 1
+
+            head_index += 1
+            while head_index &lt;= tail_index and nums[tail_index] == val:
+                tail_index -= 1
+        return tail_index + 1
+</code></pre>
+<h2 id="977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/squares-of-a-sorted-array/description/">题目描述</a>。<br>
+原数组是有序的，因此平方后最大值一定在两端。利用双指针往中间靠拢即可。</p>
+<pre><code class="language-rust">    pub fn sorted_squares(nums: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let (mut left, mut right) = (0, nums.len() - 1);
+        let mut cur_index = right;
+        let mut res: Vec&lt;i32&gt; = vec![0; right + 1];
+        while left &lt;= right {
+            let (left_squares, right_squares) =
+                (nums[left] * nums[left], nums[right] * nums[right]);
+
+            if left_squares &lt; right_squares {
+                right -= 1;
+                res[cur_index] = right_squares;
+            } else {
+                left += 1;
+                res[cur_index] = left_squares
+            };
+
+            cur_index -= 1;
+        }
+        res
+    }
+</code></pre>
+<h2 id="209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-size-subarray-sum/description/">题目描述</a>。<br>
+使用滑动窗口（其实也相当于快慢指针）即可。每次<code>sum &gt;= target</code>了就开始注意更新<code>left</code>指针，最后返回<code>min_len</code>即可。复杂度O(n)。说是Medium但是是做起来最快的一道。</p>
+<pre><code class="language-c++">  int minSubArrayLen(int target, vector&lt;int&gt;&amp; nums) {
+    int sum = 0;
+    int left = 0;
+    int right = 0;
+    int n = nums.size();
+    int min_len = n + 1;
+    while (right &lt; n) {
+      sum += nums[right];
+
+      if (sum &gt;= target) {
+        while (sum - nums[left] &gt;=
+               target) {  // if target can be zero, the condition should be
+                          // (left &lt;= right &amp;&amp; sum - nums[left] &gt;= target
+          sum -= nums[left];
+          left++;
+        }
+        if (right - left + 1 &lt; min_len) {
+          min_len = right - left + 1;
+        }
+      }
+      right++;
+    }
+
+    return min_len &gt; n ? 0 : min_len;
+  }
+</code></pre>
+<h2 id="59-spiral-matrix-ii">[59] Spiral Matrix II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/spiral-matrix-ii/description/">题目描述</a>。<br>
+没什么算法可言，就是锻炼代码能力，难点在于边界条件的判断。<br>
+一般来说坚持循环不变量即可，例如每次循环坚持左闭右开。但是有特殊情况，那就是n如果是奇数就会有一个中心点，如果都坚持左闭右开的话就会导致中心点永远填不到。网上一些解法是特殊处理，单独最后填中心点的值。<br>
+本人的解法则是牺牲了一定的循环不变量，即每个round第一个循环（矩阵上方从左到右）采用了左闭右闭，第二、三个循环采用左开右闭，第四个循环（矩阵左边从下到上）采用左开右开（右开与第一个循环的左闭相对应），避免了中心点的单独处理（第一个循环是左闭右闭，所以能够处理中心点）。这种解法与前面那种各有利弊，见仁见智。</p>
+<pre><code class="language-python">    def generateMatrix(self, n):
+        &quot;&quot;&quot;
+        :type n: int
+        :rtype: List[List[int]]
+        &quot;&quot;&quot;
+        ret = [[0] * n for _ in range(n)]
+        round_index = 0
+        cur_num = 1
+        while cur_num &lt;= n * n:
+            for i in range(0 + round_index, n - round_index):
+                ret[0 + round_index][i] = cur_num
+                cur_num += 1
+            for i in range(0 + round_index + 1, n - round_index):
+                ret[i][n - round_index - 1] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index - 1, -1):
+                ret[n - round_index - 1][i] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index, -1):
+                ret[i][0 + round_index] = cur_num
+                cur_num += 1
+            round_index += 1
+        return ret
+</code></pre>
+<h2 id="个人总结">个人总结</h2>
+<p>数组作为最基础的数据结构之一，内容也很简单。就做的几道经典题而言，要掌握的就是两个内容：</p>
+<ul>
+<li>循环不变量<br>
+无论是二分法还是最后的螺旋矩阵模拟，防止边界条件出错的方法都是保持循环不变量，即按照区间的定义来操作。</li>
+<li>双指针<br>
+两个指针可以是同向的（快慢指针、滑动窗口），也可以是相向的。不少题目都是用该套路来解（例如<a href="#27-remove-element">27</a>，<a href="#977-squares-of-a-sorted-array">977</a>，<a href="#209-minimum-size-subarray-sum">209</a>）。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[OpenHarmony中的应用文件分享机制]]></title>
+        <id>https://alleny.xyz/post/openharmony-share-app-file/</id>
+        <link href="https://alleny.xyz/post/openharmony-share-app-file/">
+        </link>
+        <updated>2024-03-10T07:23:41.000Z</updated>
+        <summary type="html"><![CDATA[<p>应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本文重点介绍URI分享方式。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本文重点介绍URI分享方式。</p>
+<!-- more -->
+<h2 id="应用可分享目录">应用可分享目录</h2>
+<h3 id="从沙箱说起">从沙箱说起</h3>
+<p>应用沙箱是一种以安全防护为目的的隔离机制，避免数据受到恶意路径穿越访问。在这种沙箱的保护机制下，应用可见的目录范围即为“应用沙箱目录”。</p>
+<ul>
+<li>对于每个应用，系统会在内部存储空间映射出一个专属的“应用沙箱目录”，它是“应用文件目录”与一部分系统文件（应用运行必需的少量系统文件）所在的目录组成的集合。</li>
+<li>应用沙箱限制了应用可见的数据的最小范围。在“应用沙箱目录”中，应用仅能看到自己的应用文件以及少量的系统文件（应用运行必需的少量系统文件）。因此，本应用的文件也不为其他应用可见，从而保护了应用文件的安全。</li>
+<li>应用可以在“应用文件目录”下保存和处理自己的应用文件；系统文件及其目录对于应用是只读的；而应用若需访问用户文件，则需要通过特定API同时经过用户的相应授权才能进行。</li>
+</ul>
+<p>下图展示了应用沙箱下，应用可访问的文件范围和方式。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1710049042983.png" alt="" loading="lazy"></figure>
+<p>如前文所述，“应用沙箱目录”内分为两类：<strong>应用文件目录</strong>和<strong>系统文件目录</strong>。</p>
+<p>系统文件目录对应用的可见范围由OpenHarmony系统预置，开发者无需关注。</p>
+<p>在此主要介绍应用文件目录，如下图所示。应用文件目录下某个文件或某个具体目录的路径称为应用文件路径。应用文件目录下的各个文件路径，具备不同的属性和特征。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1710049148238.png" alt="" loading="lazy"></figure>
+<h3 id="可分享目录">可分享目录</h3>
+<p>基于以上背景，应用可分享的目录如下。</p>
+<table>
+<thead>
+<tr>
+<th>沙箱路径</th>
+<th>物理路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/data/storage/el1/base</td>
+<td>/data/app/el1/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el1级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/base</td>
+<td>/data/app/el2/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el2级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/distributedfiles</td>
+<td>/mnt/hmdfs/&lt;currentUserId&gt;/account/device_view/<br>&lt;networkId&gt;/data/&lt;PackageName&gt;</td>
+<td>应用el2加密级别有帐号分布式数据融合目录</td>
+</tr>
+</tbody>
+</table>
+<h2 id="文件uri规范">文件URI规范</h2>
+<p>文件URI的格式为：<br>
+格式为file://&lt;bundleName&gt;/&lt;path&gt;</p>
+<ul>
+<li>file：文件URI的标志。</li>
+<li>bundleName：该文件资源的属主。</li>
+<li>path：文件资源在应用沙箱中的路径。</li>
+</ul>
+<h2 id="分享文件给其他应用">分享文件给其他应用</h2>
+<h3 id="获取文件路径">获取文件路径</h3>
+<p>在分享文件给其他应用前，开发者需要先获取应用文件路径。</p>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>filesDir</td>
+<td>&lt;路径前缀&gt;/&lt;加密等级&gt;/base/files</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<pre><code class="language-typescript">import UIAbility from '@ohos.app.ability.UIAbility';
+import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件的沙箱路径
+    let pathInSandbox = this.context.filesDir + &quot;/test.txt&quot;;
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(pathInSandbox);
+    // 获取的uri为&quot;file://com.example.demo/data/storage/el2/base/files/test.txt&quot;
+  }
+}
+</code></pre>
+<p>具体来说，先通过应用上下文<code>Context</code>获取文件在沙箱中的路径，然后再通过该路径生成对应的的URI</p>
+<h3 id="设置获取文件的权限以及选择要分享的应用">设置获取文件的权限以及选择要分享的应用</h3>
+<blockquote>
+<p>在OpenHarmony中，Ability是应用所具备能力的抽象，也是应用程序的重要组成部分。Ability是系统调度应用的最小单元，是能够完成一个独立功能的组件，一个应用可以包含一个或多个Ability。 类似Android中的Application和Activity的融合。</p>
+</blockquote>
+<p>分享文件给其他应用需要使用<code>startAbility()</code>接口，将获取到的URI填充在<code>want</code>的参数<code>uri</code>中，标注URI的文件类型，<code>type</code>字段可参考<a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/#%E5%B1%9E%E6%80%A7"><code>Want</code>属性</a>，并通过设置<code>want</code>的<code>flag</code>来设置对应的读写权限，<code>action</code>字段配置为<code>ohos.want.action.sendData</code>表示进行应用文件分享，开发示例如下。</p>
+<pre><code class="language-typescript">import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+import wantConstant from '@ohos.app.ability.wantConstant';
+import UIAbility from '@ohos.app.ability.UIAbility';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件沙箱路径
+    let filePath = this.context.filesDir + '/test.txt';
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(filePath);
+    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+      .then(() =&gt; {
+        console.info('Invoke getCurrentBundleStats succeeded.');
+      })
+      .catch((err: BusinessError) =&gt; {
+        console.error(`Invoke startAbility failed, code is ${err.code}, message is ${err.message}`);
+      });
+  }
+  // ...
+}
+</code></pre>
+<h2 id="使用其他应用分享的文件">使用其他应用分享的文件</h2>
+<h3 id="配置modulejson5配置文件">配置module.json5配置文件</h3>
+<blockquote>
+<p>module.json5主要包含以下内容：</p>
+<ul>
+<li>Module的基本配置信息，例如Module名称、类型、描述、支持的设备类型等基本信息。</li>
+<li>应用组件信息，包含UIAbility组件和ExtensionAbility组件的描述信息。</li>
+<li>应用运行过程中所需的权限信息</li>
+</ul>
+</blockquote>
+<p>被分享应用需要在module.json5配置文件的<code>actions</code>标签的值配置为<code>ohos.want.action.sendData</code>，表示接收应用分享文件，配置<code>uris</code>字段，表示接收URI的类型，即只接收其他应用分享该类型的URI，如下表示本应用只接收<code>scheme</code>为<code>file</code>，类型为<code>txt</code>的文件，示例如下。</p>
+<pre><code class="language-json">{
+  &quot;module&quot;: {
+    ...
+    &quot;abilities&quot;: [
+      {
+        ...
+        &quot;skills&quot;: [
+          {
+            ...
+            &quot;actions&quot;: [
+              &quot;ohos.want.action.sendData&quot;
+            ],
+            &quot;uris&quot;: [
+              {
+                &quot;scheme&quot;: &quot;file&quot;,
+                &quot;type&quot;: &quot;text/plain&quot;
+              }
+           ]
+          }
+        ]
+      }
+    ]
+  }
+}
+</code></pre>
+<h3 id="want匹配">Want匹配</h3>
+<p>前面展示的代码中有这么一段未解释完全的地方：</p>
+<pre><code class="language-typescript">    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+    // balabala
+</code></pre>
+<p><code>flag</code>配置读写权限都能理解，那么“隐式拉起规则”是个什么东西？</p>
+<p>我们可以注意到，<code>startAbility</code>接口似乎并没有指定要拉起哪个Ability，这个示例中所有的参数都在<code>want</code>里面，那么很明显，<code>startAbility</code>就是靠这个<code>want</code>参数去匹配Ability的。</p>
+<p>在启动目标应用组件时，会通过<strong>显式Want</strong>或者<strong>隐式Want</strong>进行目标应用组件的匹配，这里说的匹配规则就是调用方传入的want参数中设置的参数如何与目标应用组件声明的配置文件进行匹配。</p>
+<p>显式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1710053916471.png" alt="" loading="lazy"></figure>
+<p>隐式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1710054171962.png" alt="" loading="lazy"></figure>
+<p>简单来说，<code>abilityName</code>是否留空决定了是采用显式匹配还是隐式匹配。<br>
+从隐式<code>Want</code>的定义，可得知：</p>
+<ul>
+<li>调用方传入的<code>want</code>参数，表明调用方需要执行的操作，并提供相关数据以及其他应用类型限制。</li>
+<li>待匹配应用组件的<code>skills</code>配置，声明其具备的能力（<code>module.json5</code>配置文件中的<code>skills</code>标签参数）。</li>
+</ul>
+<p>系统将调用方传入的<code>want</code>参数（包含<code>action</code>、<code>entities</code>、<code>uri</code>和<code>type</code>属性）与已安装待匹配应用组件的<code>skills</code>配置（包含<code>actions</code>、<code>entities</code>、<code>uris</code>和<code>type</code>属性）依次进行匹配。当四个属性匹配均通过，则此应用才会<strong>被应用选择器展示给用户进行选择</strong>。</p>
+<p>因此，在上面的例子中，被分享应用在<code>module.json5</code>配置文件的<code>skills</code>标签填入了与分享方填入的<code>want</code>参数相匹配的值，就能通过隐式匹配的方式成功被<code>startAbility</code>匹配上。</p>
+<h3 id="被分享方获取信息">被分享方获取信息</h3>
+<p>被分享方的UIAbility被启动后，可以在其<code>onCreate()</code>或者<code>onNewWant()</code>回调中获取传入的Want参数信息。</p>
+<blockquote>
+<p><code>onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void;</code><br>
+UIAbility实例处于完全关闭状态下被创建完成后进入该生命周期回调，执行初始化业务逻辑操作。即UIAbility实例冷启动时进入该生命周期回调。</p>
+</blockquote>
+<p>通过接口want的参数获取分享文件的URI，获取文件URI后通过fs.open()接口打开文件，获取对应的file对象后，可对文件进行读写操作。</p>
+<pre><code class="language-typescript">// xxx.ets
+import fs from '@ohos.file.fs';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+function getShareFile() {
+  try {
+    let want: Want = ...; // 获取分享方传递过来的want信息
+
+    // 从want信息中获取uri字段
+    let uri = want.uri;
+    if (uri == null || uri == undefined) {
+      console.info('uri is invalid');
+      return;
+    }
+    try {
+      // 根据需要对被分享文件的URI进行相应操作。例如读写的方式打开URI获取file对象
+      let file = fs.openSync(uri, fs.OpenMode.READ_WRITE);
+      console.info('open file successfully!');
+    } catch (err) {
+      let error: BusinessError = err as BusinessError;
+      console.error(`Invoke openSync failed, code is ${error.code}, message is ${error.message}`);
+    }
+  } catch (error) {
+    let err: BusinessError = error as BusinessError;
+    console.error(`Invoke openSync failed, code is ${err.code}, message is ${err.message}`);
+  }
+}
+</code></pre>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://gitee.com/openharmony/filemanagement_app_file_service/tree/master">filemanagement_app_file_service</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/share-app-file.md/">应用文件分享</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/app-sandbox-directory.md/">应用沙箱目录</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/application-context-stage.md/#%E8%8E%B7%E5%8F%96%E5%BA%94%E7%94%A8%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84">获取应用文件路径</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/">Want</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-inner-application-uiAbilityContext.md/#uiabilitycontextstartability-3">startAbility</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/quick-start/module-configuration-file.md/">module.json5配置文件</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/explicit-implicit-want-mappings.md/">显式Want与隐式Want匹配规则</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-uiAbility.md/#uiabilityoncreate">onCreate</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[个人心得：Git使用与开发规范]]></title>
+        <id>https://alleny.xyz/post/development-standards/</id>
+        <link href="https://alleny.xyz/post/development-standards/">
+        </link>
+        <updated>2023-12-03T06:10:31.000Z</updated>
+        <summary type="html"><![CDATA[<p>长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。</p>
+<!-- more -->
+<h2 id="前言">前言</h2>
+<p><strong>强烈建议</strong>先通过交互式教程 <a href="https://learngitbranching.js.org/?locale=zh_CN">learn git branching</a> 了解Git对于操纵修改提交历史的各种进阶操作。</p>
+<h2 id="提交规范">提交规范</h2>
+<p>参考 <a href="https://www.conventionalcommits.org/zh-hans/v1.0.0/">约定式提交</a> 。</p>
+<h2 id="基本工作流">基本工作流</h2>
+<h3 id="大型项目">大型项目</h3>
+<p>请参照 <a href="https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow">Gitflow</a> 。</p>
+<h3 id="小型项目">小型项目</h3>
+<p>分支命名同 <a href="#%E5%A4%A7%E5%9E%8B%E9%A1%B9%E7%9B%AE">大型项目</a> 。和大型项目唯一的区别是去掉了<code>develop</code>分支，即<code>feature</code>等分支可直接合入到<code>main</code>分支。</p>
+<h3 id="代码审核">代码审核</h3>
+<p>多人合作，无论项目大小，禁止直接将其他分支合入到<code>main</code>分支。必须在仓库对应平台（如Github）上发起分支合并的PR，并指定小组其他剩余成员review，code review通过才可合入。</p>
+<h2 id="保持提交历史干净">保持提交历史干净</h2>
+<h3 id="借助git-stash拉取最新更改">借助git stash拉取最新更改</h3>
+<blockquote>
+<p>你正在a分支上进行工作，做了一些更改并还没有提交。此时你发现a分支上有一个别人上传的新提交，你想把新提交拉下来，基于此继续开发，但同时你本地的工作又还没有做完，你不想直接丢掉本地的更改。</p>
+</blockquote>
+<p>参考以下命令：</p>
+<pre><code class="language-shell">git stash
+git pull
+git stash pop
+</code></pre>
+<p><code>git stash</code>可以把你当前的工作区暂存，然后<code>git pull</code>拉取远程提交，<code>git stash pop</code>再恢复工作区。通俗点就是用草稿纸记一下你的当前状态，然后再从草稿纸恢复过来。</p>
+<p>另一种应用场景是你正在你的分支上做开发，突然你的队友让你去其他分支帮忙看下bug，此时也可以使用<code>git stash</code>暂存一下，看完bug，回到自己的分支，再<code>git stash pop</code>。</p>
+<h3 id="merge还是rebase"><code>merge</code>还是<code>rebase</code></h3>
+<p>分支合入的方式选择<code>merge</code>还是<code>rebase</code>是一个有争议的话题。一般来说，<code>rebase</code>能尽量保持提交历史的干净，而<code>merge</code>能不破坏原有的提交记录。本人更偏向于<code>rebase</code>，因为干净的提交历史非常易于整理和阅读，而<code>rebase</code>能实现这一点。</p>
+<p>基于此，以下讨论开发中<code>rebase</code>的使用。</p>
+<h3 id="使用rebase获取main分支的最新更改">使用<code>rebase</code>获取<code>main</code>分支的最新更改</h3>
+<blockquote>
+<p>你在<code>main</code>分支的<code>M1</code>提交上创建了一个<code>feature</code>分支，并在<code>feature</code>分支上新增了一个提交<code>F1</code>。此时你发现<code>main</code>分支上有了别人上传的一个新提交<code>M2</code>，于是你想把<code>M2</code>的内容拉到你的<code>feature</code>分支上，使你可以在最新的<code>main</code>分支修改上继续做你<code>feature</code>分支的开发。</p>
+</blockquote>
+<p>习惯使用<code>merge</code>而不是<code>rebase</code>的人可能会选择直接把<code>main</code>分支<code>merge</code>到你的<code>feature</code>分支上，但个人不建议这样，因为这可能会让提交历史看起来很怪异（可能导致历史提交记录各种相互交织，看起来异常复杂）。<strong>笔者看来</strong>，良好的提交历史里面应该只有其他分支向<code>main</code>分支方向的<code>merge</code>，而不存在<code>main</code>分支向其他分支方向的<code>merge</code>。也就是，<code>merge</code>应该是单向的。</p>
+<p>一种方式是可以使用<code>cherry-pick</code>，读者可以自行搜索。但这里想要介绍的是<code>rebase</code>的方式。在以上场景下，请把你的<code>feature</code>分支在本地<code>rebase</code>到<code>main</code>分支上（可能需要处理冲突），然后在本地，你的<code>feature</code>分支就从基于<code>M1</code>变成了基于<code>M2</code>，也就是<code>M1&lt;-M2(main)&lt;-F1(feature)</code>这种样子，整个提交历史变成了一条线性，看起来美观许多。</p>
+<p>本地<code>rebase</code>以后，需要将你的本地<code>feature</code>分支force push（<code>--force</code>参数）到远程仓库，这是因为你本地的<code>feature</code>分支已经和你远程的<code>feature</code>分支所在位置不一样了，<strong>需要将本地的<code>rebase</code>也强行推送到远程，这点很重要</strong>。</p>
+<h3 id="在提交pr合并前先rebase">在提交PR/合并前先<code>rebase</code></h3>
+<p>请在你提交PR前（也就是想合并分支前）先把你的个人分支<code>rebase</code>到<code>main</code>分支之上（记得force push），然后再发起PR。这样做的好处有二：</p>
+<ul>
+<li>干净的历史记录。这样做以后，你的第一个修改是接在<code>main</code>分支的最后一个修改后面的，整个提交历史是线性的，没有分叉和交汇，非常干净，易于阅读（特别是对于reviewer）与日后维护。</li>
+<li>无需要再处理的冲突。在你<code>rebase</code>的过程当中，你已经完成了你与<code>main</code>分支的实际代码合并（也就是<a href="#%E4%BD%BF%E7%94%A8rebase%E8%8E%B7%E5%8F%96main%E5%88%86%E6%94%AF%E7%9A%84%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9">上一节</a>提到的，你已经通过<code>rebase</code>获取到了<code>main</code>分支的所有最新修改），同时完成了对于代码冲突的解决。你的reviewer也会知道，你发起的这个PR已经考虑到了所有<code>main</code>分支最新的修改。之后在合并时，由于提交历史已经是线性的，<code>main</code>分支会直接<code>fast-forward</code>到你的<code>feature</code>分支的最新提交上，<s>非常优雅</s>。</li>
+</ul>
+<h3 id="潜在的风险">潜在的风险</h3>
+<p>请确保你要force push的这条分支只有你一个人在开发，没有其他人在上面，否则你的行为可能会让其他人在下次拉取提交时很困扰（直接<code>pull</code>的话会出现很混乱的提交合并，后果很严重！）。因此如果这条分支还有其他人，请务必先做好协商。</p>
+<h2 id="其他习惯技巧">其他习惯/技巧</h2>
+<h3 id="开始工作结束工作-的第一件事git-fetch">开始工作/结束工作 的第一件事：<code>git fetch</code></h3>
+<p>请不要直接无脑<code>git pull</code>，否则可能会产生一些比较严重的后果，例如当别人可能已经通过rebase+force push或者其他方式更改了远程的提交历史/分支结构。</p>
+<p>良好的习惯是先<code>git fetch</code>，获取远程的最新更改，检查一下远程状态，检阅一下别人的最新工作，再决定要做什么操作。</p>
+<p>例如，当你发现你所在的某条分支竟然已经被某个不守规矩的人rebase并force push了，此时你要做的应该是先把你本地的这条分支删除，然后重新去把远程的这条分支拉下来。</p>
+<p>结束工作（commit）前也是如此。请先确认好该分支没有别人上传的新提交再commit。如果有新提交，请参考前面介绍的<a href="#%E5%80%9F%E5%8A%A9git-stash%E6%8B%89%E5%8F%96%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9"><code>git stash</code></a>，把远程的更新拉过来再进行自己的提交，保证自己的commit在远程的这个新提交之后，而不是出现奇怪的分叉。</p>
+<blockquote>
+<p>如果你已经commit了，问题也不大，你可以通过<code>git pull --rebase</code>，把你的commit置于拉取到的远程提交之后。</p>
+</blockquote>
+<h2 id="工具推荐">工具推荐</h2>
+<ul>
+<li><strong>强烈建议</strong>使用可视化工具<strong>查看</strong>本地/远程提交历史以及具体更改，例如vscode插件 <a href="https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph">git graph</a> 。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[使用ssh端口转发让远程服务器访问本地代理]]></title>
+        <id>https://alleny.xyz/post/ssh-remoteforward/</id>
+        <link href="https://alleny.xyz/post/ssh-remoteforward/">
+        </link>
+        <updated>2023-11-09T09:37:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？</p>
+<!-- more -->
+<h1 id="motivation">Motivation</h1>
+<p>最近在实验室的服务器上尝试运行vLLM。由于代码里面需要使用<code>transformers</code>库访问huggingface下载模型，于是在服务器shell里面配置了实验室提供的proxy，但结果代码里面访问huggingface依然报错。尝试curl https://huggingface.co/，结果如下：</p>
+<pre><code class="language-shell">~/Workspace/vllm$ curl https://huggingface.co/
+curl: (56) Received HTTP code 407 from proxy after CONNECT
+</code></pre>
+<p>看来实验室的proxy是用不了。但是我在本地使用自己的proxy可以访问到huggingface，那么能否让ssh的远程服务器直接使用本地的proxy呢？</p>
+<h1 id="solution">Solution</h1>
+<p>修改本地的~/.ssh/config，添加远程端口转发</p>
+<pre><code>Host Name
+  HostName hostip
+  User username
+  RemoteForward 17890 localhost:7890
+</code></pre>
+<p>通过以上配置，远程就能直接通过自身的17890端口，使用本地7890端口提供的proxy。<br>
+可以在服务器的<code>~/.bashrc</code>中再添加如下配置：</p>
+<pre><code class="language-shell">alias setlocalproxy='
+    export https_proxy=http://127.0.0.1:17890 http_proxy=http://127.0.0.1:17890 all_proxy=socks5://127.0.0.1:17890
+'
+</code></pre>
+<p>然后</p>
+<pre><code class="language-shell">~$ setlocalproxy
+</code></pre>
+<p>即可正常使用本地机器提供的代理。<br>
+再次<code>curl https://huggingface.co</code>，成功。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[ASPLOS'23 "DeepUM: Tensor Migration and Prefetching in Unified Memory" 论文解析]]></title>
+        <id>https://alleny.xyz/post/deepum/</id>
+        <link href="https://alleny.xyz/post/deepum/">
+        </link>
+        <updated>2023-10-24T09:17:52.000Z</updated>
+        <summary type="html"><![CDATA[<p>发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制允许内存超额使用，但page migration引入了巨大的开销。DeepUM使用一种新的correlation prefetching技术来隐藏page migration的开销。它是完全自动且对用户透明的。本文还提出了两种优化技术来最小化GPU fault handling time。作者使用来自MLPerf、PyTorch示例和Hugging Face的九个大规模DNN对DeepUM的性能进行评估，并将其性能与六种最先进的GPU内存交换方法进行比较。评估结果表明，DeepUM对于GPU内存超额使用非常有效，并且可以处理其他方法无法处理的更大模型。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制允许内存超额使用，但page migration引入了巨大的开销。DeepUM使用一种新的correlation prefetching技术来隐藏page migration的开销。它是完全自动且对用户透明的。本文还提出了两种优化技术来最小化GPU fault handling time。作者使用来自MLPerf、PyTorch示例和Hugging Face的九个大规模DNN对DeepUM的性能进行评估，并将其性能与六种最先进的GPU内存交换方法进行比较。评估结果表明，DeepUM对于GPU内存超额使用非常有效，并且可以处理其他方法无法处理的更大模型。</p>
+<!-- more -->
+<h1 id="background">Background</h1>
+<h2 id="gpus-and-cuda-programming-model">GPUs and CUDA Programming Model</h2>
+<p>GPGPU允许程序员在GPU上短时间处理大量的计算，这是因为GPU上有成百上千的GPU thread在同时进行计算。为了能高效地利用GPU进行计算，许多编程模型被提出，例如CUDA，oneAPI，openACC和OpenCL。</p>
+<p>这篇论文的工作是基于CUDA的。CUDA是由NVIDIA开发的GPU并行编程模型。程序员需要定义一个CUDA kernel函数，将计算任务卸载到GPU上。然后，CUDA kernel由N个不同的CUDA线程在GPU上并行执行。每个CUDA线程都有一个唯一的thread ID，用于确定控制流和计算要访问的内存地址。CUDA thread被分组为thread block，而thread block则被分组为grid。当程序员启动一个CUDA kernel时，其可以指定grid的配置，例如一个grid上的thread block个数以及一个thread block上的thread个数。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1698048986672.png" alt="" loading="lazy"></figure>
+<p>上图是NVIDIA GPU内存的层级展示。一个GPU包含了数十个streaming multiprocessors（SMs）。每个thread block被map到一个SM上（多个thread block可能被map到一个SM），每个SM内包含了数百个CUDA core，而一个thread就会被map到一个CUDA core上，所以thread block到SM，thread到CUDA core就是对应的软件到硬件的映射关系。</p>
+<p>每个SM具有不同类型的内存单元，如寄存器、L1 cache、shared memory和constant memory（只读内存）。虽然寄存器是每个线程私有的，但其他内存单元在SM内部是共享的。在SM之外，有一个L2 cache在所有SM之间共享。Global memory是一种片外DRAM，通常是几个GB到几十个GB。通常情况下，靠近CUDA核心（SM）的存储单元具有较低的延迟和较小的容量。尽管GPU提供了几十个GB的global memory，但DNN工作负载严重缺乏global memory容量。</p>
+<p>由于GPU线程无法直接访问main memory，除非程序员将CPU内存空间映射到GPU内存空间，程序员必须手动在GPU全局内存和CPU内存之间移动数据。此外，访问映射到GPU内存空间的CPU内存会导致性能下降，因为每次内存访问都会产生PCIe传输。为此，NVIDIA提出了统一内存（UM）的概念。</p>
+<h2 id="cuda-unified-memory">CUDA Unified Memory</h2>
+<p>UM为访问同一系统上GPU和CPU上的内存提供了单一内存空间。从Pascal架构开始，NVIDIA GPU引入了page migration engine，其使用page fault机制使GPU有了虚拟内存系统。一个page fault发生前后的snapshot如图所示。UM使得GPU内存可以超额使用，而无需程序员进行任何干预，因此极大减轻了程序员的负担。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1698050541178.png" alt="" loading="lazy"></figure>
+<p>尽管UM有各种优点，GPU page fault handling的成本很高。当GPU里的一个page fault发生的时候，其对应SM的TLB会被lock住，并且在这个SM里面的所有fault被处理完之前不能做任何新的translation。此外，page faults需要在CPU和GPU之间进行昂贵的I/O操作，因此强烈建议插入CUDA prefetch API函数（例如cudaMemPrefetchAsync()）或CUDA user-hint API函数（例如cudaMemAdvise()），以减少page fault的发生。</p>
+<h2 id="nvidia-page-fault-handler">NVIDIA Page Fault Handler</h2>
+<p>Fault buffer：GPU中的一个循环队列，用于存储fault access informtion。由于GPU可以同时生成多个faults，因此fault buffer中可能包含同一page的多个fault entries。</p>
+<p>UM block：一组最大512个连续的pages，同时也是NVIDIA driver的管理单位。</p>
+<p>下图为NVIDIA page fault handler的一个流程图。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1698051779774.png" alt="" loading="lazy"></figure>
+<h1 id="motivation">Motivation</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，其中就包括关于memory swapping的研究。</p>
+<p>但是之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用，因此还是想使用UM。但是又要想办法hide UM带来的overhead，对此作者设计了DeepUM。</p>
+<h1 id="structure-of-deepum">Structure of DeepUM</h1>
+<p>为了隐藏上述提到UM带来的overhead，作者提出了DeepUM，其核心是对要访问的block做prefetch。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1698051846769.png" alt="" loading="lazy"></figure>
+<p>上图为DeepUM的整体结构，包含了DeepUM runtime和DeepUM driver。</p>
+<ul>
+<li>
+<p>DeepUM runtime的主要作用是为CUDA的内存分配API提供包装函数，从而将GPU内存分配请求转换为UM空间的内存分配请求。其管理了一个名为execution ID table的表，保存了kernel启动的历史记录以及由kernel的名字和参数算得的hash值。当一个新的kernel启动命令发送到DeepUM runtime时，其先为该kernel算一个hash值，然后通过该hash值去execution ID table进行查找。如果找到了，就给这个kernel相同的execution ID，否则为其分配一个新的execution ID并存储到表里面。最后，DeepUM runtime会将一个callback在kernel launch command入队（enqueue）前先入队，这个callback通过Linux ioctl将该execution ID传递给给DeepUM driver以进行后续的correlation prefetching。</p>
+</li>
+<li>
+<p>DeepUM driver的主要作用是处理page faults以及做prefetch。DeepUM driver管理的correlation tables在DNN训练期间记录kernel执行的历史以及其访问的page，其使用这个correlation table来进行prefetch。</p>
+</li>
+</ul>
+<p>DeepUM driver中有四个kernel threads，分别是</p>
+<ul>
+<li>fault handling thread，负责读取fault buffer，将信息传递给其他线程。</li>
+<li>correlator thread，负责管理correlation table。</li>
+<li>prefetching thread，负责查询correlation table，并据此计算要prefetch的UM block地址。</li>
+<li>migration thread，负载在GPU和CPU之间做UM block的迁移。</li>
+</ul>
+<p>图中还有两个queue，分别是fault queue和prefetch queue。fault queue相比prefetch queue拥有更高的优先级（被migration thread执行），以让GPU可以尽快的对faulted accesses进行reply。</p>
+<h1 id="correlation-prefetching-for-gpu-pages">Correlation Prefetching for GPU Pages</h1>
+<h2 id="pair-based-correlation-prefetching">Pair-Based Correlation Prefetching</h2>
+<p>传统的correlation prefetch有两种方法，分别是stride-based和pair-based。DeepUM是基于pair-based的。pair-based correlation prefetching如图所示。NumLevels表示不同的level，比如c是a的后一个的后一个，所以放在第二个level；NumSuccs则是MRU从左到右排序的。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1698053775988.png" alt="" loading="lazy"></figure>
+<h2 id="correlation-prefetching-in-deepum">Correlation Prefetching in DeepUM</h2>
+<h3 id="两种correlation-table">两种Correlation Table</h3>
+<p>和原始的correlation prefetching不一样，DeepUM使用了两种类型的correlation table：execution ID和UM block，两种类型的NumLevels都为1。</p>
+<ul>
+<li>execution ID correlation table (the execution table in short)：记录exexcution ID（也就是对应CUDA kernel）的执行历史。Execution table只存在一个。一个execution table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130115505.png" alt="" loading="lazy"><br>
+由上图可见，每个entry由多组correlated IDs组成，每一组包含了四个execution ID。其中前三个表示在当前kernel之前执行过的kernel，第四个表示预测在当前kernel的下一个要执行的kernel。注意这里下一个kernel预测错误带来的开销是很昂贵的。</li>
+<li>UM block correlation table (a block table in short)：记录UM block的访问历史。相比全局只存在一个的execution table，block table是对于每个execution ID都有一个的。一个block table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130931220.png" alt="" loading="lazy"><br>
+我们提到block table是对于每个execution ID都有一个的，如图所示，其记录的也是相对应的CUDA kernel内的UM block访问历史。可以观察到，虽然这个table和原始的correlation table结构相似，但是多出了一个start UM block和一个end UM block的指针。
+<ul>
+<li>start UM block指向这个kernel执行中第一个发生fault的UM block。</li>
+<li>end UM block指向这个kernel执行中最后一个要prefetch的UM block。end UM block记录的实际就是当前kernel执行结束前最后一个发生fault的UM block。</li>
+</ul>
+</li>
+</ul>
+<h3 id="prefetching-mechanisms-and-chaining">Prefetching Mechanisms and Chaining</h3>
+<p>当page fault发生，DeepUM driver就去查找当前执行的kernel的对应的UM block correlation table，然后去对faulted UM block这条后面记录的correlated UM block内的所有pages做prefetch。</p>
+<p>那么start UM block和end UM block发挥了什么作用呢？当prefetching thread遇到了end block时，就结束对当前kernel的prefetch，然后通过查阅execution ID table预测下一个要执行的kernel，接着对下一个kernel的end block进行prefetch。也就是说，start UM block和end UM block是用来配合之前提到的execution ID correlation table做chaining的。</p>
+<p>那么chaining什么时候结束？关于prefetch和chaining，文中提到了三个时间节点：</p>
+<ul>
+<li>当出现一个新的page fault interrupt signal，或者prefetching thread错误预测了下一个要执行的kernel，<strong>chaining结束</strong>。</li>
+<li>当prefetching thread把后续N个kernel的prefetch commands都已经enqueue了，<strong>chaining暂停</strong>。</li>
+<li>当前正在执行的kernel执行结束后，<strong>prefetching thread继续</strong>。</li>
+</ul>
+<h1 id="optimizations-for-gpu-page-fault-handing">Optimizations for GPU Page Fault Handing</h1>
+<p>文中提到了两种针对page fault handing的优化，分别为page pre-eviction和Invalidating UM Blocks of Inactive PyTorch Blocks。</p>
+<h2 id="page-pre-eviction">Page Pre-eviction</h2>
+<p>当要migrating faulted pages时，GPU内存分配失败，就会触发eviction。正如图中对X，Y的eviction，page eviction的发生会增大fault handling的时间。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1698133876496.png" alt="" loading="lazy"></figure>
+<p>因此，作者想到在GPU内存空间不足时去做pre-eviction。具体来说，当page满足下列两个条件时，就会被evict。</p>
+<ul>
+<li>最久未迁移（Least recently migrated）</li>
+<li>预计不会被当前正在执行的kernel以及接下来的N个被预测将执行的kernel访问</li>
+</ul>
+<h2 id="invalidating-um-blocks-of-inactive-pytorch-blocks">Invalidating UM Blocks of Inactive PyTorch Blocks</h2>
+<h3 id="pytorch-memory-pool与pt-block">Pytorch Memory Pool与PT Block</h3>
+<p>PyTorch通过管理memory pools的方式来最小化内存的分配和释放的时间，同时减小内存碎片。PyTorch中的memory pool有两种：large和small。PyTorch中的内存对象也叫做block，为了和UM block作区分，我们称其为PT block。large pool包含了超过1MB的PT blocks，而small pool包含了小于或等于1MB的PT blocks。PyTorch的内存分配器会返回最小可用的PT block，并且如果PT block的size还是太大，则会将其做split。</p>
+<p>这里的关键在于，当PT block被DNN模型使用结束，返回到内存分配器时，内存分配器只会将其mark成inactive（当然还要放回合适的memory pool）而不是直接free掉（对于设备来说），除非pool中没有可用的内存空间了，才会把inactive的PT block释放掉来生成新的内存空间。</p>
+<h3 id="invalidating-um-blocks">Invalidating UM Blocks</h3>
+<p>上面的机制被放在与UM一起使用时就会出现问题，即inactive的PT blocks也会被evicted到CPU内存上，造成不必要的数据传输开销。并且，这还占用了CPU的内存空间。更严重的场景是，当这些inactive的PT blocks又被mark成active，那还要再把这些PT blocks从CPU迁移到GPU，造成更多不必要的数据传输。</p>
+<p>因此，作者的思路很简单，也就是在PyTorch的内存分配器中加入少量代码，来告诉DeepUM driver何时一个PT block被标记成了inactive。如果一个将要evict的page属于一个inactive PT block，那么DeepUM driver就直接简单将其对应的UM block invalidate就好。</p>
+<h1 id="evaluation">Evaluation</h1>
+<p>限于篇幅原因，对这部分内容只给出一些大概的结论总结，如果对具体的实验数据或者实验细节感兴趣可以去阅读论文原文。</p>
+<p>作者首先将将DeepUM与Naive UM和IBM LMS做了一个对比。结果显示：</p>
+<ul>
+<li>和其他内存预取策略一样，DeepUM的性能依赖于应用的memory access patterns以及内存迁移时间和计算时间相比的比例。例如在DLRM这样的模型上，内存的访问模式不规则（因为高度依赖输入数据），导致LMS与DeepUM在上面都运行得不好。</li>
+<li>DeepUM相比LMS和LMS-mod（LMS的修改版本，速度慢一些但是能比LMS运行更大的batch size）能运行更大的batch size。这是通过虚拟内存的支持做到的。</li>
+<li>平均来看，DeepUM有着最好的性能，相比UM有3.06✕的加速比，相比LMS有1.11✕的加速比。</li>
+<li>虽然LMS有着最好的能耗，但是LMS与DeepUM之间的差距很小</li>
+</ul>
+<p>作者还进了其他的一些测试，例如：</p>
+<ul>
+<li>作者评估了存储correlation table所用的大小。这个大小随着模型与batch size而变化。注意correlation table是存储在CPU内存的。</li>
+<li>作者评估了page faults发生的次数，结果显示DeepUM的prefetch相当精准，并且能大量减少page fault发生的次数。</li>
+<li>作者评估了prefetching和optimizations所带来的效果，结果显示prefetching，prefetching+preeviction和prefetching+preeviction+invalidate分别平均减小了45.6%，63.7%和66.7%的运行时间。</li>
+<li>作者评估了预取的不同程度（即N的大小）带来的的影响，结果显示，当N=32时，加速比最高，同时能耗最低。</li>
+<li>作者评估了UM Block Correlation Table的不同参数配置带来的影响，结果显示，当Assoc为2，NumSuccs为4，NumRows为2048时，能带来相对最好的效果。</li>
+</ul>
+<p>作者还将DeepUM与5个TensorFlow-Based的研究的实验数据进行了比较，结果显示DeepUM拥有与Sentinel相当的性能，比剩余其他的几个都快。但是Sentinel是需要手动优化的，而DeepUM是对用户透明的。并且，DeepUM相比之前的方法能允许更大的batch size。作者将这种性能的差别归于DeepUM对数据移动的更小的粒度。</p>
+<h1 id="related-work">Related Work</h1>
+<p>作者回顾了以前的研究，最后将多个工作放在一起进行了一个比较，结果如图所示。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1698138077614.png" alt="" loading="lazy"></figure>
+<h1 id="conclusions">Conclusions</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，本文便是一篇关于memory swapping的文章。</p>
+<p>之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用。对此作者设计了DeepUM。</p>
+<p>为了隐藏UM带来的overhead，DeepUM通过prefetch策略，减少page fault的发生，同时提出了pre-eviction和invalidate block两种优化来减小处理page fault时的开销。</p>
+<p>测试显示，DeepUM能达到与需要手动优化的Sentinel相当的性能，并比其他几个baseline的性能都要好。同时，DeepUM也能处理其他几个方法处理不了的更大的模型。</p>
+]]></content>
+    </entry>
+</feed>
