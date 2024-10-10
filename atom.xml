@@ -1,0 +1,4359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://alleny.xyz</id>
+    <title>AllenY&apos;s blog</title>
+    <updated>2024-10-10T06:43:33.308Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://alleny.xyz"/>
+    <link rel="self" href="https://alleny.xyz/atom.xml"/>
+    <subtitle>🧑🏻‍💻🎮🍿🎹🗻</subtitle>
+    <logo>https://alleny.xyz/images/avatar.png</logo>
+    <icon>https://alleny.xyz/favicon.ico</icon>
+    <rights>All rights reserved 2024, AllenY&apos;s blog</rights>
+    <entry>
+        <title type="html"><![CDATA[PowerInfer源码解析（三）：算子实现 | 🚧 WIP 🚧]]></title>
+        <id>https://alleny.xyz/post/powerinfer-source-analysis-3/</id>
+        <link href="https://alleny.xyz/post/powerinfer-source-analysis-3/">
+        </link>
+        <updated>2024-09-29T06:27:35.000Z</updated>
+        <summary type="html"><![CDATA[<p>这次我们来解析一下PowerInfer主要所使用到的算子是如何实现的。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>这次我们来解析一下PowerInfer主要所使用到的算子是如何实现的。</p>
+<!-- more -->
+<h2 id="相关">相关</h2>
+<ul>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-1/">PowerInfer源码解析（一）：模型加载</a>。</li>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-2/">PowerInfer源码解析（二）：计算图构建与算子调用 </a>。</li>
+</ul>
+<h2 id="ggml_compute_forward_mul_mat">ggml_compute_forward_mul_mat</h2>
+<p>我们先来看原本矩阵乘所默认使用算子（CPU版本）<code>ggml_compute_forward_mul_mat</code>。</p>
+<pre><code class="language-c++">static void ggml_compute_forward_mul_mat(
+        const struct ggml_compute_params * params,
+        const struct ggml_tensor * src0,
+        const struct ggml_tensor * src1,
+              struct ggml_tensor * dst) {
+    int64_t t0 = ggml_perf_time_us();
+    UNUSED(t0);
+
+    GGML_TENSOR_BINARY_OP_LOCALS
+
+    const int ith = params-&gt;ith;
+    const int nth = params-&gt;nth;
+
+    const enum ggml_type type = src0-&gt;type;
+
+    const bool src1_cont = ggml_is_contiguous(src1);
+
+    ggml_vec_dot_t    const vec_dot               = type_traits[type].vec_dot;
+    enum ggml_type    const vec_dot_type          = type_traits[type].vec_dot_type;
+    ggml_from_float_t const from_float_to_vec_dot = type_traits[vec_dot_type].from_float;
+
+    GGML_ASSERT(ne0 == ne01);
+    GGML_ASSERT(ne1 == ne11);
+    GGML_ASSERT(ne2 == ne12);
+    GGML_ASSERT(ne3 == ne13);
+
+    // we don't support permuted src0 or src1
+    GGML_ASSERT(nb00 == ggml_type_size(type));
+    GGML_ASSERT(nb10 == ggml_type_size(src1-&gt;type));
+
+    // dst cannot be transposed or permuted
+    GGML_ASSERT(nb0 == sizeof(float));
+    GGML_ASSERT(nb0 &lt;= nb1);
+    GGML_ASSERT(nb1 &lt;= nb2);
+    GGML_ASSERT(nb2 &lt;= nb3);
+
+    // broadcast factors
+    const int64_t r2 = ne12/ne02;
+    const int64_t r3 = ne13/ne03;
+
+    // nb01 &gt;= nb00 - src0 is not transposed
+    //   compute by src0 rows
+
+#if defined(GGML_USE_CLBLAST)
+    if (ggml_cl_can_mul_mat(src0, src1, dst)) {
+        if (params-&gt;ith == 0 &amp;&amp; params-&gt;type == GGML_TASK_COMPUTE) {
+            ggml_cl_mul_mat(src0, src1, dst, params-&gt;wdata, params-&gt;wsize);
+        }
+        return;
+    }
+#endif
+
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+    if (ggml_compute_forward_mul_mat_use_blas(src0, src1, dst)) {
+        if (params-&gt;ith != 0) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_INIT) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_FINALIZE) {
+            return;
+        }
+
+        for (int64_t i13 = 0; i13 &lt; ne13; i13++) {
+            for (int64_t i12 = 0; i12 &lt; ne12; i12++) {
+                // broadcast src0 into src1 across 2nd,3rd dimension
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const void  * x = (char *)            src0-&gt;data + i02*nb02 + i03*nb03;
+                const float * y = (float *) ((char *) src1-&gt;data + i12*nb12 + i13*nb13);
+
+                float * d = (float *) ((char *) dst-&gt;data + i12*nb2 + i13*nb3);
+
+                if (type != GGML_TYPE_F32) {
+                            float * const wdata    = params-&gt;wdata;
+                    ggml_to_float_t const to_float = type_traits[type].to_float;
+
+                    size_t id = 0;
+                    for (int64_t i01 = 0; i01 &lt; ne01; ++i01) {
+                        to_float((const char *) x + i01*nb01, wdata + id, ne00);
+                        id += ne00;
+                    }
+
+                    assert(id*sizeof(float) &lt;= params-&gt;wsize);
+                    x = wdata;
+                }
+
+                cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                        ne11, ne01, ne10,
+                        1.0f,    y, ne10,
+                                 x, ne00,
+                        0.0f,    d, ne01);
+            }
+        }
+
+        //printf(&quot;CBLAS = %f ms, %d x %d x %d x %d\n&quot;, (ggml_perf_time_us() - t0)/1000.0, ne0, ne1, ne2, ne3);
+
+        return;
+    }
+#endif
+
+    if (params-&gt;type == GGML_TASK_INIT) {
+        if (src1-&gt;type != vec_dot_type) {
+            char * wdata = params-&gt;wdata;
+            const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+            for (int64_t i13 = 0; i13 &lt; ne13; ++i13) {
+                for (int64_t i12 = 0; i12 &lt; ne12; ++i12) {
+                    for (int64_t i11 = 0; i11 &lt; ne11; ++i11) {
+                        from_float_to_vec_dot((float *)((char *) src1-&gt;data + i13*nb13 + i12*nb12 + i11*nb11), (void *) wdata, ne10);
+                        wdata += row_size;
+                    }
+                }
+            }
+        }
+
+        return;
+    }
+
+    if (params-&gt;type == GGML_TASK_FINALIZE) {
+        return;
+    }
+
+    const void * wdata    = (src1-&gt;type == vec_dot_type) ? src1-&gt;data : params-&gt;wdata;
+    const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+    const int64_t nr0 = ne01;           // src0 rows
+    const int64_t nr1 = ne11*ne12*ne13; // src1 rows
+
+    //printf(&quot;nr0 = %lld, nr1 = %lld\n&quot;, nr0, nr1);
+
+    // distribute the thread work across the inner or outer loop based on which one is larger
+
+    const int64_t nth0 = nr0 &gt; nr1 ? nth : 1; // parallelize by src0 rows
+    const int64_t nth1 = nr0 &gt; nr1 ? 1 : nth; // parallelize by src1 rows
+
+    const int64_t ith0 = ith % nth0;
+    const int64_t ith1 = ith / nth0;
+
+    const int64_t dr0 = (nr0 + nth0 - 1)/nth0;
+    const int64_t dr1 = (nr1 + nth1 - 1)/nth1;
+
+    const int64_t ir010 = dr0*ith0;
+    const int64_t ir011 = MIN(ir010 + dr0, nr0);
+
+    const int64_t ir110 = dr1*ith1;
+    const int64_t ir111 = MIN(ir110 + dr1, nr1);
+
+    //printf(&quot;ir010 = %6lld, ir011 = %6lld, ir110 = %6lld, ir111 = %6lld\n&quot;, ir010, ir011, ir110, ir111);
+
+    // threads with no work simply yield (not sure if it helps)
+    if (ir010 &gt;= ir011 || ir110 &gt;= ir111) {
+        sched_yield();
+        return;
+    }
+
+    assert(ne12 % ne02 == 0);
+    assert(ne13 % ne03 == 0);
+
+    // block-tiling attempt
+    const int64_t blck_0 = 16;
+    const int64_t blck_1 = 16;
+
+    // attempt to reduce false-sharing (does not seem to make a difference)
+    float tmp[16];
+
+    for (int64_t iir1 = ir110; iir1 &lt; ir111; iir1 += blck_1) {
+        for (int64_t iir0 = ir010; iir0 &lt; ir011; iir0 += blck_0) {
+            for (int64_t ir1 = iir1; ir1 &lt; iir1 + blck_1 &amp;&amp; ir1 &lt; ir111; ++ir1) {
+                const int64_t i13 = (ir1/(ne12*ne11));
+                const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
+                const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
+
+                // broadcast src0 into src1
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const int64_t i1 = i11;
+                const int64_t i2 = i12;
+                const int64_t i3 = i13;
+
+                const char * src0_row = (const char *) src0-&gt;data + (0 + i02*nb02 + i03*nb03);
+
+                // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
+                //       if it is, then we have either copied the data to params-&gt;wdata and made it contiguous or we are using
+                //       the original src1 data pointer, so we should index using the indices directly
+                // TODO: this is a bit of a hack, we should probably have a better way to handle this
+                const char * src1_col = (const char *) wdata +
+                    (src1_cont || src1-&gt;type != vec_dot_type
+                     ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
+                     : (i11*nb11 + i12*nb12 + i13*nb13));
+
+                float * dst_col = (float *) ((char *) dst-&gt;data + (i1*nb1 + i2*nb2 + i3*nb3));
+
+                //for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                //    vec_dot(ne00, &amp;dst_col[ir0], src0_row + ir0*nb01, src1_col);
+                //}
+
+                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+            }
+        }
+    }
+}
+</code></pre>
+<p>这一开头就来个<code>GGML_TENSOR_BINARY_OP_LOCALS</code>是什么东西？<code>ne0</code>，<code>ne01</code>等等这些变量又是哪里来的？一开始看到这里一定一头雾水。<br>
+我们追根溯源，看看宏定义到底做了什么。</p>
+<pre><code class="language-c++">// in ggml.h
+#define GGML_TENSOR_LOCALS_1(type, prefix, pointer, array) \
+    const type prefix##0 = (pointer)-&gt;array[0]; \
+    GGML_UNUSED(prefix##0);
+#define GGML_TENSOR_LOCALS_2(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_1    (type, prefix, pointer, array) \
+    const type prefix##1 = (pointer)-&gt;array[1]; \
+    GGML_UNUSED(prefix##1);
+#define GGML_TENSOR_LOCALS_3(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_2    (type, prefix, pointer, array) \
+    const type prefix##2 = (pointer)-&gt;array[2]; \
+    GGML_UNUSED(prefix##2);
+#define GGML_TENSOR_LOCALS(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_3  (type, prefix, pointer, array) \
+    const type prefix##3 = (pointer)-&gt;array[3]; \
+    GGML_UNUSED(prefix##3);
+</code></pre>
+<pre><code class="language-c++">// in ggml.c
+#define GGML_TENSOR_BINARY_OP_LOCALS \
+    GGML_TENSOR_LOCALS(int64_t, ne0, src0, ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb0, src0, nb) \
+    GGML_TENSOR_LOCALS(int64_t, ne1, src1, ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb1, src1, nb) \
+    GGML_TENSOR_LOCALS(int64_t, ne,  dst,  ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb,  dst,  nb)
+</code></pre>
+<p>原来，这里是负责定义了一堆局部变量。<br>
+<code>GGML_TENSOR_LOCALS_1(type, prefix, pointer, array)</code>负责定义<code>prefix##0</code>局部变量来存储<code>(pointer)-&gt;array[0]</code>的值。<br>
+注意这里的<code>##</code>的作用是将两个标记拼接成一个新的标记。在宏定义中，这个特性可以用来动态生成标识符，以简化代码和提高代码的灵活性。<code>prefix##0</code> 使用了<code>##</code>，其目的是将 <code>prefix</code> 和 <code>0</code> 拼接成一个新的标记。假设<code>prefix</code>是<code>ne</code>，那么<code>prefix##0</code>就会变成<code>ne0</code>，这是一个合法的标识符。函数里面所使用的那些新的局部变量（的变量名）就是这么来的。<br>
+从<code>GGML_TENSOR_LOCALS</code>调用到<code>GGML_TENSOR_LOCALS_3</code>再到<code>GGML_TENSOR_LOCALS_2</code>再到<code>GGML_TENSOR_LOCALS_1</code>，<code>prefix##0</code>到<code>prefix##3</code>依次被<code>(pointer)-&gt;array[0]</code>到<code>(pointer)-&gt;array[3]</code>赋值初始化。<br>
+<code>GGML_TENSOR_BINARY_OP_LOCALS</code>则针对<code>src0</code>，<code>src1</code>和<code>dst</code>的<code>ne</code>和<code>nb</code>分别使用了<code>GGML_TENSOR_LOCALS</code>，就有了我们在函数中看到的那一堆局部变量了。<br>
+之后，检查是否可以使用 OpenCL 加速（CLBLAST）或 BLAS 库（OpenBLAS/Accelerate）。如果可以，则调用相应的矩阵乘法函数加速计算。</p>
+<pre><code class="language-c++">#if defined(GGML_USE_CLBLAST)
+    if (ggml_cl_can_mul_mat(src0, src1, dst)) {
+        if (params-&gt;ith == 0 &amp;&amp; params-&gt;type == GGML_TASK_COMPUTE) {
+            ggml_cl_mul_mat(src0, src1, dst, params-&gt;wdata, params-&gt;wsize);
+        }
+        return;
+    }
+#endif
+
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+    if (ggml_compute_forward_mul_mat_use_blas(src0, src1, dst)) {
+        if (params-&gt;ith != 0) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_INIT) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_FINALIZE) {
+            return;
+        }
+
+        for (int64_t i13 = 0; i13 &lt; ne13; i13++) {
+            for (int64_t i12 = 0; i12 &lt; ne12; i12++) {
+                // broadcast src0 into src1 across 2nd,3rd dimension
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const void  * x = (char *)            src0-&gt;data + i02*nb02 + i03*nb03;
+                const float * y = (float *) ((char *) src1-&gt;data + i12*nb12 + i13*nb13);
+
+                float * d = (float *) ((char *) dst-&gt;data + i12*nb2 + i13*nb3);
+
+                if (type != GGML_TYPE_F32) {
+                            float * const wdata    = params-&gt;wdata;
+                    ggml_to_float_t const to_float = type_traits[type].to_float;
+
+                    size_t id = 0;
+                    for (int64_t i01 = 0; i01 &lt; ne01; ++i01) {
+                        to_float((const char *) x + i01*nb01, wdata + id, ne00);
+                        id += ne00;
+                    }
+
+                    assert(id*sizeof(float) &lt;= params-&gt;wsize);
+                    x = wdata;
+                }
+
+                cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                        ne11, ne01, ne10,
+                        1.0f,    y, ne10,
+                                 x, ne00,
+                        0.0f,    d, ne01);
+            }
+        }
+
+        //printf(&quot;CBLAS = %f ms, %d x %d x %d x %d\n&quot;, (ggml_perf_time_us() - t0)/1000.0, ne0, ne1, ne2, ne3);
+
+        return;
+    }
+#endif
+</code></pre>
+<ul>
+<li>GGML_TASK_INIT：初始化阶段，用来将 src1 中的 float 类型数据转换为适合进行矩阵乘法的类型（vec_dot_type），并将其存储在一个临时缓冲区 wdata 中，以便之后的计算使用。</li>
+<li>GGML_TASK_FINALIZE：结束阶段，什么也不做，只是标记计算结束。</li>
+</ul>
+<pre><code class="language-c++">    if (params-&gt;type == GGML_TASK_INIT) {
+        if (src1-&gt;type != vec_dot_type) {
+            char * wdata = params-&gt;wdata;
+            const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+            for (int64_t i13 = 0; i13 &lt; ne13; ++i13) {
+                for (int64_t i12 = 0; i12 &lt; ne12; ++i12) {
+                    for (int64_t i11 = 0; i11 &lt; ne11; ++i11) {
+                        from_float_to_vec_dot((float *)((char *) src1-&gt;data + i13*nb13 + i12*nb12 + i11*nb11), (void *) wdata, ne10);
+                        wdata += row_size;
+                    }
+                }
+            }
+        }
+
+        return;
+    }
+</code></pre>
+<p>后面这部分代码主要是任务的分配。<br>
+（<code>nth0</code>和<code>nth1</code>）先是看一下<code>src0</code>和<code>src1</code>谁的行数多（<code>nr0</code>和<code>nr1</code>），谁多就按谁来并行。<br>
+（<code>ith0</code>和<code>ith1</code>）然后，计算当前线程应该处理<code>src0</code>和<code>src</code>的哪部分。<br>
+我们可以这样理解这个公式：假设<code>nth</code>是4，</p>
+<ul>
+<li>如果<code>nth0</code>是4，那么<code>ith0</code>就是<code>[0, 3]</code>也就是处理四个不同的部分，<code>ith1</code>则只能是0</li>
+<li>如果<code>nth0</code>是1，那么<code>ith0</code>只能是0，而<code>ith1</code>可以是<code>[0, 3]</code>。</li>
+</ul>
+<p>（<code>dr0</code>和<code>dr1</code>）然后，计算每个线程应该分别处理多少行<code>src0</code>和<code>src1</code>。这里就是用总行数对<code>nth0</code>和<code>nth1</code>做商的向上取整。<br>
+（<code>ir010</code>和<code>ir011</code>）有了负责的部分（<code>ith0</code>）以及每个部分的行数<code>dr0</code>，我们就可以计算线程对<code>src0</code>的处理范围了，即处理<code>src0</code>的起始行（<code>dr0*ith0</code>）和终止行（<code>MIN(ir010 + dr0, nr0)</code>）。<br>
+（<code>ir110</code>和<code>ir111</code>）同上，线程处理 <code>src1</code> 的起始行和结束行。</p>
+<pre><code class="language-c++">    const void * wdata    = (src1-&gt;type == vec_dot_type) ? src1-&gt;data : params-&gt;wdata;
+    const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+    const int64_t nr0 = ne01;           // src0 rows
+    const int64_t nr1 = ne11*ne12*ne13; // src1 rows
+
+    //printf(&quot;nr0 = %lld, nr1 = %lld\n&quot;, nr0, nr1);
+
+    // distribute the thread work across the inner or outer loop based on which one is larger
+
+    const int64_t nth0 = nr0 &gt; nr1 ? nth : 1; // parallelize by src0 rows
+    const int64_t nth1 = nr0 &gt; nr1 ? 1 : nth; // parallelize by src1 rows
+
+    const int64_t ith0 = ith % nth0;
+    const int64_t ith1 = ith / nth0;
+
+    const int64_t dr0 = (nr0 + nth0 - 1)/nth0;
+    const int64_t dr1 = (nr1 + nth1 - 1)/nth1;
+
+    const int64_t ir010 = dr0*ith0;
+    const int64_t ir011 = MIN(ir010 + dr0, nr0);
+
+    const int64_t ir110 = dr1*ith1;
+    const int64_t ir111 = MIN(ir110 + dr1, nr1);
+</code></pre>
+<p>接下来是计算。首先是一个矩阵的分块。外两层循环每次加<code>blck_0</code>和<code>blck_1</code>，然后内两层循环处理该block内的数据。其中第三层循环增加<code>src1</code>的一列，第四层循环增加<code>src0</code>的一行。第四层循环算完会得到结果的一列（通过<code>src1</code>的一列和block内<code>src0</code>的所有行），再把结果<code>memcpy</code>到<code>dst_col</code>。</p>
+<pre><code class="language-c++">    // block-tiling attempt
+    const int64_t blck_0 = 16;
+    const int64_t blck_1 = 16;
+
+    // attempt to reduce false-sharing (does not seem to make a difference)
+    float tmp[16];
+
+    for (int64_t iir1 = ir110; iir1 &lt; ir111; iir1 += blck_1) {
+        for (int64_t iir0 = ir010; iir0 &lt; ir011; iir0 += blck_0) {
+            for (int64_t ir1 = iir1; ir1 &lt; iir1 + blck_1 &amp;&amp; ir1 &lt; ir111; ++ir1) {
+                // -- snip --
+                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+            }
+        }
+    }
+</code></pre>
+<p>第三层循环内的开头是一个一维索引到三维索引的重新计算。我们可以这样理解这个公式：</p>
+<ul>
+<li>ir1在三维张量中首先跨过了多少“深度”（<code>ne12 * ne11</code>表示一个完整的平面大小）。所以这步是在第 2 维度上跨过多少个完整的<code>ne11 x ne12</code>大小的平面。</li>
+<li>在确定<code>i13</code>之后，减去i13对应的展平索引所跨过的部分，剩下的就是在<code>ne11 * ne12</code>这个平面中的位置。接下来，用这个剩余部分除以<code>ne11</code>，得到<code>i12</code>，即在第 1 维度上的索引。</li>
+<li>最后，减去<code>i13</code>和<code>i12</code>跨过的部分，剩下的就是在第 0 维度上的索引<code>i11</code>。它表示当前<code>ir1</code>在这个平面中，具体的第 0 维度上的位置。</li>
+</ul>
+<pre><code class="language-c++">                const int64_t i13 = (ir1/(ne12*ne11));
+                const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
+                const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
+</code></pre>
+<p>通过 r2 和 r3 将 src0 的较小维度广播到 src1，以适应后者较大的维度。具体地说，i03 和 i02 通过除以广播因子将 src1 的索引转换为 src0 的索引，以正确地在较大的张量上应用较小张量的值。<br>
+例如，如果 i13 = 4，r3 = 3，则 i03 = 4 / 3 = 1，表示 src0 的第 3 维的第 1 个元素会被应用于 src1 的第 4 个位置。</p>
+<pre><code class="language-c++">                // broadcast src0 into src1
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+</code></pre>
+<p>针对 src1 的多维索引（例如 i11, i12, i13）直接映射到 dst 中的对应维度位置。这表明在 dst 中的元素将与 src1 的这些维度一一对应。</p>
+<pre><code class="language-c++">                const int64_t i1 = i11;
+                const int64_t i2 = i12;
+                const int64_t i3 = i13;
+</code></pre>
+<p>计算<code>src0</code>的行起始位置（block中的第一行）。</p>
+<pre><code class="language-c++">                const char * src0_row = (const char *) src0-&gt;data + (0 + i02*nb02 + i03*nb03);
+</code></pre>
+<p>计算<code>src1_col</code>和<code>dst_col</code>的位置。这里如果<code>src1</code>是连续的则使用<code>ne</code>和<code>row_size</code>来计算，否则使用<code>nb</code>来计算（<strong>为什么？</strong>）。</p>
+<pre><code class="language-c++">                const char * src1_col = (const char *) wdata +
+                    (src1_cont || src1-&gt;type != vec_dot_type
+                     ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
+                     : (i11*nb11 + i12*nb12 + i13*nb13));
+
+                float * dst_col = (float *) ((char *) dst-&gt;data + (i1*nb1 + i2*nb2 + i3*nb3));
+</code></pre>
+<p>最后，算出结果中的一列。这里依次把block里面<code>src0</code>的各行与<code>src1</code>的对应列做向量点乘，把结果放到<code>tmp</code>中，再把<code>tmp</code>的结果放到<code>dst_col</code>即对应列中。</p>
+<pre><code class="language-c++">                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+</code></pre>
+<p>这样一来，<code>ggml.c</code>中的<code>ggml_compute_forward_mul_mat</code>就结束了。</p>
+<h2 id="ggml_cuda_mul_mat">ggml_cuda_mul_mat</h2>
+<p>对于<code>GGML_USE_CUBLAS</code>为<code>True</code>的情况，<code>GGML_OP_MUL_MAT</code>会调用到<code>ggml_cuda_mul_mat</code>。<br>
+<code>ggml_cuda_mul_mat</code>会通过检查输入张量的类型、内存布局、计算能力等条件，来选择最适合的矩阵乘法计算方法。</p>
+<pre><code class="language-c++">static void ggml_cuda_mul_mat(const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst) {
+    const bool all_on_device =
+        (src0-&gt;backend == GGML_BACKEND_GPU || src0-&gt;backend == GGML_BACKEND_GPU_SPLIT) &amp;&amp;
+        (src1-&gt;backend == GGML_BACKEND_GPU) &amp;&amp;
+        ( dst-&gt;backend == GGML_BACKEND_GPU);
+
+    const bool split = src0-&gt;backend == GGML_BACKEND_GPU_SPLIT;
+
+    int64_t min_compute_capability = INT_MAX;
+    for (int64_t id = 0; id &lt; g_device_count; ++id) {
+        if (min_compute_capability &gt; g_compute_capabilities[id] &amp;&amp; g_tensor_split[id] &lt; (id + 1 &lt; g_device_count ? g_tensor_split[id + 1] : 1.0f)) {
+            min_compute_capability = g_compute_capabilities[id];
+        }
+    }
+
+#ifdef CUDA_USE_TENSOR_CORES
+    const bool use_tensor_cores = true;
+#else
+    const bool use_tensor_cores = false;
+#endif
+
+    // debug helpers
+    //printf(&quot;src0: %8d %8d %8d %8d\n&quot;, src0-&gt;ne[0], src0-&gt;ne[1], src0-&gt;ne[2], src0-&gt;ne[3]);
+    //printf(&quot;      %8d %8d %8d %8d\n&quot;, src0-&gt;nb[0], src0-&gt;nb[1], src0-&gt;nb[2], src0-&gt;nb[3]);
+    //printf(&quot;src1: %8d %8d %8d %8d\n&quot;, src1-&gt;ne[0], src1-&gt;ne[1], src1-&gt;ne[2], src1-&gt;ne[3]);
+    //printf(&quot;      %8d %8d %8d %8d\n&quot;, src1-&gt;nb[0], src1-&gt;nb[1], src1-&gt;nb[2], src1-&gt;nb[3]);
+    //printf(&quot;src0 is contiguous %d, transposed %d, type = %s, name = %s\n&quot;, ggml_is_contiguous(src0), ggml_is_transposed(src0), ggml_type_name(src0-&gt;type), src0-&gt;name);
+    //printf(&quot;src1 is contiguous %d, transposed %d, type = %s, name = %s\n&quot;, ggml_is_contiguous(src1), ggml_is_transposed(src1), ggml_type_name(src1-&gt;type), src1-&gt;name);
+
+    if (!split &amp;&amp; all_on_device &amp;&amp; !use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; ggml_is_permuted(src0) &amp;&amp; ggml_is_permuted(src1) &amp;&amp; src1-&gt;ne[1] == 1) {
+        // KQ single-batch
+        ggml_cuda_mul_mat_vec_p021(src0, src1, dst);
+    } else if (!split &amp;&amp; all_on_device &amp;&amp; !use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; !ggml_is_contiguous(src0) &amp;&amp; !ggml_is_transposed(src1) &amp;&amp; src1-&gt;ne[1] == 1) {
+        // KQV single-batch
+        ggml_cuda_mul_mat_vec_nc(src0, src1, dst);
+    } else if (!split &amp;&amp; all_on_device &amp;&amp; use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; src1-&gt;type == GGML_TYPE_F32 &amp;&amp; !ggml_is_transposed(src0) &amp;&amp; !ggml_is_transposed(src1)) {
+        // KQ + KQV multi-batch
+        ggml_cuda_mul_mat_mat_batched_cublas(src0, src1, dst);
+    } else if (src0-&gt;type == GGML_TYPE_F32) {
+        ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_cublas, false);
+    } else if (ggml_is_quantized(src0-&gt;type) || src0-&gt;type == GGML_TYPE_F16) {
+        if (src1-&gt;ne[1] == 1 &amp;&amp; src0-&gt;ne[0] % GGML_CUDA_DMMV_X == 0) {
+#ifdef GGML_CUDA_FORCE_DMMV
+            const bool use_mul_mat_vec_q = false;
+#else
+            const bool use_mul_mat_vec_q = min_compute_capability &gt;= MIN_CC_DP4A &amp;&amp; ggml_is_quantized(src0-&gt;type);
+#endif // GGML_CUDA_FORCE_DMMV
+
+            if (use_mul_mat_vec_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_dequantize_mul_mat_vec, false);
+            }
+        } else {
+            bool use_mul_mat_q = min_compute_capability &gt;= MIN_CC_DP4A &amp;&amp; ggml_is_quantized(src0-&gt;type);
+
+            // when tensor cores are available, use them for large batch size
+            // ref: https://github.com/ggerganov/llama.cpp/pull/3776
+            if (use_tensor_cores &amp;&amp; min_compute_capability &gt;= CC_VOLTA &amp;&amp; src1-&gt;ne[1] &gt; MMQ_MAX_BATCH_SIZE) {
+                use_mul_mat_q = false;
+            }
+
+            if (use_mul_mat_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_cublas, false);
+            }
+        }
+    } else {
+        GGML_ASSERT(false);
+    }
+}
+</code></pre>
+<p>对于<code>src0</code>是量化类型，且<code>src1</code>是列向量的情况，代码会根据<a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities">GPU计算能力</a>选择是直接使用量化的矩阵乘法（<code>ggml_cuda_op_mul_mat_vec_q</code>），还是先进行去量化（<code>ggml_cuda_op_dequantize_mul_mat_vec</code>）。</p>
+<pre><code class="language-c++">            if (use_mul_mat_vec_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_dequantize_mul_mat_vec, false);
+            }
+</code></pre>
+<p><code>ggml_cuda_op_mul_mat</code>的函数签名如下。注意这里最后一个参数<code>covert_src1_to_q8_1</code>如果为<code>true</code>，则会尝试调用<code>quantize_q8_1</code>对输入<code>src1</code>进行量化。</p>
+<pre><code class="language-c++">static void ggml_cuda_op_mul_mat(
+    const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, ggml_cuda_op_mul_mat_t op,
+    const bool convert_src1_to_q8_1) 
+</code></pre>
+<h3 id="mul_mat_vec_q">mul_mat_vec_q</h3>
+<p><code>ggml_cuda_op_mul_mat_vec_q</code>基于输入的量化数据类型，选择合适的函数。</p>
+<pre><code class="language-c++">inline void ggml_cuda_op_mul_mat_vec_q(
+    const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, const char * src0_dd_i, const float * src1_ddf_i,
+    const char * src1_ddq_i, float * dst_dd_i, const int64_t row_low, const int64_t row_high, const int64_t src1_ncols,
+    const int64_t src1_padded_row_size, const cudaStream_t &amp; stream) {
+
+    const int64_t ne00 = src0-&gt;ne[0];
+    const int64_t row_diff = row_high - row_low;
+
+    switch (src0-&gt;type) {
+        case GGML_TYPE_Q4_0:
+            mul_mat_vec_q4_0_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q4_1:
+            mul_mat_vec_q4_1_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_0:
+            mul_mat_vec_q5_0_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_1:
+            mul_mat_vec_q5_1_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q8_0:
+            mul_mat_vec_q8_0_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q2_K:
+            mul_mat_vec_q2_K_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q3_K:
+            mul_mat_vec_q3_K_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q4_K:
+            mul_mat_vec_q4_K_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_K:
+            mul_mat_vec_q5_K_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q6_K:
+            mul_mat_vec_q6_K_q8_1_cuda(src0_dd_i, src1_ddq_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        default:
+            GGML_ASSERT(false);
+            break;
+    }
+
+    (void) src1;
+    (void) dst;
+    (void) src1_ddf_i;
+    (void) src1_ncols;
+    (void) src1_padded_row_size;
+}
+</code></pre>
+<p>但事实上，这些函数都会调到<code>mul_mat_vec_q</code>。<br>
+以<code>GGML_TYPE_Q4_0</code>为例：</p>
+<pre><code class="language-c++">static void mul_mat_vec_q4_0_q8_1_cuda(const void * vx, const void * vy, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    GGML_ASSERT(ncols % QK4_0 == 0);
+    const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
+    const dim3 block_nums(block_num_y, 1, 1);
+    const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
+    mul_mat_vec_q&lt;QK4_0, QI4_0, block_q4_0, VDR_Q4_0_Q8_1_MMVQ, vec_dot_q4_0_q8_1&gt;
+        &lt;&lt;&lt;block_nums, block_dims, 0, stream&gt;&gt;&gt;(vx, vy, dst, ncols, nrows);
+}
+</code></pre>
+<p>看到<code>__global__</code>了吗？这里我们正式进入到了在GPU上执行的kernel。</p>
+<pre><code class="language-c++">template &lt;int qk, int qi, typename block_q_t, int vdr, vec_dot_q_cuda_t vec_dot_q_cuda&gt;
+static __global__ void mul_mat_vec_q(const void * __restrict__ vx, const void * __restrict__ vy, float * __restrict__ dst, const int ncols, const int nrows) {
+    const int row = blockIdx.x*blockDim.y + threadIdx.y;
+
+    if (row &gt;= nrows) {
+        return;
+    }
+
+    const int blocks_per_row = ncols / qk;
+    const int blocks_per_warp = vdr * WARP_SIZE / qi;
+
+// partial sum for each thread
+    float tmp = 0.0f;
+
+    const block_q_t  * x = (const block_q_t  *) vx;
+    const block_q8_1 * y = (const block_q8_1 *) vy;
+
+    for (int i = 0; i &lt; blocks_per_row; i += blocks_per_warp) {
+        const int ibx = row*blocks_per_row + i + threadIdx.x / (qi/vdr); // x block index
+
+        const int iby = (i + threadIdx.x / (qi/vdr)) * (qk/QK8_1); // y block index that aligns with ibx
+
+        const int iqs  = vdr * (threadIdx.x % (qi/vdr)); // x block quant index when casting the quants to int
+
+        tmp += vec_dot_q_cuda(&amp;x[ibx], &amp;y[iby], iqs);
+    }
+
+    // sum up partial sums and write back result
+#pragma unroll
+    for (int mask = 16; mask &gt; 0; mask &gt;&gt;= 1) {
+        tmp += __shfl_xor_sync(0xffffffff, tmp, mask, 32);
+    }
+
+    if (threadIdx.x == 0) {
+        dst[row] = tmp;
+    }
+}
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[PowerInfer源码解析（二）：计算图构建与算子调用]]></title>
+        <id>https://alleny.xyz/post/powerinfer-source-analysis-2/</id>
+        <link href="https://alleny.xyz/post/powerinfer-source-analysis-2/">
+        </link>
+        <updated>2024-09-25T09:26:51.000Z</updated>
+        <summary type="html"><![CDATA[<p>上篇文章概括了PowerInfer的模型加载过程，这次我们来看一看推理时的流程。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>上篇文章概括了PowerInfer的模型加载过程，这次我们来看一看推理时的流程。</p>
+<!-- more -->
+<h2 id="相关">相关</h2>
+<ul>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-1/">PowerInfer源码解析（一）：模型加载</a>。</li>
+</ul>
+<h2 id="计算图构建">计算图构建</h2>
+<p>让我们回到<code>examples/main/main.cpp:main</code>，模型在加载之后，又经过了一堆推理时的参数准备，最终调用<code>llama_decode</code>进行推理。</p>
+<pre><code class="language-c++">int main(int argc, char ** argv) {
+    // -- snip --
+                for (int i = 0; i &lt; (int) embd.size(); i += params.n_batch) {
+                int n_eval = (int) embd.size() - i;
+                if (n_eval &gt; params.n_batch) {
+                    n_eval = params.n_batch;
+                }
+
+                LOG(&quot;eval: %s\n&quot;, LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
+
+                if (llama_decode(ctx, llama_batch_get_one(&amp;embd[i], n_eval, n_past, 0))) {
+                    LOG_TEE(&quot;%s : failed to eval\n&quot;, __func__);
+                    return 1;
+                }
+
+                n_past += n_eval;
+
+                LOG(&quot;n_past = %d\n&quot;, n_past);
+            }
+    // -- snip --
+}
+</code></pre>
+<p><code>llama_decode</code>会调用到<code>llama_decode_internal</code>，<code>llama_decode_internal</code>则会使用<code>llama_build_graph</code>来构建计算图。<br>
+对于<code>LLM_ARCH_LLAMA</code>和<code>LLM_ARCH_BAMBOO</code>模型架构，PowerInfer调用<code>llm.build_llama_variants</code>来生成计算图（替代了原有的<code>llm.build_llama</code>函数）。<br>
+对原先的<code>build_llama</code>而言，新的<code>build_llama_variants</code>的区别主要在于，对于使用sparse inference的情况，PowerInfer会使用单独的<code>llm_build_ffn_sparse</code>（区别于<code>llm_build_ffn</code>）来生成FFN部分。</p>
+<pre><code class="language-c++">    struct ggml_cgraph * build_llama_variants() {
+        // -- snip --
+                if (llama_use_sparse_inference(&amp;model)) {
+                    llm_build_cb_short cbs = [&amp;](ggml_tensor * cur, const char * name) {
+                        std::string name_str = std::string(name) + &quot;-&quot; + std::to_string(il);
+                        ggml_set_name(cur, name_str.c_str());
+                    };
+                    // We only offload the ffn input to GPU if all neurons are offloaded
+                    if (model.layers[il].gpu_offload_ratio &gt;= 1.) {
+                        cb(cur, &quot;ffn_norm&quot;, il);
+                    } else {
+                        cbs(cur, &quot;ffn_norm&quot;);
+                    }
+                    cur = llm_build_ffn_sparse(ctx0, cur,
+                        model.layers[il].ffn_up,   NULL,
+                        model.layers[il].ffn_gate, NULL,
+                        model.layers[il].ffn_down_t, NULL,
+                        model.layers[il].mlp_pre_w1,
+                        model.layers[il].mlp_pre_w2,
+                        ffn_inp, // as for now, llama's pred use the same input as the ffn
+                        model.layers[il].gpu_idx, 
+                        model.layers[il].gpu_bucket, model.layers[il].ffn_gate_gpu, model.layers[il].ffn_down_gpu, model.layers[il].ffn_up_gpu,
+                        LLM_FFN_RELU, gate_type, model.layers[il].gpu_offload_ratio, cbs);
+                } else {
+                    // fallback to dense
+                    cb(cur, &quot;ffn_norm&quot;, il);
+                    llm_ffn_op_type   act_type = model.arch == LLM_ARCH_BAMBOO ? LLM_FFN_RELU : LLM_FFN_SILU;
+                    cur = llm_build_ffn(ctx0, cur,
+                        model.layers[il].ffn_up,   NULL,
+                        model.layers[il].ffn_gate, NULL,
+                        model.layers[il].ffn_down, NULL,
+                        act_type, gate_type, cb, il);
+                }
+    // -- snip --
+}
+</code></pre>
+<p>在<code>llm_build_ffn_sparse</code>中我们可以具体看见FFN部分是如何被构建的。我们可以先看一下原版Llama的MLP的具体架构。<br>
+<img src="https://alleny.xyz/post-images/1727258017810.png" alt="" loading="lazy"><br>
+图中的Gate，Up和Down均为线性层。即Llama的MLP的输入会一边经过Gate然后激活函数，另一边经过Up，最后两者乘起来再经过Down，最终得到MLP的输出。<br>
+至于PowerInfer，则在前面加了一个Predictor用来预测当前层的哪些neurons会被激活。并且，这些neurons可能是分别分布在GPU和CPU上的，同时还要考虑利用到激活的稀疏性，因此还会调用特制的算子来进行计算。<br>
+<img src="https://alleny.xyz/post-images/1727323918446.png" alt="" loading="lazy"><br>
+于是来看看代码。</p>
+<pre><code class="language-c++">static struct ggml_tensor * llm_build_ffn_sparse(
+        struct ggml_context * ctx,
+         struct ggml_tensor * cur,
+         struct ggml_tensor * up,
+         struct ggml_tensor * up_b,
+         struct ggml_tensor * gate,
+         struct ggml_tensor * gate_b,
+         struct ggml_tensor * down_t,
+         struct ggml_tensor * down_b,
+         struct ggml_tensor * pre_w1,
+         struct ggml_tensor * pre_w2,
+         struct ggml_tensor * pred_inpl,
+         struct ggml_tensor * gpu_index,
+         struct ggml_tensor * gpu_bucket,
+         struct ggml_tensor * gate_gpu,
+         struct ggml_tensor * down_gpu,
+         struct ggml_tensor * up_gpu,
+            llm_ffn_op_type   type_op,
+          llm_ffn_gate_type   type_gate,
+                     double   gpu_offload_ratio,
+   const llm_build_cb_short &amp; cb_outer) {
+    bool full_gpu = gpu_offload_ratio &gt;= 1.0;
+    ggml_tensor * ffn_input = cur;
+
+    llm_build_cb_short cb = [&amp;cb_outer](struct ggml_tensor * tensor, const char * name) {
+        cb_outer(tensor, name);
+#if defined(GGML_USE_CUBLAS)
+        // Determine offloading based on src[0] (weight for both mul and axpy)
+        bool operates_on_gpu = tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_GPU;
+        if (operates_on_gpu) {
+            ggml_cuda_assign_buffers_no_alloc(tensor);
+        }
+#endif
+    };
+
+    // prepare sparse idx
+    ggml_tensor * idx = ggml_mul_mat(ctx, pre_w1, pred_inpl);
+    cb(idx, &quot;mlp_pre_hidden&quot;);
+    idx = ggml_relu(ctx, idx);
+    cb(idx, &quot;mlp_pre_relu&quot;);
+    idx = ggml_mul_mat(ctx, pre_w2, idx);
+    // If the FFN layer is not fully offloaded, we need to transfer the sparsity index
+    // back to the CPU to avoid synchronization issues.
+    (full_gpu ? cb : cb_outer)(idx, &quot;mlp_pre_out&quot;);
+
+    auto act_fn = [&amp;](ggml_tensor * tensor, const char * name) {
+        switch (type_op) {
+            case LLM_FFN_RELU:
+                {
+                    tensor = ggml_relu(ctx, tensor);
+                    cb(tensor, name);
+                } break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported activation function&quot;);
+        }
+        return tensor;
+    };
+
+    // FFN up
+    struct ggml_tensor * up_out = llm_build_sparse_mul_mat(ctx, up, ffn_input, idx, up_gpu, gpu_index, gpu_bucket, cb_outer, &quot;up&quot;, full_gpu);
+    if (up_b) {
+        up_out = ggml_add(ctx, up_out, up_b);
+        cb(up_out, &quot;ffn_up_b&quot;);
+    }
+
+    struct ggml_tensor * gate_out = nullptr;
+    if (gate) {
+        ggml_tensor * gate_input = (type_gate == LLM_FFN_PAR || type_gate == LLM_FFN_SYM) ? ffn_input : up_out;
+        gate_out = llm_build_sparse_mul_mat(ctx, gate, gate_input, idx, gate_gpu, gpu_index, gpu_bucket, cb_outer, &quot;gate&quot;, full_gpu);
+        if (gate_b) {
+            gate_out = ggml_add(ctx, gate_out, gate_b);
+            cb(gate_out, &quot;ffn_gate_b&quot;);
+        }
+        switch (type_gate) {
+            case LLM_FFN_PAR:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, up_out);
+                    cb(cur, &quot;ffn_gate_par&quot;);
+                } break;
+            case LLM_FFN_SYM:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    ggml_tensor * act_up = act_fn(up_out, &quot;ffn_up_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, act_up);
+                    cb(cur, &quot;ffn_gate_sym&quot;);
+                } break;
+            case LLM_FFN_SEQ:
+                {
+                    cur = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                } break;
+            default: GGML_ASSERT(false &amp;&amp; &quot;unsupported gate type&quot;);
+        }
+    } else {
+        cur = act_fn(up_out, &quot;ffn_up_act&quot;);
+    }
+
+    cur = llm_build_sparse_axpy(ctx, down_t, cur, idx, down_gpu, gpu_index, gpu_bucket, cb_outer, &quot;down&quot;, full_gpu);
+
+    if (down_b) {
+        cur = ggml_add(ctx, cur, down_b);
+        cb(cur, &quot;ffn_down_b&quot;);
+    }
+
+    return cur;
+}
+</code></pre>
+<p>让我们来具体看一下里面的内容。<br>
+首先是一个矩阵乘、一个ReLU、再一个矩阵乘，组成了predictor部分，张量名字分别为<code>mlp_pre_hidden</code>、<code>mlp_pre_relu</code>和<code>mlp_pre_out</code>，最终得到sparse idx，即哪些neurons会被激活的预测结果。</p>
+<pre><code class="language-c++">    // prepare sparse idx
+    ggml_tensor * idx = ggml_mul_mat(ctx, pre_w1, pred_inpl);
+    cb(idx, &quot;mlp_pre_hidden&quot;);
+    idx = ggml_relu(ctx, idx);
+    cb(idx, &quot;mlp_pre_relu&quot;);
+    idx = ggml_mul_mat(ctx, pre_w2, idx);
+    // If the FFN layer is not fully offloaded, we need to transfer the sparsity index
+    // back to the CPU to avoid synchronization issues.
+    (full_gpu ? cb : cb_outer)(idx, &quot;mlp_pre_out&quot;);
+</code></pre>
+<p>定义了后续所使用的激活函数，目前只支持ReLU。</p>
+<pre><code class="language-c++">    auto act_fn = [&amp;](ggml_tensor * tensor, const char * name) {
+        switch (type_op) {
+            case LLM_FFN_RELU:
+                {
+                    tensor = ggml_relu(ctx, tensor);
+                    cb(tensor, name);
+                } break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported activation function&quot;);
+        }
+        return tensor;
+    };
+</code></pre>
+<p>回忆Llama MLP的结构，首先一边是<code>ffn_up</code>。</p>
+<pre><code class="language-c++">    // FFN up
+    struct ggml_tensor * up_out = llm_build_sparse_mul_mat(ctx, up, ffn_input, idx, up_gpu, gpu_index, gpu_bucket, cb_outer, &quot;up&quot;, full_gpu);
+    if (up_b) {
+        up_out = ggml_add(ctx, up_out, up_b);
+        cb(up_out, &quot;ffn_up_b&quot;);
+    }
+</code></pre>
+<p>另一边是<code>ffn_gate</code>以及后续的激活函数。<br>
+注意这里又有一个gate类型的选择。其类型分别有：</p>
+<ul>
+<li><code>LLM_FFN_SEQ</code>：<code>ffn_gate</code>和<code>ffn_up</code>的计算是顺序的，先计算<code>ffn_up</code>，再把<code>ffn_up</code>的结果作为<code>ffn_gate</code>的输入。</li>
+<li><code>LLM_FFN_PAR</code>：<code>ffn_gate</code>与<code>ffn_up</code>的计算是并行的。<code>ffn_gate</code>的输入是<code>ffn_input</code>，等输入经过<code>ffn_gate</code>和激活函数后再和<code>up_out</code>相乘。</li>
+<li><code>LLM_FFN_SYM</code>：与<code>LLM_FFN_PAR</code>的区别是，<code>up_out</code>也要先经过激活函数才与<code>ffn_gate_act</code>相乘。<br>
+最后，结果会再经过<code>ffn_down</code>，进行一个axpy操作，得到最终结果。</li>
+</ul>
+<pre><code class="language-c++">    struct ggml_tensor * gate_out = nullptr;
+    if (gate) {
+        ggml_tensor * gate_input = (type_gate == LLM_FFN_PAR || type_gate == LLM_FFN_SYM) ? ffn_input : up_out;
+        gate_out = llm_build_sparse_mul_mat(ctx, gate, gate_input, idx, gate_gpu, gpu_index, gpu_bucket, cb_outer, &quot;gate&quot;, full_gpu);
+        if (gate_b) {
+            gate_out = ggml_add(ctx, gate_out, gate_b);
+            cb(gate_out, &quot;ffn_gate_b&quot;);
+        }
+        switch (type_gate) {
+            case LLM_FFN_PAR:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, up_out);
+                    cb(cur, &quot;ffn_gate_par&quot;);
+                } break;
+            case LLM_FFN_SYM:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    ggml_tensor * act_up = act_fn(up_out, &quot;ffn_up_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, act_up);
+                    cb(cur, &quot;ffn_gate_sym&quot;);
+                } break;
+            case LLM_FFN_SEQ:
+                {
+                    cur = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                } break;
+            default: GGML_ASSERT(false &amp;&amp; &quot;unsupported gate type&quot;);
+        }
+    } else {
+        cur = act_fn(up_out, &quot;ffn_up_act&quot;);
+    }
+</code></pre>
+<p>需要注意的是，<code>llm_build_ffn_sparse</code>调用了专门的<code>llm_build_sparse_mul_mat</code>来进行矩阵乘，其以使用sparse idx来利用激活的稀疏性特征。<br>
+在<code>llm_build_sparse_mul_mat</code>中，如果是全部计算卸载到GPU的情况则直接对<code>up_gpu</code>和输入调用<code>ggml_mul_mat_idx</code>并返回即可。<br>
+否则，对CPU上的<code>up</code>和GPU上的<code>up_gpu</code>分别使用<code>ggml_mul_mat_idx</code>和<code>ggml_mul_mat_idx_upscale</code>进行计算，然后再把得到的结果<code>out</code>和<code>out_gpu</code>使用<code>ggml_add</code>进行汇总，得到最终结果。</p>
+<pre><code class="language-c++">static struct ggml_tensor * llm_build_sparse_mul_mat(
+        struct ggml_context * ctx,
+         struct ggml_tensor * up,
+         struct ggml_tensor * inp,
+         struct ggml_tensor * idx,
+         struct ggml_tensor * up_gpu,
+         struct ggml_tensor * gpu_index,
+         struct ggml_tensor * gpu_bucket,
+   const llm_build_cb_short &amp; cb,
+                 const char * name,
+                         bool full_gpu) {
+    std::string full_name = &quot;ffn_&quot; + std::string(name) + &quot;_sparse&quot;;
+    ggml_tensor * out = nullptr;
+
+#ifdef GGML_USE_HIPBLAS
+// WARNING: THIS IS A HACK! 
+// if up_gpu-&gt;data is null
+// inference fails when model exceeds 40B on rocm device
+// so we just let up_gpu-&gt;data point to itself
+    
+    up_gpu-&gt;data = up_gpu;
+
+#endif 
+
+#ifdef GGML_USE_CUBLAS
+    // Full offloading fast path
+    if (full_gpu) {
+        GGML_ASSERT(up_gpu &amp;&amp; &quot;full_gpu but no up_gpu&quot;);
+        out = ggml_mul_mat_idx(ctx, up_gpu, inp, idx, NULL);
+        ggml_cuda_assign_buffers_no_alloc(out);
+        cb(out, (full_name).c_str());
+        return out;
+    }
+#endif
+
+    out = ggml_mul_mat_idx(ctx, up, inp, idx, gpu_index);
+    cb(out, full_name.c_str());
+
+#ifdef GGML_USE_CUBLAS
+    if (up_gpu) {
+        ggml_tensor * out_gpu = ggml_mul_mat_idx_upscale(ctx, up_gpu, inp, idx, gpu_bucket, out-&gt;ne[0]);
+        ggml_cuda_assign_buffers_no_alloc(out_gpu);
+        cb(out_gpu, (full_name + &quot;_gpu&quot;).c_str());
+        out = ggml_add(ctx, out, out_gpu);
+        // We don't need to assign buffers here, as the output will be passed into Axpy,
+        // which in this case, is also a hybrid operation.
+        cb(out, (full_name + &quot;_merged&quot;).c_str());
+    }
+#endif
+
+    return out;
+}
+</code></pre>
+<p>查看所调用的<code>ggml_mul_mat_idx</code>。我们可以看见，<code>a</code>，<code>b</code>，<code>sparse idx</code>（由predictor得到）和<code>gpu_idx</code>（offline时候得到）分别被作为了四个<code>src</code>参与计算。<code>op</code>使用的是<code>GGML_OP_MUL_MAT_SPARSE</code>（区别于<code>GGML_OP_MUL_MAT</code>）。</p>
+<pre><code class="language-c++">struct ggml_tensor * ggml_mul_mat_idx(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * b,
+        struct ggml_tensor  * sparse_idx,
+        // Under hybrid inference, this tensor is to indicate which row are offloaded to GPU;
+        // When using full GPU inference, it is NULL.
+        struct ggml_tensor  * gpu_idx) {
+    GGML_ASSERT(!ggml_is_transposed(a));
+
+    bool is_node = false;
+
+    if (a-&gt;grad || b-&gt;grad) {
+        is_node = true;
+    }
+
+    const int64_t ne[4] = { a-&gt;ne[1], b-&gt;ne[1], b-&gt;ne[2], b-&gt;ne[3] };
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_F32, MAX(a-&gt;n_dims, b-&gt;n_dims), ne);
+
+    result-&gt;op   = GGML_OP_MUL_MAT_SPARSE;
+    result-&gt;grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
+    result-&gt;src[0] = a;
+    result-&gt;src[1] = b;
+    result-&gt;src[2] = sparse_idx;
+    result-&gt;src[3] = gpu_idx;
+
+    int32_t params[] = { gpu_idx ? 0 : 1 };
+    ggml_set_op_params(result, params, sizeof(params));
+
+    return result;
+}
+</code></pre>
+<h2 id="算子调用">算子调用</h2>
+<p>回到<code>llama_decode_internal</code>中。计算图被构建以后，后续则会被使用<code>ggml_graph_compute_helper</code>进行计算。<br>
+<code>ggml_graph_compute_helper</code>会调用<code>ggml_graph_plan</code>评估工作缓冲区的大小，得到一个<code>ggml_cplan</code>（主要成员为<code>work_size</code>，<code>work_data</code>和<code>n_threads</code>）。然后，会使用<code>ggml_graph_compute(graph, &amp;plan)</code>进行计算。</p>
+<pre><code class="language-c++">static void ggml_graph_compute_helper(std::vector&lt;uint8_t&gt; &amp; buf, ggml_cgraph * graph, int n_threads) {
+    struct ggml_cplan plan = ggml_graph_plan(graph, n_threads);
+
+    if (plan.work_size &gt; 0) {
+        buf.resize(plan.work_size);
+        plan.work_data = buf.data();
+    }
+
+    ggml_graph_compute(graph, &amp;plan);
+}
+</code></pre>
+<p>区别于原先的代码，PowerInfer所使用的<code>state_shared</code>中<code>n_threads</code>与<code>n_active</code>均比<code>cplan</code>中的值少1，这应该是由于PowerInfer中有一个单独的线程专门用作GPU Executor。<br>
+然后，PowerInfer创建的工作线程所执行函数为<code>ggml_graph_compute_thread_hybrid</code>（区别于<code>ggml_graph_compute_thread</code>），最终完成计算。</p>
+<pre><code class="language-c++">int ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan) {
+    {
+        GGML_ASSERT(cplan);
+        GGML_ASSERT(cplan-&gt;n_threads &gt; 0);
+
+        if (cplan-&gt;work_size &gt; 0) {
+            GGML_ASSERT(cplan-&gt;work_data);
+        }
+    }
+
+    const int n_threads = cplan-&gt;n_threads;
+#ifdef GGML_USE_HYBRID_THREADING
+    struct ggml_compute_state_shared state_shared = {
+        /*.cgraph                  =*/ cgraph,
+        /*.cgraph_plan             =*/ cplan,
+        /*.perf_node_start_cycles  =*/ 0,
+        /*.perf_node_start_time_us =*/ 0,
+        /*.n_threads               =*/ n_threads-1,
+        /*.aic                     =*/ 0,
+        /*.n_active                =*/ n_threads-1,
+        /*.node_n                  =*/ -1,
+        /*.abort_callback          =*/ NULL,
+        /*.abort_callback_data     =*/ NULL,
+    };
+#else
+    struct ggml_compute_state_shared state_shared = {
+        /*.cgraph                  =*/ cgraph,
+        /*.cgraph_plan             =*/ cplan,
+        /*.perf_node_start_cycles  =*/ 0,
+        /*.perf_node_start_time_us =*/ 0,
+        /*.n_threads               =*/ n_threads,
+        /*.aic                     =*/ 0,
+        /*.n_active                =*/ n_threads,
+        /*.node_n                  =*/ -1,
+        /*.abort_callback          =*/ NULL,
+        /*.abort_callback_data     =*/ NULL,
+    };
+#endif
+    struct ggml_compute_state * workers = alloca(sizeof(struct ggml_compute_state)*n_threads);
+
+    // create thread pool
+    if (n_threads &gt; 1) {
+        for (int j = 1; j &lt; n_threads; ++j) {
+            workers[j] = (struct ggml_compute_state) {
+                .thrd   = 0,
+                .ith = j,
+                .shared = &amp;state_shared,
+            };
+#ifdef GGML_USE_HYBRID_THREADING
+            const int rc = ggml_thread_create(&amp;workers[j].thrd, NULL, ggml_graph_compute_thread_hybrid, &amp;workers[j]);
+#else
+            const int rc = ggml_thread_create(&amp;workers[j].thrd, NULL, ggml_graph_compute_thread, &amp;workers[j]);
+#endif
+            GGML_ASSERT(rc == 0);
+            UNUSED(rc);
+        }
+    }
+
+    workers[0].ith = 0;
+    workers[0].shared = &amp;state_shared;
+
+    const int64_t perf_start_cycles  = ggml_perf_cycles();
+    const int64_t perf_start_time_us = ggml_perf_time_us();
+
+    // this is a work thread too
+
+#ifdef GGML_USE_HYBRID_THREADING
+    int compute_status = (size_t) ggml_graph_compute_thread_hybrid(&amp;workers[0]);
+#else
+    int compute_status = (size_t) ggml_graph_compute_thread(&amp;workers[0]);
+#endif
+
+    // don't leave affinity set on the main thread
+    clear_numa_thread_affinity();
+
+    // join or kill thread pool
+    if (n_threads &gt; 1) {
+        for (int j = 1; j &lt; n_threads; j++) {
+            const int rc = ggml_thread_join(workers[j].thrd, NULL);
+            GGML_ASSERT(rc == 0);
+        }
+    }
+
+    // performance stats (graph)
+    {
+        int64_t perf_cycles_cur  = ggml_perf_cycles()  - perf_start_cycles;
+        int64_t perf_time_us_cur = ggml_perf_time_us() - perf_start_time_us;
+
+        cgraph-&gt;perf_runs++;
+        cgraph-&gt;perf_cycles  += perf_cycles_cur;
+        cgraph-&gt;perf_time_us += perf_time_us_cur;
+
+        GGML_PRINT_DEBUG(&quot;%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\n&quot;,
+                __func__, cgraph-&gt;perf_runs,
+                (double) perf_cycles_cur      / (double) ggml_cycles_per_ms(),
+                (double) cgraph-&gt;perf_cycles  / (double) ggml_cycles_per_ms() / (double) cgraph-&gt;perf_runs,
+                (double) perf_time_us_cur     / 1000.0,
+                (double) cgraph-&gt;perf_time_us / 1000.0 / cgraph-&gt;perf_runs);
+    }
+
+    return compute_status;
+}
+</code></pre>
+<p>因此重头戏就在工作线程所执行的<code>ggml_graph_compute_thread_hybrid</code>里面。这是一个比较长的函数，我们来梳理一下里面的流程。</p>
+<ul>
+<li>主要的函数体是一个<code>while(true)</code>的循环，计算图的节点会在里面依次得到计算。</li>
+<li>第0号线程(<code>state-&gt;ith == 0</code>)会进入一条单独的路径。事实上从<code>if (node-&gt;backend == GGML_BACKEND_CPU) continue;</code>可以看出这是专门用来负责GPU计算的线程。其会使用一个<code>while (1)</code>循环来等待<code>node-&gt;src[0]-&gt;is_finish</code>，<code>node-&gt;src[1]-&gt;is_finish</code>和<code>node-&gt;src[2]-&gt;is_finish</code>均准备就绪，然后设置参数(<code>params.type = GGML_TASK_COMPUTE</code>)调用<code>ggml_compute_forward</code>进行计算，之后再把<code>node-&gt;is_finish</code>置为1。以此往复，直到<code>node_n &gt;= cgraph-&gt;n_nodes</code>。</li>
+<li>其他线程（非0号）是负责执行CPU计算的线程。
+<ul>
+<li>算子可能有<code>INIT</code>子任务和<code>FINALIZE</code>子任务，可使用<code>GGML_OP_HAS_INIT[node-&gt;op]</code>和<code>GGML_OP_HAS_FINALIZE[node-&gt;op]</code>来判断。</li>
+<li>每个线程每次循环会先执行一遍<code>atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1)</code>。
+<ul>
+<li>最后一个执行到这里（返回值为1）的线程将会负责上一个节点的<code>FINALIZE</code>子任务（可能是收集结果等），然后分发新任务。分发新任务的过程包括：
+<ul>
+<li><code>++node_n</code>。</li>
+<li>等待<code>src[0]</code>， <code>src[1]</code>和<code>src[2]</code>完成。</li>
+<li>如果有<code>INIT</code>子任务，执行<code>INIT</code>子任务。</li>
+<li>如果<code>n_tasks == 1</code>，说明只有一份任务，直接当场自己执行了，不用交给其他线程。如果有<code>FINALIZE</code>子任务则把<code>FINALIZE</code>也执行了。然后回到<code>++node_n</code>的步骤。</li>
+<li><code>n_tasks</code>不是1，那么重置好<code>state-&gt;shared-&gt;n_active</code>为<code>n_threads</code>，设置好<code>state-&gt;shared-&gt;node_n</code>为新的<code>node_n</code>。</li>
+</ul>
+</li>
+<li><code>atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1) == 1</code>判定失败的线程会对<code>state-&gt;shared-&gt;node_n</code>进行等待，直到其出现变化（值不等于之前拿到的局部变量<code>node_n</code>了）。别忘了分发任务的结尾会设置新的<code>state-&gt;shared-&gt;node_n</code>，其影响的就是这里。</li>
+</ul>
+</li>
+<li>无论是否是负责分发任务的线程，都会尝试对当前任务进行计算。
+<ul>
+<li><code>if (node_n &gt;= cgraph-&gt;n_nodes) break;</code>：所有节点执行完毕，可以退出最外层的<code>while(true)</code>循环，任务停止。</li>
+<li>设置<code>ggml_compute_params</code>。这里由于负责执行CPU计算的线程是从<code>state-&gt;ith == 1</code>开始的，因此<code>ith</code>要减一。至于<code>nth</code>这里为什么是<code>n_tasks-1</code>，本人依然有疑问。有知道的可联系笔者或在评论区评论。</li>
+<li><code>state-&gt;ith &lt; n_tasks</code>的情况下，调用<code>ggml_compute_forward</code>执行分配给自己的计算任务。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c++">static thread_ret_t ggml_graph_compute_thread_hybrid(void * data) {
+    struct ggml_compute_state * state = (struct ggml_compute_state *) data;
+
+    const struct ggml_cgraph * cgraph = state-&gt;shared-&gt;cgraph;
+    const struct ggml_cplan  * cplan  = state-&gt;shared-&gt;cplan;
+
+    const int   n_threads   = state-&gt;shared-&gt;n_threads;
+
+    set_numa_thread_affinity(state-&gt;ith, n_threads);
+
+    // cpu_set_t mask;
+    // CPU_ZERO(&amp;mask);
+    // CPU_SET(state-&gt;ith * 2, &amp;mask);
+    // if (sched_setaffinity(0, sizeof(mask), &amp;mask) == -1) {
+    //     perror(&quot;sched_setaffinity&quot;);
+    // }
+
+    int node_n = -1;
+
+    while (true) {
+        if (cplan-&gt;abort_callback &amp;&amp; cplan-&gt;abort_callback(cplan-&gt;abort_callback_data)) {
+            state-&gt;shared-&gt;node_n += 1;
+            return (thread_ret_t) GGML_EXIT_ABORTED;
+        }
+        if (state-&gt;ith == 0)
+        {
+            // atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1);
+            node_n = -1;
+            // return 0;
+
+            while (1)
+            {
+                state-&gt;shared-&gt;perf_node_start_cycles  = ggml_perf_cycles();
+                state-&gt;shared-&gt;perf_node_start_time_us = ggml_perf_time_us();
+                node_n = node_n + 1;
+                if (node_n &gt;= cgraph-&gt;n_nodes)
+                    return 0;
+                struct ggml_tensor *node = cgraph-&gt;nodes[node_n];
+                if (node-&gt;backend == GGML_BACKEND_CPU)
+                    continue;
+                // uint64_t dbug = 0;
+                while (1)
+                {
+                    // dbug++;
+                    int status0 = atomic_load(&amp;node-&gt;src[0]-&gt;is_finish);
+                    int status1 = 1;
+                    int status2 = 1;
+                    if (node-&gt;src[1] != NULL)
+                        status1 = atomic_load(&amp;node-&gt;src[1]-&gt;is_finish);
+                    if (node-&gt;src[2] != NULL)
+                        status2 = atomic_load(&amp;node-&gt;src[2]-&gt;is_finish);
+                    // if (dbug &gt; 10000000) {
+                    //     printf(&quot;stuck %s thread %d\n&quot;, ggml_get_name(node), n_threads);
+                    //     int k;
+                    //     scanf(&quot;%d&quot;, &amp;k);
+                    // }
+                    if (status0 == 1 &amp;&amp; status1 == 1 &amp;&amp; status2 == 1)
+                    {
+                        break;
+                    }
+                    // else
+                    //     busy_wait_cycles(10);
+                }
+                struct ggml_compute_params params = {
+                    /*.type  =*/GGML_TASK_COMPUTE,
+                    /*.ith   =*/0,
+                    /*.nth   =*/1,
+                    /*.wsize =*/0,
+                    /*.wdata =*/0,
+                    /*.aic   =*/0,
+                };
+
+
+                // printf(&quot;GPU %s\n&quot;, ggml_get_name(node));
+                // cudaDeviceSynchronize();
+                ggml_compute_forward(&amp;params, node);
+                // cudaDeviceSynchronize();
+                // ggml_graph_compute_perf_stats_node_gpu(node, state-&gt;shared);
+                ggml_graph_compute_perf_stats_node_gpu(node, state-&gt;shared);
+                // if (strcmp(ggml_get_name(node), &quot;before&quot;) == 0)
+                //     printf(&quot;%ld\n&quot;, ggml_time_us());
+                atomic_store(&amp;node-&gt;is_finish, 1);
+            }
+        }
+        if (atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1) == 1) {
+            // all other threads are finished and spinning
+            // do finalize and init here so we don't have synchronize again
+            struct ggml_compute_params params = {
+                /*.type  =*/ GGML_TASK_FINALIZE,
+                /*.ith   =*/ 0,
+                /*.nth   =*/ 0,
+                /*.wsize =*/ cplan-&gt;work_size,
+                /*.wdata =*/ cplan-&gt;work_data,
+                /*.aic   =*/ &amp;state-&gt;shared-&gt;aic,
+            };
+
+            if (node_n != -1) {
+                /* FINALIZE */
+                struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+                if (GGML_OP_HAS_FINALIZE[node-&gt;op]) {
+                    params.nth = ggml_get_n_tasks(node, n_threads);
+                    ggml_compute_forward(&amp;params, node);
+                }
+                ggml_graph_compute_perf_stats_node(node, state-&gt;shared);
+                atomic_store(&amp;node-&gt;is_finish, 1);
+            }
+
+            // distribute new work or execute it direct if 1T
+            while (++node_n &lt; cgraph-&gt;n_nodes) {
+                GGML_PRINT_DEBUG_5(&quot;%s: %d/%d\n&quot;, __func__, node_n, cgraph-&gt;n_nodes);
+
+                struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+                const int n_tasks = ggml_get_n_tasks(node, n_threads);
+
+                state-&gt;shared-&gt;perf_node_start_cycles  = ggml_perf_cycles();
+                state-&gt;shared-&gt;perf_node_start_time_us = ggml_perf_time_us();
+
+                params.nth = n_tasks;
+                if (node-&gt;backend == GGML_BACKEND_GPU)
+                    continue;
+                while(1)
+                {
+                    int status0 = atomic_load(&amp;node-&gt;src[0]-&gt;is_finish);
+                    int status1 = 1;
+                    int status2 = 1;
+                    if(node-&gt;src[1] != NULL)
+                        status1 = atomic_load(&amp;node-&gt;src[1]-&gt;is_finish);
+                    if(node-&gt;src[2] != NULL)
+                        status2 = atomic_load(&amp;node-&gt;src[2]-&gt;is_finish);
+                    if(status0 == 1 &amp;&amp; status1 == 1 &amp;&amp; status2 == 1)
+                        break;
+                    // else busy_wait_cycles(10);
+                }
+
+                /* INIT */
+                if (GGML_OP_HAS_INIT[node-&gt;op]) {
+                    params.type = GGML_TASK_INIT;
+                    ggml_compute_forward(&amp;params, node);
+                }
+
+                if (n_tasks == 1) {
+                    // TODO: maybe push node_n to the atomic but if other threads see n_tasks is 1,
+                    // they do something more efficient than spinning (?)
+                    params.type = GGML_TASK_COMPUTE;
+                    ggml_compute_forward(&amp;params, node);
+                    atomic_store(&amp;node-&gt;is_finish, 1);
+
+                    if (GGML_OP_HAS_FINALIZE[node-&gt;op]) {
+                        params.type = GGML_TASK_FINALIZE;
+                        ggml_compute_forward(&amp;params, node);
+                    }
+
+                    ggml_graph_compute_perf_stats_node(node, state-&gt;shared);
+                } else {
+                    break;
+                }
+
+                if (cplan-&gt;abort_callback &amp;&amp; cplan-&gt;abort_callback(cplan-&gt;abort_callback_data)) {
+                    break;
+                }
+            }
+
+            atomic_store(&amp;state-&gt;shared-&gt;n_active, n_threads);
+            atomic_store(&amp;state-&gt;shared-&gt;node_n,   node_n);
+        } else {
+            // wait for other threads to finish
+            const int last = node_n;
+            while (true) {
+                // TODO: this sched_yield can have significant impact on the performance - either positive or negative
+                //       depending on the workload and the operating system.
+                //       since it is not clear what is the best approach, it should potentially become user-configurable
+                //       ref: https://github.com/ggerganov/ggml/issues/291
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+                sched_yield();
+#endif
+
+                node_n = atomic_load(&amp;state-&gt;shared-&gt;node_n);
+                if (node_n != last) break;
+            };
+        }
+
+        // check if we should stop
+        if (node_n &gt;= cgraph-&gt;n_nodes) break;
+
+        /* COMPUTE */
+        struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+        const int n_tasks = ggml_get_n_tasks(node, n_threads);
+
+        struct ggml_compute_params params = {
+            /*.type  =*/ GGML_TASK_COMPUTE,
+            /*.ith   =*/ state-&gt;ith-1,
+            /*.nth   =*/ n_tasks-1,
+            /*.wsize =*/ cplan-&gt;work_size,
+            /*.wdata =*/ cplan-&gt;work_data,
+            /*.aic   =*/ &amp;state-&gt;shared-&gt;aic,
+        };
+
+        if (state-&gt;ith &lt; n_tasks) {
+            ggml_compute_forward(&amp;params, node);
+        }
+    }
+
+    return GGML_EXIT_SUCCESS;
+}
+</code></pre>
+<p><code>ggml_compute_forward</code>会负责根据<code>tensor-&gt;op</code>去调用具体的算子。</p>
+<pre><code class="language-c++">static void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    GGML_ASSERT(params);
+
+    if (tensor-&gt;op == GGML_OP_NONE) {
+        return;
+    }
+
+#ifdef GGML_USE_CUBLAS
+    bool skip_cpu = ggml_cuda_compute_forward(params, tensor);
+    if (skip_cpu) {
+        return;
+    }
+    // Make sure src[0] (weight for binary ops) is on CPU to avoid any weight transfer
+    GGML_ASSERT((tensor-&gt;src[0] == NULL || tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_CPU) &amp;&amp; &quot;weight should be on the CPU to compute on the CPU&quot;);
+#endif // GGML_USE_CUBLAS
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_DUP:
+            {
+                ggml_compute_forward_dup(params, tensor-&gt;src[0], tensor);
+            } break;
+        case GGML_OP_ADD:
+            {
+                ggml_compute_forward_add(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_ADD1:
+            {
+                ggml_compute_forward_add1(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_ACC:
+            {
+                ggml_compute_forward_acc(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_SUB:
+            {
+                ggml_compute_forward_sub(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_MUL:
+            {
+                ggml_compute_forward_mul(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_DIV:
+            {
+                ggml_compute_forward_div(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+            // Other cases...
+            // -- snip --
+    }
+}
+</code></pre>
+<p>额外地，我们注意<code>ggml_compute_foward</code>的开头：如果使用了CUBLAS，那么就转而调用CUDA实现的算子（<code>ggml_cuda_compute_forward</code>）。</p>
+<pre><code class="language-c++">static void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    GGML_ASSERT(params);
+
+    if (tensor-&gt;op == GGML_OP_NONE) {
+        return;
+    }
+
+#ifdef GGML_USE_CUBLAS
+    bool skip_cpu = ggml_cuda_compute_forward(params, tensor);
+    if (skip_cpu) {
+        return;
+    }
+    // Make sure src[0] (weight for binary ops) is on CPU to avoid any weight transfer
+    GGML_ASSERT((tensor-&gt;src[0] == NULL || tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_CPU) &amp;&amp; &quot;weight should be on the CPU to compute on the CPU&quot;);
+#endif // GGML_USE_CUBLAS
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_DUP:
+            {
+                ggml_compute_forward_dup(params, tensor-&gt;src[0], tensor);
+            } break;
+            // Other cases...
+            // -- snip --
+    }
+}
+</code></pre>
+<p>在<code>ggml_cuda_compute_forward</code>中，会根据<code>tensor-&gt;op</code>去调用具体的CUDA算子。</p>
+<pre><code class="language-c++">bool ggml_cuda_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    if (!g_cublas_loaded) return false;
+
+    ggml_cuda_func_t func;
+    const bool src0_on_device = tensor-&gt;src[0] != nullptr &amp;&amp; (tensor-&gt;src[0]-&gt;backend != GGML_BACKEND_CPU);
+    const bool any_on_device = tensor-&gt;backend == GGML_BACKEND_GPU || src0_on_device
+        || (tensor-&gt;src[1] != nullptr &amp;&amp; tensor-&gt;src[1]-&gt;backend == GGML_BACKEND_GPU);
+
+    // when src0 (weights) is not on device, we compute on CPU with sparsity
+    if (!src0_on_device &amp;&amp; (tensor-&gt;op == GGML_OP_MUL_MAT_SPARSE || tensor-&gt;op == GGML_OP_AXPY)
+        || !any_on_device &amp;&amp; tensor-&gt;op != GGML_OP_MUL_MAT) {
+        return false;
+    }
+
+    if (tensor-&gt;op == GGML_OP_MUL_MAT) {
+        if (tensor-&gt;src[0]-&gt;ne[3] != tensor-&gt;src[1]-&gt;ne[3]) {
+#ifndef NDEBUG
+            fprintf(stderr, &quot;%s: cannot compute %s: src0-&gt;ne[3] = %d, src1-&gt;ne[3] = %d - fallback to CPU\n&quot;, __func__, tensor-&gt;name, tensor-&gt;src[0]-&gt;ne[3], tensor-&gt;src[1]-&gt;ne[3]);
+#endif
+            return false;
+        }
+    }
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_REPEAT:
+            func = ggml_cuda_repeat;
+            break;
+        case GGML_OP_GET_ROWS:
+            func = ggml_cuda_get_rows;
+            break;
+        case GGML_OP_DUP:
+            func = ggml_cuda_dup;
+            break;
+        case GGML_OP_ADD:
+            func = ggml_cuda_add;
+            break;
+        case GGML_OP_MUL:
+            func = ggml_cuda_mul;
+            break;
+        case GGML_OP_UNARY:
+            switch (ggml_get_unary_op(tensor)) {
+                case GGML_UNARY_OP_GELU:
+                    func = ggml_cuda_gelu;
+                    break;
+                case GGML_UNARY_OP_SILU:
+                    func = ggml_cuda_silu;
+                    break;
+                case GGML_UNARY_OP_RELU:
+                    func = ggml_cuda_relu;
+                    break;
+                default:
+                    return false;
+            } break;
+        case GGML_OP_NORM:
+            func = ggml_cuda_norm;
+            break;
+        case GGML_OP_RMS_NORM:
+            func = ggml_cuda_rms_norm;
+            break;
+        case GGML_OP_MUL_MAT:
+            if (!any_on_device &amp;&amp; !ggml_cuda_can_mul_mat(tensor-&gt;src[0], tensor-&gt;src[1], tensor)) {
+                return false;
+            }
+            func = ggml_cuda_mul_mat;
+            break;
+        case GGML_OP_MUL_MAT_SPARSE:
+            if (!src0_on_device &amp;&amp; !ggml_cuda_can_mul_mat(tensor-&gt;src[0], tensor-&gt;src[1], tensor)) {
+                return false;
+            }
+            func = ggml_cuda_mul_mat_sparse;
+            break;
+        case GGML_OP_AXPY:
+            func = ggml_cuda_axpy;
+            break;
+        // Other cases...
+        // -- snip --
+        default:
+            return false;
+    }
+
+    if (params-&gt;ith != 0) {
+        return true;
+    }
+    if (params-&gt;type == GGML_TASK_INIT || params-&gt;type == GGML_TASK_FINALIZE) {
+        return true;
+    }
+    func(tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+
+    // CUDA_CHECK(cudaDeviceSynchronize());
+
+    return true;
+}
+</code></pre>
+<p>以<code>ggml_cuda_mul_mat_sparse</code>为例，其会根据类型继续下调。</p>
+<pre><code class="language-c++">static void ggml_cuda_mul_mat_sparse(const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst) {
+    GGML_ASSERT(dst-&gt;src[2] != NULL &amp;&amp; &quot;dst-&gt;src[2] must be present for sparse matrix multiplication&quot;);
+    if (src1-&gt;ne[1] == 1 &amp;&amp; src0-&gt;ne[0] % GGML_CUDA_DMMV_X == 0) {
+        switch(src0-&gt;type) {
+            case GGML_TYPE_F16:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_dequantized, false);
+                break;
+            case GGML_TYPE_Q4_0:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_q, true);
+                break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported type for sparse matrix multiplication&quot;);
+        }
+    } else {
+        ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_batch_sparse, false);
+    }
+}
+</code></pre>
+<p>至此，后续便能调用到具体负责计算的算子。模型加载以后，计算图的构建一直到算子的调用的大致流程也结束了。</p>
+<h2 id="支持-️">支持 ☕️</h2>
+<p>如果发现内容有纰漏或错误，可以通过邮箱hangyu.yuan@qq.com联系我或直接在下方评论告诉我，谢谢。<br>
+如果内容对你有帮助，进入我的<a href="https://github.com/Yuan-Allen">GitHub主页</a>，点个Follow就是对我最大的支持，谢谢。🚀</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（二叉树篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-binary-tree/</id>
+        <link href="https://alleny.xyz/post/leetcode-binary-tree/">
+        </link>
+        <updated>2024-09-25T02:12:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（二叉树篇），个人向。<br>
+这部分涉及频繁的指针操作，因此专精C++来做题。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（二叉树篇），个人向。<br>
+这部分涉及频繁的指针操作，因此专精C++来做题。</p>
+<!-- more -->
+<h2 id="144-145-94">[144]、[145]、[94]</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p>题目描述就不放了，就是二叉树的前中后序遍历。考察最基本的数据结构了解程度，无难度。这里放几种不同的实现方式。</p>
+<h3 id="递归遍历">递归遍历</h3>
+<p>前序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    res.push_back(cur-&gt;val);
+    traverse(cur-&gt;left, res);
+    traverse(cur-&gt;right, res);
+  }
+
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>后序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    traverse(cur-&gt;left, res);
+    traverse(cur-&gt;right, res);
+    res.push_back(cur-&gt;val);
+  }
+
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>中序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    traverse(cur-&gt;left, res);
+    res.push_back(cur-&gt;val);
+    traverse(cur-&gt;right, res);
+  }
+
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>三种遍历的递归写法代码基本一样，改下<code>traverse</code>里面顺序即可。</p>
+<h3 id="迭代遍历">迭代遍历</h3>
+<p>前序遍历。使用栈来存放节点。<br>
+注意要先入右节点再入左节点，这样左节点会先出栈，才符合前序遍历顺序。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (!root) return result;
+    st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      result.push_back(cur-&gt;val);
+      if (cur-&gt;right) st.push(cur-&gt;right);
+      if (cur-&gt;left) st.push(cur-&gt;left);
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>后序遍历。和前序遍历类似。<br>
+为了满足后续遍历的顺序，我们可以交换左右节点入栈的顺序（即先入左节点再入右节点），最后再把结果反转一下顺序。<br>
+这样一来，原本前序遍历为<strong>中左右</strong>，交换入栈顺序变成<strong>中右左</strong>，结果反转后变成<strong>左右中</strong>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (!root) return result;
+    st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      result.push_back(cur-&gt;val);
+      if (cur-&gt;left) st.push(cur-&gt;left);
+      if (cur-&gt;right) st.push(cur-&gt;right);
+    }
+    reverse(result.begin(), result.end());
+    return result;
+  }
+};
+</code></pre>
+<p>中序遍历会更麻烦些。在前序遍历中，当前节点访问过就可以丢掉了，但是在中序遍历中我们需要把当前节点先入栈存起来，并尽量的先往左遍历，直到遍历到头再尝试弹栈并往右移动。<br>
+注意在后序遍历中，我们通过结果反转的方式巧妙规避了这些问题，但中序遍历就不行了。<br>
+在写代码时请注意在空节点是否入栈上达成统一意见（以防止写出bug），本人给出的是空节点不入栈的写法。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    TreeNode* cur = root;
+    while (cur || !st.empty()) {
+      if (cur) {
+        st.push(cur);
+        cur = cur-&gt;left;
+      } else {
+        cur = st.top();
+        st.pop();
+        result.push_back(cur-&gt;val);
+        cur = cur-&gt;right;
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h3 id="统一迭代法">统一迭代法</h3>
+<p>在前面的迭代方法中，前中后序的写法都不一样，没有做到像递归遍历一样的稍微改下代码顺序即可。因此，对于非递归的方法，也有统一的写法，可做到稍微改下代码顺序即可更改遍历顺序。<br>
+统一迭代法的关键是，利用了空指针来做标记，即访问到的节点后会再跟一个空指针入栈，弹栈时遇到空指针才把后面的节点进行处理（加入结果集）。<strong>即一个节点实际上会入栈出栈两次，第一次（入栈不带空指针）代表访问到（仅仅是路过），第二次（入栈后带空指针）才代表要处理该节点。</strong><br>
+于是，我们可以很容易得到三种遍历的写法。<br>
+前序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+        st.push(cur);
+        st.push(nullptr);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>后序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        st.push(cur);
+        st.push(nullptr);
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>中序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        st.push(cur);
+        st.push(nullptr);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h2 id="102-binary-tree-level-order-traversal">[102] Binary Tree Level Order Traversal</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-tree-level-order-traversal/description/">题目描述</a>。<br>
+二叉树的层序遍历，也属于数据结构的基本操作。<br>
+层序遍历其实就相当于图论的广度优先搜索。只不过，这道题的返回类型是二维<code>vector</code>，即要求把每一层的节点单独作为一个<code>vector&lt;int&gt;</code>分出来，因此我们在内部嵌套一个循环来专门处理某一层的节点。否则，我们只保留最外层的<code>while</code>循环即可（不关心每层的节点从什么地方开始和结束，即退化到广度优先搜索）。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;vector&lt;int&gt;&gt; levelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; result;
+    if (!root) {
+      return result;
+    }
+
+    queue&lt;TreeNode*&gt; q;
+    q.push(root);
+
+    while (!q.empty()) {
+      int level_width = q.size();
+      vector&lt;int&gt; cur_level;
+      while (level_width-- &gt; 0) {
+        TreeNode* cur = q.front();
+        q.pop();
+        cur_level.push_back(cur-&gt;val);
+        if (cur-&gt;left) {
+          q.push(cur-&gt;left);
+        }
+        if (cur-&gt;right) {
+          q.push(cur-&gt;right);
+        }
+      }
+      result.push_back(cur_level);
+    }
+
+    return result;
+  }
+};
+</code></pre>
+<h2 id="226-invert-binary-tree">[226] Invert Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/invert-binary-tree/description/">题目描述</a>。<br>
+之前讲了很多种遍历方法，随便选一种用，遍历的同时交换当前节点的左右儿子即可。这里我选用的是递归前序遍历。<br>
+需要注意的是，如果选用的是递归中序遍历，两次<code>traversal</code>都要对<code>cur-&gt;left</code>进行，因为左右儿子在中间被交换了。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traversal(TreeNode* cur) {
+    if (!cur) {
+      return;
+    }
+    TreeNode* tmp = cur-&gt;left;
+    cur-&gt;left = cur-&gt;right;
+    cur-&gt;right = tmp;
+    traversal(cur-&gt;left);
+    traversal(cur-&gt;right);
+  }
+  TreeNode* invertTree(TreeNode* root) {
+    traversal(root);
+    return root;
+  }
+};
+</code></pre>
+<h2 id="101-symmetric-tree">[101] Symmetric Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/symmetric-tree/description/">题目描述</a>。<br>
+同时遍历根节点的左右子树，遍历的同时进行比较即可。注意左子树的<code>left</code>和右子树的<code>right</code>比较，左子树的<code>right</code>和右子树的<code>left</code>比较。<br>
+这里使用的是递归的写法。实际上，用队列或者栈等等也可以有不递归的写法（迭代法）。具体来说，就是把<code>left_cur-&gt;left, right_cur-&gt;right</code>放进容器中，<code>left_cur-&gt;right, right_cur-&gt;left</code>放进容器中，然后成对从容器中取元素，进行判断即可。具体可见这篇<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0101.%E5%AF%B9%E7%A7%B0%E4%BA%8C%E5%8F%89%E6%A0%91.md">solution</a>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool traversal(TreeNode* left_cur, TreeNode* right_cur) {
+    if (!left_cur || !right_cur) {
+      if (left_cur == right_cur) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    if (left_cur-&gt;val != right_cur-&gt;val) {
+      return false;
+    }
+
+    return traversal(left_cur-&gt;left, right_cur-&gt;right) &amp;&amp;
+           traversal(left_cur-&gt;right, right_cur-&gt;left);
+  }
+
+  bool isSymmetric(TreeNode* root) {
+    if (!root) {
+      return true;
+    }
+
+    return traversal(root-&gt;left, root-&gt;right);
+  }
+};
+</code></pre>
+<h2 id="104-maximum-depth-of-binary-tree">[104] Maximum Depth of Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/maximum-depth-of-binary-tree/description/">题目描述</a>。<br>
+比较闲就顺手写了非递归层序和递归前序的两种写法。事实上这道题写法应该很多，要做的就只是在遍历的同时记录一下深度即可。在这里的话，我选择在非递归层序遍历时用空指针记录一层的结束，然后直接<code>++max_depth</code>；在递归前序遍历中我选择记录<code>cur_level</code>并看条件更新<code>max_level</code>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int maxDepthLevel(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+
+    int max_depth = 0;
+    queue&lt;TreeNode*&gt; q;
+    q.push(root);
+    q.push(nullptr);
+    while (!q.empty()) {
+      TreeNode* cur = q.front();
+      q.pop();
+      if (!cur) {
+        ++max_depth;
+        if (!q.empty()) {
+          // Not the last level
+          q.push(nullptr);
+        }
+      } else {
+        if (cur-&gt;left) {
+          q.push(cur-&gt;left);
+        }
+        if (cur-&gt;right) {
+          q.push(cur-&gt;right);
+        }
+      }
+    }
+    return max_depth;
+  }
+
+  void traversal(TreeNode* cur, int cur_level, int&amp; max_level) {
+    if (!cur) {
+      return;
+    }
+    cur_level += 1;
+    max_level = cur_level &gt; max_level ? cur_level : max_level;
+    traversal(cur-&gt;left, cur_level, max_level);
+    traversal(cur-&gt;right, cur_level, max_level);
+  }
+
+  int maxDepth(TreeNode* root) {
+    int max_level = 0;
+    traversal(root, 0, max_level);
+    return max_level;
+  }
+};
+</code></pre>
+<h2 id="111-minimum-depth-of-binary-tree">[111] Minimum Depth of Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-depth-of-binary-tree/description/">题目描述</a>。<br>
+在<a href="#104-maximum-depth-of-binary-tree">104</a>的基础上稍加改动即可。在遍历的时候，遇到当前节点的左右儿子都是空指针，说明遇到叶子节点，就可以尝试更新<code>min_level</code>了。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traversal(TreeNode* cur, int cur_level, int&amp; min_level) {
+    if (!cur) {
+      return;
+    }
+    if (!cur-&gt;left &amp;&amp; !cur-&gt;right) {
+      min_level = cur_level &lt; min_level ? cur_level : min_level;
+    }
+    traversal(cur-&gt;left, cur_level + 1, min_level);
+    traversal(cur-&gt;right, cur_level + 1, min_level);
+  }
+
+  int minDepth(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+
+    int min_level = __INT_MAX__;
+    traversal(root, 1, min_level);
+    return min_level;
+  }
+};
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[PowerInfer源码解析（一）：模型加载]]></title>
+        <id>https://alleny.xyz/post/powerinfer-source-analysis-1/</id>
+        <link href="https://alleny.xyz/post/powerinfer-source-analysis-1/">
+        </link>
+        <updated>2024-09-24T09:13:49.000Z</updated>
+        <summary type="html"><![CDATA[<p>最近开始着手研究PowerInfer，但看了下网上似乎还没有针对PowerInfer的代码解析，因此本人打算自己动手。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>最近开始着手研究PowerInfer，但看了下网上似乎还没有针对PowerInfer的代码解析，因此本人打算自己动手。</p>
+<!-- more -->
+<h2 id="相关">相关</h2>
+<ul>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-2/">PowerInfer源码解析（二）：计算图构建与算子调用 </a>。</li>
+</ul>
+<h2 id="背景">背景</h2>
+<p>PowerInfer是由著名的同校同院系实验室（<a href="https://ipads.se.sjtu.edu.cn/zh/index.html">IPADS</a>）推出的在配备单个消费级GPU的个人电脑（PC）上进行高速大型语言模型（LLM）推理的引擎。PowerInfer设计的关键在于利用LLM推理中固有的高局部性特征，该特征表现为神经元激活的幂律分布（a power-law distribution in neuron activation）。该分布表明，一小部分神经元，被称为热神经元（hot neurons），在不同的输入中始终保持激活状态，而大多数神经元（冷神经元，cold neurons）则根据特定输入发生变化。PowerInfer利用这一见解设计了一个GPU-CPU混合推理引擎：热神经元预先加载到GPU中以便快速访问，而冷神经元则在CPU上进行计算，从而显著减少了GPU内存需求和CPU-GPU之间的数据传输。PowerInfer还集成了自适应预测器（adaptive predictors）和神经元感知稀疏算子（neuron-aware sparse operators），优化了神经元激活和计算稀疏性的效率。评估结果显示，PowerInfer在单个NVIDIA RTX 4090 GPU上对各种LLM（包括OPT-175B）实现了平均每秒生成13.20个token，峰值达到29.08个token/s，仅比顶级服务器级A100 GPU低18%。同时，PowerInfer的性能远超llama.cpp，最高可达11.69倍，并保持模型精度。</p>
+<h2 id="说明">说明</h2>
+<ul>
+<li><a href="https://github.com/SJTU-IPADS/PowerInfer">PowerInfer的仓库地址</a>。</li>
+<li>PowerInfer基于<a href="https://github.com/ggerganov/llama.cpp">llama.cpp</a>的Commit <code>6bb4908a17150b49373b5f977685b2e180a04f6f</code> 进行修改。llama.cpp的代码量不少，维护较勤，网上也有很多解析，因此不是本文要介绍的重点。<strong>本文主要介绍的是PowerInfer基于llama.cpp的修改部分,对llama.cpp的原有部分不会有过多解释。</strong></li>
+<li>本文所使用来对比的PowerInfer Commit： <code>6ae7e06dbe1032ec103e1a08ce126b3d1ed2d6e7</code> &lt;--&gt; <code>6bb4908a17150b49373b5f977685b2e180a04f6f</code></li>
+</ul>
+<h2 id="ggml">GGML</h2>
+<blockquote>
+<p>整个llama.cpp项目可以分为两部分：底层的张量库GGML(C语言)，和应用层的模型推理代码(C++语言)。严格来说，GGML是一个独立的项目，但在实际开发中，GGML被完整包含在llama.cpp项目中(工程目录下的ggml*文件)一起开发，并反馈合并给上游的原仓库。</p>
+</blockquote>
+<p>ggml 是一个用 C 和 C++ 编写、专注于 Transformer 架构模型推理的机器学习库。该项目完全开源，处于活跃的开发阶段，开发社区也在不断壮大。ggml 和 PyTorch、TensorFlow 等机器学习库比较相似，但由于目前处于开发的早期阶段，一些底层设计仍在不断改进中。</p>
+<p>关于ggml的使用，可参考<a href="https://huggingface.co/blog/zh/introduction-to-ggml">这篇blog</a>以有一个基本的了解。</p>
+<h2 id="正文">正文</h2>
+<p>目光转向程序的入口，<code>example/main/main.cpp:main</code>。经过一堆乱七八糟的参数解析，我们把目光锁定在这里：</p>
+<pre><code class="language-c++">    // load the model and apply lora adapter, if any
+    LOG(&quot;%s: load the model and apply lora adapter, if any\n&quot;, __func__);
+    std::tie(model, ctx) = llama_init_from_gpt_params(params);
+    if (sparams.cfg_scale &gt; 1.f) {
+        struct llama_context_params lparams = llama_context_params_from_gpt_params(params);
+        ctx_guidance = llama_new_context_with_model(model, lparams);
+    }
+</code></pre>
+<p>点进这里调用的<code>llama_init_from_gpt_params</code>，我们可以看到更改的部分。原先，<code>cparams</code>是在<code>llama_load_model_from_file</code>之后才生成的，而这里被提到了前面，并作为参数传给了<code>llama_load_model_from_file_with_context</code>，说明PowerInfer的初始化过程对<code>cparams</code>有额外的需求。</p>
+<pre><code class="language-c++">std::tuple&lt;struct llama_model *, struct llama_context *&gt; llama_init_from_gpt_params(gpt_params &amp; params) {
+    auto mparams = llama_model_params_from_gpt_params(params);
+    auto cparams = llama_context_params_from_gpt_params(params);
+
+    llama_model * model  = llama_load_model_from_file_with_context(params.model.c_str(), mparams, &amp;cparams);
+    if (model == NULL) {
+        fprintf(stderr, &quot;%s: error: failed to load model '%s'\n&quot;, __func__, params.model.c_str());
+        return std::make_tuple(nullptr, nullptr);
+    }
+</code></pre>
+<p>我们可以看到，原先的<code>llama_load_model_from_file</code>接口得到保留，其也是调到了PowerInfer新加的<code>llama_load_model_from_file_with_context</code>接口，只要把额外的<code>cparams</code>参数设置为<code>nullptr</code>即可。</p>
+<pre><code class="language-c++">struct llama_model * llama_load_model_from_file(
+                             const char * path_model,
+              struct llama_model_params   params) {
+    return llama_load_model_from_file_with_context(path_model, params, nullptr);
+}
+</code></pre>
+<p>而<code>llama_load_model_from_file_with_context</code>则是替代了原先接口的功能。额外地，其把<code>cparams</code>参数又传给了<code>llama_model_load</code>。</p>
+<pre><code class="language-c++">struct llama_model * llama_load_model_from_file_with_context(
+    const char * path_model,
+    struct llama_model_params   params,
+    struct llama_context_params * cparams
+) {
+    ggml_time_init();
+
+    llama_model * model = new llama_model;
+
+    unsigned cur_percentage = 0;
+    if (params.progress_callback == NULL) {
+        params.progress_callback_user_data = &amp;cur_percentage;
+        params.progress_callback = [](float progress, void * ctx) {
+            unsigned * cur_percentage_p = (unsigned *) ctx;
+            unsigned percentage = (unsigned) (100 * progress);
+            while (percentage &gt; *cur_percentage_p) {
+                *cur_percentage_p = percentage;
+                LLAMA_LOG_INFO(&quot;.&quot;);
+                if (percentage &gt;= 100) {
+                    LLAMA_LOG_INFO(&quot;\n&quot;);
+                }
+            }
+        };
+    }
+
+    if (!llama_model_load(path_model, *model, params, cparams)) {
+        LLAMA_LOG_ERROR(&quot;%s: failed to load model\n&quot;, __func__);
+        delete model;
+        return nullptr;
+    }
+
+    return model;
+}
+</code></pre>
+<p>进入<code>llama_model_load</code>里面，我们观察到PowerInfer先使用<code>params</code>初始化了<code>llama_model_loader</code>，该类型对象在构造时会读取<code>fname</code>指定的<code>gguf</code>文件，解析文件的内容，并根据文件内容设置一些信息。</p>
+<pre><code class="language-c++">static bool llama_model_load(const std::string &amp; fname, llama_model &amp; model, const llama_model_params &amp; params, const llama_context_params * cparams) {
+    try {
+        llama_model_loader ml(fname, params.use_mmap);
+
+        if (ml.sparse_deriv == GGML_SPARSE_INFERENCE) {
+            LLAMA_LOG_INFO(&quot;%s: PowerInfer model loaded. Sparse inference will be used.\n&quot;, __func__);
+        }
+
+        model.hparams.vocab_only = params.vocab_only;
+        model.sparse_deriv = ml.sparse_deriv;
+
+        llm_load_arch   (ml, model);
+        llm_load_hparams(ml, model);
+        llm_load_vocab  (ml, model);
+
+        llm_load_print_meta(ml, model);
+
+        if (model.hparams.n_vocab != model.vocab.id_to_token.size()) {
+            throw std::runtime_error(&quot;vocab size mismatch&quot;);
+        }
+
+        if (params.vocab_only) {
+            LLAMA_LOG_INFO(&quot;%s: vocab only - skipping tensors\n&quot;, __func__);
+            return true;
+        }
+
+        if (llama_use_sparse_inference(&amp;model)) {
+            if (params.n_gpu_layers &gt; 0) {
+                LLAMA_LOG_WARN(&quot;%s: sparse inference ignores n_gpu_layers, you can use --vram-budget option instead\n&quot;, __func__);
+                return false;
+            }
+#if defined GGML_USE_CUBLAS
+            llama_set_vram_budget(params.vram_budget_gb, params.main_gpu);
+#endif
+            llm_load_sparse_model_tensors(
+                ml, model, cparams, params.main_gpu, vram_budget_bytes, params.reset_gpu_index, params.disable_gpu_index,
+                params.use_mlock, params.progress_callback, params.progress_callback_user_data
+            );
+        } else {
+            llm_load_tensors(
+                ml, model, params.n_gpu_layers, params.main_gpu, params.tensor_split, params.use_mlock,
+                params.progress_callback, params.progress_callback_user_data
+            );
+        }
+
+    } catch (const std::exception &amp; err) {
+        LLAMA_LOG_ERROR(&quot;error loading model: %s\n&quot;, err.what());
+        return false;
+    }
+
+    return true;
+}
+</code></pre>
+<p>其中，<code>llm_load_hparams</code>中添加了对<code>sparse_pred_threshold</code>的获取和设置。</p>
+<pre><code class="language-c++">static void llm_load_hparams(
+        llama_model_loader &amp; ml,
+        llama_model &amp; model) {
+    // -- snip --
+    if (gguf_get_sparse_deriv(ctx)) {
+        // read sparse threshold override if sparse deriv is enabled
+        GGUF_GET_KEY(ctx, hparams.sparse_pred_threshold, gguf_get_val_f32, GGUF_TYPE_FLOAT32, false, kv(LLM_KV_SPARSE_THRESHOLD));
+        if (getenv(&quot;LLAMA_SPARSE_PRED_THRESHOLD&quot;))
+            hparams.sparse_pred_threshold = (float)atof(getenv(&quot;LLAMA_SPARSE_PRED_THRESHOLD&quot;));
+    }
+    // -- snip --
+}
+</code></pre>
+<p>我们注意到<code>llama_model_load</code>代码中使用了<code>ml.sparse_deriv</code>是否为<code>GGML_SPARSE_INFERENCE</code>来判断了是否要使用PowerInfer（包括<code>llama_use_sparse_inference</code>函数里面也是判断的<code>model</code>里的<code>sparse_deriv</code>成员），那么这个<code>sparse_deriv</code>是如何被读取和设置的呢？<br>
+查询<code>gguf</code>文件的格式如下。<br>
+<img src="https://alleny.xyz/post-images/1726636250810.png" alt="" loading="lazy"><br>
+我们可以注意到，文件的前四个Bytes是magic number。<br>
+再来看代码，结果就很清晰了。原来PowerInfer为这4个Bytes多增加了一种合法的magic number解析（<code>GGUF_POWERINFER_MAGIC</code>），并根据此来判断是否该启用PowerInfer的sparse inference模式。</p>
+<pre><code class="language-c++">struct gguf_context * gguf_init_from_file(const char * fname, struct gguf_init_params params) {
+    FILE * file = fopen(fname, &quot;rb&quot;);
+    if (!file) {
+        return NULL;
+    }
+
+    // offset from start of file
+    size_t offset = 0;
+
+    char magic[4];
+    enum ggml_sparse_deriv sparse_deriv;
+
+    // check the magic before making allocations
+    {
+        gguf_fread_el(file, &amp;magic, sizeof(magic), &amp;offset);
+
+        if (strncmp(magic, GGUF_MAGIC, sizeof(magic)) == 0) {
+            sparse_deriv = GGML_DENSE_INFERENCE;
+        } else if (strncmp(magic, GGUF_POWERINFER_MAGIC, sizeof(magic)) == 0) {
+            sparse_deriv = GGML_SPARSE_INFERENCE;
+        } else {
+            fprintf(stderr, &quot;%s: invalid magic characters %s.\n&quot;, __func__, magic);
+            fclose(file);
+            return NULL;
+        }
+    }
+
+    bool ok = true;
+
+    struct gguf_context * ctx = GGML_ALIGNED_MALLOC(sizeof(struct gguf_context));
+    ctx-&gt;sparse_deriv = sparse_deriv;
+
+    // Other codes that read and parse the GGUF file.
+    // -- snip --
+}
+</code></pre>
+<p>回到之前的<code>llama_model_load</code>函数。如果是<code>GGML_SPARSE_INFERENCE</code>，那么PowerInfer会使用<code>llm_load_sparse_model_tensors</code>来加载张量。<br>
+这是一个比较长的函数。简单而言，我们可以把流程概括为：</p>
+<ul>
+<li>计算内存需求，创建并初始化<code>ggml</code>上下文。</li>
+<li>根据是否加载了 GPU 库（如 cuBLAS 或 OpenCL），选择将一部分计算分配给 GPU。</li>
+<li>函数根据模型的架构不同，对每种架构进行不同的张量分配。</li>
+<li>调用 <code>alloc.flush()</code> 来将分配的层同步到 GPU（设置backend以及减budget）。</li>
+<li>通过<code>ml.load_all_data</code>将将模型的所有数据加载到内存中。</li>
+<li>如果 cparams 存在，分配 KV Cache（的空间）。</li>
+<li>调用 <code>llm_load_gpu_split</code> 来处理 FFN 网络的分片和分配。</li>
+</ul>
+<pre><code class="language-c++">static void llm_load_sparse_model_tensors(
+        llama_model_loader &amp; ml,
+        llama_model &amp; model,
+        const llama_context_params * cparams,
+        int main_gpu,
+        long int vram_budget_bytes,
+        bool reset_gpu_index,
+        bool disable_ffn_split,
+        bool use_mlock,
+        llama_progress_callback progress_callback,
+        void * progress_callback_user_data) {
+    model.t_start_us = ggml_time_us();
+    auto &amp; ctx     = model.ctx;
+    auto &amp; hparams = model.hparams;
+
+    size_t ctx_size;
+    size_t mmapped_size;
+    ml.calc_sizes(ctx_size, mmapped_size);
+    LLAMA_LOG_INFO(&quot;%s: ggml ctx size = %7.2f MB\n&quot;, __func__, ctx_size/1024.0/1024.0);
+
+    // create the ggml context
+    {
+        model.buf.resize(ctx_size);
+        if (use_mlock) {
+            model.mlock_buf.init   (model.buf.data);
+            model.mlock_buf.grow_to(model.buf.size);
+        }
+
+        struct ggml_init_params params = {
+            /*.mem_size   =*/ model.buf.size,
+            /*.mem_buffer =*/ model.buf.data,
+            /*.no_alloc   =*/ ml.use_mmap,
+        };
+
+        model.ctx = ggml_init(params);
+        if (!model.ctx) {
+            throw std::runtime_error(format(&quot;ggml_init() failed&quot;));
+        }
+    }
+
+    (void) main_gpu;
+
+    enum ggml_backend_type llama_backend_offload = GGML_BACKEND_CPU;
+    enum ggml_backend_type llama_backend_offload_split = GGML_BACKEND_CPU;
+
+#ifdef GGML_USE_CUBLAS
+    if (ggml_cublas_loaded()) {
+        LLAMA_LOG_INFO(&quot;%s: using &quot; GGML_CUDA_NAME &quot; for GPU acceleration\n&quot;, __func__);
+        ggml_cuda_set_main_device(main_gpu);
+
+        llama_backend_offload = GGML_BACKEND_GPU;
+        llama_backend_offload_split = GGML_BACKEND_GPU_SPLIT;
+    }
+#elif defined(GGML_USE_CLBLAST)
+        LLAMA_LOG_INFO(&quot;%s: using OpenCL for GPU acceleration\n&quot;, __func__);
+        llama_backend_offload = GGML_BACKEND_GPU;
+        llama_backend_offload_split = GGML_BACKEND_GPU;
+#endif
+
+    buffered_tensor_allocator alloc(ml, ctx, hparams);
+    uint32_t current_layer = 0;
+    auto create_tensor = [&amp;alloc, &amp;current_layer] (
+        const std::pair&lt;std::string, llm_tensor&gt; &amp; tn, 
+        const std::vector&lt;int64_t&gt; &amp; ne) -&gt; ggml_tensor * {
+        return alloc.buffered_alloc(tn.first, tn.second, ne, current_layer);
+    };
+
+    {
+        const int64_t n_embd     = hparams.n_embd;
+        const int64_t n_embd_gqa = hparams.n_embd_gqa();
+        const int64_t n_layer    = hparams.n_layer;
+        const int64_t n_vocab    = hparams.n_vocab;
+
+        const auto tn = LLM_TN(model.arch);
+        switch (model.arch) {
+            case LLM_ARCH_LLAMA:
+            case LLM_ARCH_REFACT:
+            case LLM_ARCH_BAMBOO:
+                {
+                    model.tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, &quot;weight&quot;), {n_embd, n_vocab});
+
+                    // output
+                    {
+                        model.output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, &quot;weight&quot;), {n_embd});
+                        model.output      = create_tensor(tn(LLM_TENSOR_OUTPUT,      &quot;weight&quot;), {n_embd, n_vocab});
+                    }
+
+                    const uint32_t n_ff = hparams.n_ff;
+                    model.layers.resize(n_layer);
+
+                    for (uint32_t &amp;i = current_layer; i &lt; n_layer; ++i) {
+                       auto &amp; layer = model.layers[i];
+
+                        layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, &quot;weight&quot;, i), {n_embd});
+
+                        layer.wq = create_tensor(tn(LLM_TENSOR_ATTN_Q,   &quot;weight&quot;, i), {n_embd, n_embd});
+                        layer.wk = create_tensor(tn(LLM_TENSOR_ATTN_K,   &quot;weight&quot;, i), {n_embd, n_embd_gqa});
+                        layer.wv = create_tensor(tn(LLM_TENSOR_ATTN_V,   &quot;weight&quot;, i), {n_embd, n_embd_gqa});
+                        layer.wo = create_tensor(tn(LLM_TENSOR_ATTN_OUT, &quot;weight&quot;, i), {n_embd, n_embd});
+
+                        layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, &quot;weight&quot;, i), {n_embd});
+
+                        layer.ffn_gate = create_tensor(tn(LLM_TENSOR_FFN_GATE, &quot;weight&quot;, i), {n_embd,   n_ff});
+                        layer.ffn_down_t = create_tensor(tn(LLM_TENSOR_FFN_DOWN_T, &quot;weight&quot;, i), {n_embd, n_ff});
+                        layer.mlp_pre_w1 = create_tensor(tn(LLM_TENSOR_MLP_PRED_FC1, &quot;weight&quot;, i), {n_embd, GGML_NE_WILDCARD});
+                        layer.mlp_pre_w2 = create_tensor(tn(LLM_TENSOR_MLP_PRED_FC2, &quot;weight&quot;, i), {GGML_NE_WILDCARD, n_ff});
+                        layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   &quot;weight&quot;, i), {n_embd,   n_ff});
+                    }
+                } break;
+            case LLM_ARCH_FALCON:
+                {
+                    model.tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, &quot;weight&quot;), {n_embd, n_vocab});
+
+                    // output
+                    {
+                        model.output_norm   = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, &quot;weight&quot;), {n_embd});
+                        model.output_norm_b = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, &quot;bias&quot;),   {n_embd});
+                        model.output        = create_tensor(tn(LLM_TENSOR_OUTPUT,      &quot;weight&quot;), {n_embd, n_vocab});
+                    }
+
+                    const uint32_t n_ff = hparams.n_ff;
+
+                    model.layers.resize(n_layer);
+
+                    for (uint32_t &amp;i = current_layer; i &lt; n_layer; ++i) {
+                        auto &amp; layer = model.layers[i];
+
+                        layer.attn_norm   = create_tensor(tn(LLM_TENSOR_ATTN_NORM,   &quot;weight&quot;, i), {n_embd});
+                        layer.attn_norm_b = create_tensor(tn(LLM_TENSOR_ATTN_NORM,   &quot;bias&quot;, i),   {n_embd});
+
+                        if (gguf_find_tensor(ml.ctx_gguf, tn(LLM_TENSOR_ATTN_NORM_2, &quot;weight&quot;, i).first.c_str()) &gt;= 0) {
+                            layer.attn_norm_2   = create_tensor(tn(LLM_TENSOR_ATTN_NORM_2, &quot;weight&quot;, i), {n_embd});
+                            layer.attn_norm_2_b = create_tensor(tn(LLM_TENSOR_ATTN_NORM_2, &quot;bias&quot;, i),   {n_embd});
+                        }
+
+                        layer.wqkv = create_tensor(tn(LLM_TENSOR_ATTN_QKV, &quot;weight&quot;, i), {n_embd, n_embd + 2*n_embd_gqa});
+                        layer.wo   = create_tensor(tn(LLM_TENSOR_ATTN_OUT, &quot;weight&quot;, i), {n_embd, n_embd});
+                        layer.ffn_down_t = create_tensor(tn(LLM_TENSOR_FFN_DOWN_T, &quot;weight&quot;, i), {n_embd, n_ff});
+                        layer.mlp_pre_w1 = create_tensor(tn(LLM_TENSOR_MLP_PRED_FC1, &quot;weight&quot;, i), {n_embd, GGML_NE_WILDCARD});
+                        layer.mlp_pre_w2 = create_tensor(tn(LLM_TENSOR_MLP_PRED_FC2, &quot;weight&quot;, i), {GGML_NE_WILDCARD, n_ff});
+                        layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   &quot;weight&quot;, i), {n_embd,   n_ff});
+                    }
+                } break;
+            default:
+                throw std::runtime_error(&quot;unknown architecture&quot;);
+        }
+    }
+
+    model.n_gpu_layers = alloc.flush();
+    LLAMA_LOG_INFO(&quot;%s: offloaded layers from VRAM budget(%ld bytes): %d/%d\n&quot;, __func__, vram_budget_bytes, model.n_gpu_layers, hparams.n_layer);
+
+    // print memory requirements
+    {
+        // this is the total memory required to run the inference
+        size_t mem_required = ctx_size + mmapped_size;
+
+        LLAMA_LOG_INFO(&quot;%s: mem required  = %7.2f MB\n&quot;, __func__, mem_required / 1024.0 / 1024.0);
+
+#if defined(GGML_USE_CUBLAS) || defined(GGML_USE_CLBLAST)
+        LLAMA_LOG_INFO(&quot;%s: VRAM used: %.2f MB\n&quot;, __func__, alloc.vram_allocated_bytes / 1024.0 / 1024.0);
+#endif
+    }
+
+    // populate `tensors_by_name`
+    for (int i = 0; i &lt; ml.n_tensors; ++i) {
+        struct ggml_tensor * cur = ggml_get_tensor(ctx, ml.get_tensor_name(i));
+        model.tensors_by_name.emplace_back(ggml_get_name(cur), cur);
+    }
+
+    ml.load_all_data(ctx, progress_callback, progress_callback_user_data, use_mlock ? &amp;model.mlock_mmap : NULL);
+
+    if (progress_callback) {
+        progress_callback(1.0f, progress_callback_user_data);
+    }
+
+    model.mapping = std::move(ml.mapping);
+
+    // Reserve KV cache in VRAM
+    if (cparams != NULL) {
+        llama_reserve_model_kv_cache(&amp;model, cparams);
+    }
+    // Offload FFN segments to GPU if possible
+    model.ffn_offloaded_bytes = llm_load_gpu_split(ml, model, reset_gpu_index, disable_ffn_split || !alloc.tensor_offload_complete);
+
+    // loading time will be recalculate after the first eval, so
+    // we take page faults deferred by mmap() into consideration
+    model.t_load_us = ggml_time_us() - model.t_start_us;
+}
+</code></pre>
+<p>重点看一下最后的<code>llm_load_gpu_split</code>。其主要调用了<code>llm_load_gpu_split_with_budget</code>和<code>llama_model_offload_ffn_split</code>。其中<code>llm_load_gpu_split_with_budget</code>主要负责加载GPU Index（即哪些计算被卸载到GPU上），<code>llama_model_offload_ffn_split</code>则负责根据GPU Index把每层的Feed Forward层按需加载到GPU上。</p>
+<pre><code class="language-c++">static size_t llm_load_gpu_split(llama_model_loader &amp; ml, llama_model &amp; model, bool no_cache, bool no_offload) {
+#if defined (GGML_USE_CUBLAS)
+    if (!ggml_cublas_loaded()) {
+        throw std::runtime_error(format(&quot;cannot offload to GPU: &quot; GGML_CUDA_NAME &quot; not loaded&quot;));
+    }
+    if (!no_offload &amp;&amp; !llm_load_gpu_split_with_budget(ml, model, vram_budget_bytes, no_cache)) {
+        LLAMA_LOG_ERROR(&quot;%s: error: failed to generate gpu split, an empty one will be used\n&quot;, __func__);
+    }
+#endif
+
+    // Apply GPU index and split FFNs to GPU
+    size_t ffn_offloaded_bytes = llama_model_offload_ffn_split(&amp;model);
+    LLAMA_LOG_INFO(&quot;%s: offloaded %.2f MiB of FFN weights to GPU\n&quot;, __func__, ffn_offloaded_bytes / 1024.0 / 1024.0);
+
+    return ffn_offloaded_bytes;
+}
+</code></pre>
+<p><code>llm_load_gpu_split_with_budget</code>会尝试加载<code>ml.file.fname + &quot;.generated.gpuidx&quot;</code>文件，如果文件不存在则调用<code>python</code>脚本生成一个该文件。脚本的主要作用是通过整数线性规划（具体算法可见论文），得出应该把哪些计算卸载到GPU上。其中，脚本会得到<code>gpu_idx</code>和<code>gpu_bucket</code>。</p>
+<ul>
+<li><code>gpu_idx</code> 是一个布尔型（0/1）的张量，用于指示哪些神经元（或张量的部分）会被分配到 GPU 上。它的每个元素与对应层的激活数据（神经元）一一对应。如果某个位置的值为 1，则表示该神经元需要分配到 GPU；如果值为 0，则表示该神经元不在 GPU 上。</li>
+<li><code>gpu_bucket</code> 是一个表示在 GPU 上实际存储的神经元索引的有序列表（数组）。它仅包含那些被选中要放置到 GPU 上的神经元索引，并且通常是有序的。这种方式便于在 GPU 内存中高效存储和查找。<br>
+最后，通过对<code>.gpuidx</code>文件的加载，<code>gpu_idx</code>和<code>gpu_bucket</code>信息会被加载到model的layer中（顺便计算了个<code>model_layer.gpu_offload_ratio</code>）。</li>
+</ul>
+<pre><code class="language-c++">    int load_gpu_idx_for_model(llama_model * model) {
+        int n_layers = model-&gt;layers.size();
+        // TODO: assert fp is at the end of headers
+        if (n_tensors != n_layers * 2) {
+           LLAMA_LOG_ERROR(&quot;%s: error: the number of gpu splits does not match the layer of model\n&quot;, __func__);
+            return 1;
+        }
+        LLAMA_LOG_INFO(&quot;%s: applying gpu_idx adapter from '%s' - please wait ...\n&quot;, __func__, fname.c_str());
+        const int64_t t_start_mlp_us = ggml_time_us();
+
+        for (int il = 0; il &lt; n_layers; il++) {
+            llama_layer &amp;model_layer = model-&gt;layers[il];
+            ggml_tensor * gpu_idx = idx_loader-&gt;get_tensor_meta(il*2);
+            ggml_tensor * gpu_bucket = idx_loader-&gt;get_tensor_meta(il*2+1);
+            if (gpu_idx == nullptr || gpu_bucket == nullptr) {
+                LLAMA_LOG_ERROR(&quot;%s: error: failed to load gpu index or bucket\n&quot;, __func__);
+                return 1;
+            }
+            model_layer.gpu_idx = idx_loader-&gt;create_tensor_for(ctx_meta, gpu_idx, GGML_BACKEND_CPU);
+            model_layer.gpu_bucket = idx_loader-&gt;create_tensor_for(ctx_meta, gpu_bucket, GGML_BACKEND_CPU);
+        }
+        llama_progress_callback cb = [](float progress, void *ctx) {
+            LLAMA_LOG_INFO(&quot;.&quot;);
+        };
+        idx_loader-&gt;load_all_data(ctx_meta, cb, nullptr, nullptr);
+
+        for (int il = 0; il &lt; n_layers; il++) {
+            llama_layer &amp;model_layer = model-&gt;layers[il];
+            ggml_tensor * gpu_idx = model_layer.gpu_idx;
+            ggml_tensor * gpu_bucket = model_layer.gpu_bucket;
+            int64_t gpu_neurons = sum_gpu_index(gpu_idx);
+            model_layer.gpu_offload_ratio = (double)gpu_neurons / gpu_idx-&gt;ne[0];
+            if (gpu_neurons == 0 || gpu_neurons == gpu_idx-&gt;ne[0]) {
+                // no hybrid inference for this layer, unset gpu_bucket
+                model_layer.gpu_bucket = NULL;
+                // TODO: maybe can also unset gpu_idx
+            } else {
+#if defined(GGML_USE_CUBLAS)
+                ggml_set_backend(gpu_bucket, GGML_BACKEND_GPU);
+                ggml_cuda_transform_tensor(gpu_bucket-&gt;data, gpu_bucket);
+#else
+                GGML_ASSERT(false &amp;&amp; &quot;cublas is not enabled&quot;);
+#endif
+            }
+        }
+
+        const int64_t t_mlp_us = ggml_time_us() - t_start_mlp_us;
+        LLAMA_LOG_INFO(&quot; done (%.2f ms)\n&quot;, t_mlp_us / 1000.0);
+
+        return 0;
+    }
+</code></pre>
+<p>至于<code>llama_model_offload_ffn_split</code>，最终会对每一层调用<code>slice_ffn_mat_to_gpu</code>来根据<code>gpu_bucket</code>把<code>ffn_gate</code>、<code>ffn_up</code>和<code>ffn_down</code>卸载到GPU上。</p>
+<pre><code class="language-c++">   size_t slice_ffn_mat_to_gpu(llama_layer &amp; layer) {
+        std::vector&lt;uint8_t&gt; work_buffer;
+        ggml_tensor * gpu_idx = layer.gpu_idx;
+        ggml_tensor * gpu_bucket = layer.gpu_bucket;
+        size_t offloaded_bytes = 0;
+
+        if (layer.gpu_offload_ratio == 0.) {
+            return 0;
+        }
+
+        GGML_ASSERT((layer.gpu_bucket != NULL) == (layer.gpu_offload_ratio &lt; 1.0));
+
+        if (layer.ffn_gate) {
+            layer.ffn_gate_gpu = create_striped_mat_to_gpu(layer.ffn_gate, gpu_bucket);
+            offloaded_bytes += ggml_nbytes(layer.ffn_gate_gpu);
+        }
+        
+        layer.ffn_up_gpu = create_striped_mat_to_gpu(layer.ffn_up, gpu_bucket);
+        offloaded_bytes += ggml_nbytes(layer.ffn_up_gpu);
+        
+        layer.ffn_down_gpu = create_striped_mat_to_gpu(layer.ffn_down_t, gpu_bucket);
+        offloaded_bytes += ggml_nbytes(layer.ffn_down_gpu);
+
+        return offloaded_bytes;
+    }
+
+    size_t offload_ffn_split(llama_model * model) {
+        LLAMA_LOG_INFO(&quot;%s: applying augmentation to model - please wait ...\n&quot;, __func__);
+        const int64_t t_start_aug_us = ggml_time_us();
+        std::vector&lt;uint8_t&gt; work_buffer;
+
+        // Set sparsity threshold via global virables
+        sparse_pred_threshold = model-&gt;hparams.sparse_pred_threshold;
+#if defined (GGML_USE_CUBLAS)
+        ggml_cuda_set_device_constants(model-&gt;hparams.sparse_pred_threshold);
+#endif
+
+        // load gpu_idx and slice mat to gpu
+        size_t offloaded_bytes = 0;
+        for (llama_layer &amp;model_layer : model -&gt; layers) {
+            // gpu_idx load
+            if (model_layer.gpu_idx == NULL &amp;&amp; model_layer.gpu_bucket == NULL) {
+                ggml_tensor * gpu_idx = ggml_new_tensor_1d(aux_ctx, GGML_TYPE_I32, model_layer.mlp_pre_w2 -&gt; ne[1]);
+                ggml_set_zero(gpu_idx);
+                model_layer.gpu_idx = gpu_idx;
+                ggml_tensor * gpu_bucket = ggml_new_tensor_1d(aux_ctx, GGML_TYPE_I32, 0);
+                model_layer.gpu_bucket = gpu_bucket;
+            }
+            offloaded_bytes += slice_ffn_mat_to_gpu(model_layer);
+            LLAMA_LOG_INFO(&quot;.&quot;);
+        }
+
+        LLAMA_LOG_INFO(&quot; done (%.2f ms)\n&quot;, (ggml_time_us() - t_start_aug_us) / 1000.0);
+        return offloaded_bytes;
+    }
+</code></pre>
+<p>点进<code>create_striped_mat_to_gpu</code>，我们还可以看到weights是如何根据<code>gpu_bucket</code>被卸载到GPU上的。简单说，<code>gpu_bucket</code>中存储的是<code>host_i</code>，据此我们找到host中的<code>(char *)(src -&gt; data) + host_i * row_data_size</code>位置来将数据一行一行copy到GPU上。</p>
+<pre><code class="language-c++">    ggml_tensor * create_striped_mat_to_gpu(struct ggml_tensor *src, struct ggml_tensor * gpu_bucket) {
+#ifdef GGML_USE_CUBLAS
+        if (gpu_bucket == NULL) {
+            // offload the whole tensor to gpu
+            ggml_set_backend(src, GGML_BACKEND_GPU);
+            ggml_cuda_transform_tensor(src-&gt;data, src);
+            return src;
+        }
+
+        int64_t row_len = src-&gt;ne[0];
+        int64_t gpu_rows = gpu_bucket-&gt;ne[0];
+        GGML_ASSERT(0 &lt; gpu_rows &amp;&amp; gpu_rows &lt;= src-&gt;ne[1]);
+
+        ggml_set_no_alloc(aux_ctx, true);
+        ggml_tensor * gpu_dst = ggml_new_tensor_2d(aux_ctx, src-&gt;type, row_len, gpu_rows);
+        ggml_set_backend(gpu_dst, GGML_BACKEND_GPU);
+        ggml_cuda_alloc_tensor(gpu_dst);
+
+        // init two 1d views on host and device
+        ggml_tensor * host_mat_row = ggml_new_tensor_1d(aux_ctx, src-&gt;type, row_len);
+        static ggml_tensor * device_mat_row = ggml_dup_tensor(aux_ctx, host_mat_row);
+        ggml_set_backend(device_mat_row, GGML_BACKEND_GPU);
+        ggml_cuda_alloc_tensor(device_mat_row);
+        *ggml_cuda_get_data_pp(device_mat_row) = *ggml_cuda_get_data_pp(gpu_dst);
+
+        // read raw data and copy to device depending on gpu_idx
+        const enum ggml_type type = src-&gt;type;
+        const int ne0 = src-&gt;ne[0];
+        const size_t row_data_size = ne0*ggml_type_size(type)/ggml_blck_size(type);
+        for (int i = 0; i &lt; gpu_rows; i++) {
+            int32_t host_i = ((int32_t *)gpu_bucket-&gt;data)[i];
+            host_mat_row -&gt; data = (char *)(src -&gt; data) + host_i * row_data_size;
+            char ** gpu_data_pp = reinterpret_cast&lt;char **&gt;(ggml_cuda_get_data_pp(device_mat_row));
+            // printf(&quot;gpu_data_p: %p\n&quot;, *gpu_data_pp);
+            ggml_cuda_cpy_1d(device_mat_row, host_mat_row);
+            *gpu_data_pp = *gpu_data_pp + row_data_size;
+        }
+        ggml_set_no_alloc(aux_ctx, false);
+
+        return gpu_dst;
+#else
+        return NULL;
+#endif
+    }
+</code></pre>
+<p>到这里，模型tensor被创建，数据被加载，GPU Index被计算，GPU上也被分配和卸载了相应内容，模型的初始加载过程便大致结束。</p>
+<h2 id="支持-️">支持 ☕️</h2>
+<p>如果发现内容有纰漏或错误，可以通过邮箱hangyu.yuan@qq.com联系我或直接在下方评论告诉我，谢谢。<br>
+如果内容对你有帮助，进入我的<a href="https://github.com/Yuan-Allen">GitHub主页</a>，点个Follow就是对我最大的支持，谢谢。🚀</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（栈与队列篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-stack-and-queue/</id>
+        <link href="https://alleny.xyz/post/leetcode-stack-and-queue/">
+        </link>
+        <updated>2024-08-23T06:44:53.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（栈与队列篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（栈与队列篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="232-implement-queue-using-stacks">[232] Implement Queue using Stacks</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/implement-queue-using-stacks/description/">题目描述</a>。<br>
+无难度。使用一个输入栈，一个输出栈即可。<code>push</code>会先放到输入栈，<code>pop</code>和<code>peek</code>则从输出栈去取，若输出栈为空则把输入栈的元素一整个倒到输出栈里面，这个倒内容的过程自然就把弹出元素的顺序反了过来。</p>
+<pre><code class="language-c++">class MyQueue {
+  stack&lt;int&gt; input_stack;
+  stack&lt;int&gt; output_stack;
+
+  void transform_stack() {
+    while (!input_stack.empty()) {
+      output_stack.push(input_stack.top());
+      input_stack.pop();
+    }
+  }
+
+ public:
+  MyQueue() {}
+
+  void push(int x) { input_stack.push(x); }
+
+  int pop() {
+    if (output_stack.empty()) {
+      transform_stack();
+    }
+    int ret = output_stack.top();
+    output_stack.pop();
+    return ret;
+  }
+
+  int peek() {
+    if (output_stack.empty()) {
+      transform_stack();
+    }
+    return output_stack.top();
+  }
+
+  bool empty() { return output_stack.empty() &amp;&amp; input_stack.empty(); }
+};
+</code></pre>
+<h2 id="225-implement-stack-using-queues">[225] Implement Stack using Queues</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/implement-stack-using-queues/description/">题目描述</a>。<br>
+相比于<a href="#225-implement-stack-using-queues">用栈实现队列</a>，由于队列先进先出的特性，因此和前一道题不一样，并不是说两个队列叠加起来就变成后进先出了。<br>
+不过我们依然可以使用两个队列，不同的是，另一个队列仅仅是备份队列。我们可以现将第一个队列除了最后一个元素的所有元素都先放到第二个队列去，然后便可取出最后一个元素。<br>
+<strong>优化</strong>：与网上大多数解法不同的是，网上的solution都选择在<code>pop</code>以后直接调换<code>q1</code>与<code>q2</code>，但实际上这是完全没有必要的，并且增加了很多冗余操作。事实上我们只需要在<code>pop</code>的一开始判断<code>q1</code>是否为空即可，然后再调换。这样做带来的变化是，面对<code>push</code>...<code>push</code>, <code>pop</code>, <code>push</code>...<code>push</code>, <code>pop</code>这样的操作时，第二段<code>push</code>依然被执行到原有的<code>q1</code>里面，后一次<code>pop</code>也只需要将第二段<code>push</code>进去的新元素放到<code>q2</code>。而如果是网上的朴素解法，每次<code>pop</code>都需要把所有元素在<code>q1</code>与<code>q2</code>间转移，增加了很多冗余操作。<br>
+网上的另一种做法是只使用一个队列，即<code>pop</code>时把前面的元素重新<code>push</code>到队尾即可。这样的做法节省了空间，但就用不了笔者所设计的优化了。</p>
+<pre><code class="language-python">import queue
+
+
+class MyStack:
+    def __init__(self):
+        self.q1 = queue.Queue()
+        self.q2 = queue.Queue()
+
+    def push(self, x: int) -&gt; None:
+        self.q1.put(x)
+
+    def pop(self) -&gt; int:
+        if self.q1.empty():
+            self.q1, self.q2 = self.q2, self.q1
+        size = self.q1.qsize()
+        while size &gt; 1:
+            self.q2.put(self.q1.get())
+            size -= 1
+        popped = self.q1.get()
+
+        return popped
+
+    def top(self) -&gt; int:
+        popped = self.pop()
+        self.push(popped)
+        return popped
+
+    def empty(self) -&gt; bool:
+        return self.q1.empty() and self.q2.empty()
+</code></pre>
+<h2 id="20-valid-parentheses">[20] Valid Parentheses</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-parentheses/description/">题目描述</a>。<br>
+使用栈来记录一边括号，查看是否匹配即可。只要大一学数据结构时候写过计算器，这道题都等于没有难度。<br>
+此外，使用Rust的<code>match</code>语法和<code>matches!</code>宏，代码可以做到极致优雅。</p>
+<pre><code class="language-rust">impl Solution {
+    pub fn is_valid(s: String) -&gt; bool {
+        let mut stack = Vec::with_capacity(s.len());
+
+        for c in s.chars() {
+            match c {
+                '(' | '{' | '[' =&gt; stack.push(c),
+                ')' | '}' | ']' =&gt; {
+                    if let Some(top) = stack.pop() {
+                        if !matches!((top, c), ('(', ')') | ('{', '}') | ('[', ']')) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                _ =&gt; return false,
+            }
+        }
+
+        stack.is_empty()
+    }
+}
+</code></pre>
+<h2 id="1047-remove-all-adjacent-duplicates-in-string">[1047] Remove All Adjacent Duplicates In String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-all-adjacent-duplicates-in-string/description/">题目描述</a>。<br>
+使用栈来记录最近访问过的字符即可，基本无难度。此外，直接使用字符串作为栈可以省去最后把栈转为字符串的操作（如果要把栈转为字符串，还要注意倒序的问题。可以对字符串的<code>rbegin</code>开始赋值或者是最后<code>reverse</code>一下）。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  string removeDuplicates(string s) {
+    string result = &quot;&quot;;
+    for (char c : s) {
+      if (!result.empty() &amp;&amp; result.back() == c) {
+        result.pop_back();
+      } else {
+        result.push_back(c);
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h2 id="150-evaluate-reverse-polish-notation">[150] Evaluate Reverse Polish Notation</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/evaluate-reverse-polish-notation/description/">题目描述</a>。<br>
+应该是大一数据结构必做的题，现在来看基本无难度。<br>
+使用栈存储操作数，碰到运算符计算一下再压栈即可。</p>
+<pre><code class="language-python">class Solution:
+    def eval_op(self, num1: int, num2: int, op: str) -&gt; int:
+        if op == &quot;+&quot;:
+            return int(num2 + num1)
+        elif op == &quot;-&quot;:
+            return int(num2 - num1)
+        elif op == &quot;*&quot;:
+            return int(num2 * num1)
+        elif op == &quot;/&quot;:
+            return int(num2 / num1)
+        else:
+            print(&quot;Invalid OP&quot;)
+            return -1
+
+    def evalRPN(self, tokens: List[str]) -&gt; int:
+        operand = []
+        for token in tokens:
+            if token in &quot;+-*/&quot;:
+                num1 = operand.pop()
+                num2 = operand.pop()
+                operand.append(self.eval_op(num1, num2, token))
+            else:
+                operand.append(int(token))
+        assert len(operand) == 1
+        return operand.pop()
+</code></pre>
+<h2 id="239-sliding-window-maximum">[239] Sliding Window Maximum</h2>
+<blockquote>
+<p>难度：Hard<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/sliding-window-maximum/description/">题目描述</a>。<br>
+貌似是刷题过程中遇到的第一道Hard。这道题用到了单调队列，简单说就是队列内的内容是单调有序的（该题中为单调递减）。<br>
+针对不同的题目，单调队列的实现方式可能是不一样的。就该题而言，维护这样的一个队列，我们需要：</p>
+<ul>
+<li>在<code>push</code>时，如果新元素大于队尾的元素，需要先把队尾的元素弹出并扔掉。</li>
+<li>在<code>pop</code>时，需要传入一个参数（窗口的最左边元素），如果参数与队首的的元素相同（对应窗口的最左边元素是窗口内的最大值），我们才真正弹出队首的元素，否则忽略<code>pop</code>操作。</li>
+</ul>
+<p>这样的设计使<code>pop</code>时我们能快速判断当前窗口内的最大值是否减小，并且在减小后迅速找到下一个窗口内的最大值（即弹出队首后新的队首）。<br>
+可见队列的首尾都有弹出操作，因此我们使用<code>deque</code>（double-ended queue）来实现该单调队列。最终代码如下。</p>
+<pre><code class="language-Rust">use std::collections::VecDeque;
+
+struct MonotonicQueue {
+    inner_queue: VecDeque&lt;i32&gt;,
+}
+
+impl MonotonicQueue {
+    fn with_capacity(k: usize) -&gt; MonotonicQueue {
+        MonotonicQueue {
+            inner_queue: VecDeque::with_capacity(k),
+        }
+    }
+
+    fn front(&amp;self) -&gt; Option&lt;&amp;i32&gt; {
+        self.inner_queue.front()
+    }
+
+    fn push(&amp;mut self, num: i32) {
+        while let Some(&amp;back) = self.inner_queue.back() {
+            if num &gt; back {
+                self.inner_queue.pop_back();
+            } else {
+                break;
+            }
+        }
+        self.inner_queue.push_back(num);
+    }
+
+    fn pop(&amp;mut self, num: i32) {
+        if self.front() == Some(&amp;num) {
+            self.inner_queue.pop_front();
+        }
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.inner_queue.len()
+    }
+}
+
+impl Solution {
+    pub fn max_sliding_window(nums: Vec&lt;i32&gt;, k: i32) -&gt; Vec&lt;i32&gt; {
+        let k = k as usize;
+        let mut window = MonotonicQueue::with_capacity(k);
+        let mut res = Vec::with_capacity(nums.len());
+
+        for (i, &amp;num) in nums.iter().enumerate() {
+            if i &gt;= k {
+                window.pop(nums[i - k]);
+            }
+            window.push(num);
+
+            if i &gt;= k - 1 {
+                if let Some(&amp;max) = window.front() {
+                    res.push(max);
+                }
+            }
+        }
+        res
+    }
+}
+</code></pre>
+<h2 id="347-top-k-frequent-elements">[347] Top K Frequent Elements</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/top-k-frequent-elements/description/">题目描述</a>。<br>
+题目要求要优于<code>O(nlogn)</code>的时间复杂度，一开始以为优先级队列不能用，后来想想优先级队列复杂度是<code>O(nlogk)</code>的，所以满足题目要求。<br>
+既然能用优先级队列，题目就变得很简单了。先用<code>unordered_map</code>统计一下各数字的频率，然后塞到大小为<code>k</code>的优先级队列中即可。需要注意的是，优先级队列的实现应该是小顶堆，这样才能在堆满的时候把最小的元素弹出。<br>
+堆元素的比较使用了lambda函数，在定义优先级队列时需要在类型填入<code>decltype(compare)</code>以及为构造函数添加参数<code>queue(compare)</code>（但实测其实不添加参数也编译通过了）。具体可见代码。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; topKFrequent(vector&lt;int&gt;&amp; nums, int k) {
+    unordered_map&lt;int, int&gt; frequency;
+    vector&lt;int&gt; result;
+    for (int num : nums) {
+      ++frequency[num];  // The default value is 0.
+    }
+
+    auto compare = [](const pair&lt;int, int&gt;&amp; a, const pair&lt;int, int&gt;&amp; b) {
+      return a.second &gt; b.second;
+    };
+    priority_queue&lt;pair&lt;int, int&gt;, vector&lt;pair&lt;int, int&gt;&gt;, decltype(compare)&gt;
+        queue(compare);
+
+    for (auto f : frequency) {
+      queue.push(f);
+      if (queue.size() &gt; k) {
+        queue.pop();
+      }
+    }
+
+    while (!queue.empty()) {
+      result.push_back(queue.top().first);
+      queue.pop();
+    }
+
+    return result;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>这部分遇见的题目总体还是比较简单的。可以把做过的题目分为以下几类：</p>
+<ul>
+<li>栈与队列的互相实现：考察对数据结构的基本掌握程度，<a href="#232-implement-queue-using-stacks">[232] Implement Queue using Stacks</a>使用两个栈来实现倒序以满足queue的接口，<a href="#225-implement-stack-using-queues">[225] Implement Stack using Queues</a>则使用了一个队列用来做备份，把队列的内容弹空到剩最后一个（最新的）元素来满足stack的接口。</li>
+<li>利用栈的匹配问题，例如<a href="#20-valid-parentheses">[20] Valid Parentheses</a>的括号匹配、<a href="#1047-remove-all-adjacent-duplicates-in-string">Remove All Adjacent Duplicates In String</a>的相邻字符匹配和<a href="#150-evaluate-reverse-polish-notation">[150] Evaluate Reverse Polish Notation</a>的运算符与操作数匹配，整体没什么难度。</li>
+<li>单调队列的构造与使用，例如<a href="#239-sliding-window-maximum">[239] Sliding Window Maximum</a>使用了单调递减队列记录了滑动窗口的最大值。</li>
+<li>优先级队列的使用，例如<a href="#347-top-k-frequent-elements">[347] Top K Frequent Elements</a>，直接用即可，无难度。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（字符串篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-string/</id>
+        <link href="https://alleny.xyz/post/leetcode-string/">
+        </link>
+        <updated>2024-08-09T06:32:58.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（字符串篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（字符串篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="344-reverse-string">[344] Reverse String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-string/description/">题目描述</a>。<br>
+左右指针往中间靠拢即可，无难度。</p>
+<pre><code class="language-c++">  void reverseString(vector&lt;char&gt;&amp; s) {
+    char tmp;
+
+    for (int left = 0, right = s.size() - 1; left &lt; right; left++, right--) {
+      tmp = s[left];
+      s[left] = s[right];
+      s[right] = tmp;
+    }
+  }
+</code></pre>
+<h2 id="541-reverse-string-ii">[541] Reverse String II</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-string-ii/description/">题目描述</a>。<br>
+按照题目要求反转字符串即可，基本无难度。</p>
+<pre><code class="language-python">    def reverseStr(self, s: str, k: int) -&gt; str:
+        s = list(s)
+        cur = 0
+        size = len(s)
+        while cur &lt; size:
+            left = cur
+            right = min(left + k - 1, size - 1)
+            while left &lt; right:
+                tmp = s[left]
+                s[left] = s[right]
+                s[right] = tmp
+                left += 1
+                right -= 1
+            cur += 2 * k
+        return &quot;&quot;.join(s)
+</code></pre>
+<h2 id="151-reverse-words-in-a-string">[151] Reverse Words in a String</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-words-in-a-string/description/">题目描述</a>。<br>
+最简单的方法是先分好词，然后翻转然后拼起来即可。但为了增加挑战性，我们希望能只用<code>O(1)</code>的额外空间，即in-place地解决问题。<br>
+那么如何in-place修改呢？我们可以考虑翻转两次。第一次翻转整个字符串，第二次再翻转各个单词，如此单词内部顺序正确，整体的单词顺序也被翻转过来了。除此之外，我们还需要先去除多余空格。由此，可得到以下步骤：</p>
+<ol>
+<li>去除多余空格。</li>
+<li>翻转字符串，然后翻转单词。</li>
+</ol>
+<p>对于去除空格，我们使用了快慢指针的方式，即一个快指针在前面扫描，遇到多余的空格就不处理，否则把字符填到慢指针的地方，最后<code>resize</code>一下。<br>
+最后得到的代码如下。</p>
+<pre><code class="language-rust">impl Solution {
+    pub fn reverse(s: &amp;mut Vec&lt;char&gt;, mut begin: usize, mut end: usize) {
+        while begin &lt; end {
+            let temp = s[begin];
+            s[begin] = s[end];
+            s[end] = temp;
+            begin += 1;
+            end -= 1;
+        }
+    }
+    pub fn remove_extra_spaces(s: &amp;mut Vec&lt;char&gt;) {
+        let mut slow: usize = 0;
+        let len = s.len();
+        let mut i: usize = 0;
+        while i &lt; len {
+            if !s[i].is_ascii_whitespace() {
+                if slow != 0 {
+                    s[slow] = ' ';
+                    slow += 1;
+                }
+                while i &lt; len &amp;&amp; !s[i].is_ascii_whitespace() {
+                    s[slow] = s[i];
+                    slow += 1;
+                    i += 1;
+                }
+            }
+            i += 1;
+        }
+        s.resize(slow, ' ');
+    }
+    pub fn reverse_words(s: String) -&gt; String {
+        let mut s = s.chars().collect::&lt;Vec&lt;char&gt;&gt;();
+        Self::remove_extra_spaces(&amp;mut s);
+        let len = s.len();
+        Self::reverse(&amp;mut s, 0, len - 1);
+        let mut start = 0;
+        for i in 0..=len {
+            if i == len || s[i].is_ascii_whitespace() {
+                Self::reverse(&amp;mut s, start, i - 1);
+                start = i + 1;
+            }
+        }
+        s.iter().collect::&lt;String&gt;()
+    }
+}
+</code></pre>
+<h2 id="28-find-the-index-of-the-first-occurrence-in-a-string">[28] Find the Index of the First Occurrence in a String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-the-index-of-the-first-occurrence-in-a-string/description/">题目描述</a>。<br>
+使用了KMP算法。关于KMP算法，具体可以看<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0028.%E5%AE%9E%E7%8E%B0strStr.md">这篇文章</a>。<br>
+简单来说，先构造<code>next</code>表，该表记录了<code>needle</code>从开始到<code>index</code>所处位置的最长公共前后缀的长度。之后在查找时，若<code>needle</code>和<code>haystack</code>当前位置匹配失败，则可根据<code>next</code>表找到<code>needle</code>中和后缀相同的前缀所处的末尾位置，然后再从该位置继续匹配，这样可省去前缀的重复匹配的开销。该算法的时间复杂度为<code>O(m+n)</code>。</p>
+<pre><code class="language-python">class Solution:
+    def getNext(self, needle: str) -&gt; List:
+        j = 0
+        i = 1
+        length = len(needle)
+        next_table = [0] * length
+        while i &lt; length:
+            while j &gt; 0 and needle[i] != needle[j]:
+                j = next_table[j - 1]
+            if needle[i] == needle[j]:
+                j += 1
+            next_table[i] = j
+            i += 1
+        return next_table
+
+    def strStr(self, haystack: str, needle: str) -&gt; int:
+        next_table = self.getNext(needle)
+        j = 0
+        i = 0
+        haystack_length = len(haystack)
+        needle_length = len(needle)
+        while i &lt; haystack_length:
+            while j &gt; 0 and haystack[i] != needle[j]:
+                j = next_table[j - 1]
+            if haystack[i] == needle[j]:
+                j += 1
+                if j == needle_length:
+                    return i - needle_length + 1
+            i += 1
+        return -1
+</code></pre>
+<h2 id="459-repeated-substring-pattern">[459] Repeated Substring Pattern</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/repeated-substring-pattern/description/">题目描述</a>。<br>
+看见题目后先自己写了个简单解法。Naive的想法就是把<code>pattern</code>重复几次到<code>s</code>的长度，然后再看两者是否相等即可。其中又有一些小优化，例如<code>pattern</code>的长度最长只需要到<code>total_length</code>的一半，以及<code>total_length % i == 0</code>才需要继续判断。<br>
+这种方法是可以通过测试的， 但还有更高效的算法。可以使用KMP算法来解决该问题。<br>
+在<a href="#28-find-the-index-of-the-first-occurrence-in-a-string">[28] Find the Index of the First Occurrence in a String</a>中，我们提到了通过构建<code>next</code>表来存储最长公共前后缀的长度，在该题中也一样，先对字符串<code>s</code>构建<code>next</code>表。如果<code>s</code>存在最小重复子串单位，则<code>total_length - common_length</code>就是该最小单位的长度。最后，我们再检查是否<code>total_length % diff == 0</code>即可判断该字符串<code>s</code>是否由重复的子字符串构成。<br>
+更详细的解释可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0459.%E9%87%8D%E5%A4%8D%E7%9A%84%E5%AD%90%E5%AD%97%E7%AC%A6%E4%B8%B2.md">这篇文章</a>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void getNext(int* next, string s) {
+    int j = 0;
+    int length = s.size();
+    next[0] = j;
+    for (int i = 1; i &lt; length; ++i) {
+      while (j &gt; 0 &amp;&amp; s[i] != s[j]) {
+        j = next[j - 1];
+      }
+      if (s[i] == s[j]) {
+        ++j;
+      }
+      next[i] = j;
+    }
+  }
+
+  bool repeatedSubstringPattern(string s) {
+    int total_length = s.size();
+    vector&lt;int&gt; next(total_length);
+    getNext(&amp;next[0], s);
+    int common_length = next[total_length - 1];
+
+    if (common_length == 0) {
+      return false;
+    }
+
+    int diff = total_length - common_length;
+    if (total_length % diff == 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  bool repeatedSubstringPatternNaive(string s) {
+    string pattern(1, s[0]);
+    int total_length = s.size();
+    int i = 1;
+
+    while (i &lt;= total_length / 2) {
+      if (total_length % i == 0) {
+        int times = total_length / i;
+        string result = pattern;
+        while (times-- &gt; 1) {
+          result += pattern;
+        }
+        if (result == s) {
+          return true;
+        }
+      }
+      pattern += s[i];
+      ++i;
+    }
+
+    return false;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>其实本质算法上看，字符串与数组并无区别，只是元素变成了字符而已。</p>
+<ul>
+<li>字符串的一些题涉及到了双指针的方法。其中，双指针又可用于反转字符串。<a href="#151-reverse-words-in-a-string">[151] Reverse Words in a String</a>又在此基础上更进一步，需要把字符串翻转两次，其中第一次翻转整个字符串，第二次仅翻转单词来达到仅翻转所有单词顺序的效果。</li>
+<li>另一部分题用到了KMP算法。KMP算法通过记录了从开始到字符串各个位置子串的最长公共前后缀的长度。通过该记录，可以在查找子串的过程中失败时方便回退到前缀末尾对应的位置，跳过已匹配的部分，降低时间复杂度。<a href="#459-repeated-substring-pattern">[459] Repeated Substring Pattern</a>还通过数学原理判断了是否存在可重复的子串来构成原字符串。具体来说，通过<code>total_length</code>和<code>common_length</code>的差找到了可能的最小重复单位的长度，再通过取模判断原字符串是否是最小单位的倍数。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[踩坑记录：相同数据，两次plt画图结果不一致]]></title>
+        <id>https://alleny.xyz/post/plt-plot-bug/</id>
+        <link href="https://alleny.xyz/post/plt-plot-bug/">
+        </link>
+        <updated>2024-08-02T06:05:12.000Z</updated>
+        <summary type="html"><![CDATA[<p>使用完全相同的数据，plt画图却能得到不同的图像。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>使用完全相同的数据，plt画图却能得到不同的图像。</p>
+<!-- more -->
+<h2 id="问题">问题</h2>
+<p>笔者使用<code>plt</code>画柱状图，代码如下：</p>
+<pre><code class="language-python">def plot_activation_frequencies():
+    if not os.path.exists(&quot;img&quot;):
+        os.makedirs(&quot;img&quot;)
+    for layer_name, activations in layer_activations.items():
+
+        input_data = flatten_activations(activations[&quot;inputs&quot;])
+        output_data = flatten_activations(activations[&quot;outputs&quot;])
+
+        input_activation_freq = (input_data &gt; 0).mean(axis=0)
+        output_activation_freq = (output_data &gt; 0).mean(axis=0)
+
+        plt.figure(figsize=(12, 6))
+
+        plt.subplot(1, 2, 1)
+        plt.bar(
+            range(len(input_activation_freq)),
+            input_activation_freq,
+            color=&quot;blue&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Input Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.subplot(1, 2, 2)
+        plt.bar(
+            range(len(output_activation_freq)),
+            output_activation_freq,
+            color=&quot;green&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Output Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.tight_layout()
+        plt.savefig(f&quot;img/{layer_name}_activation_frequency.png&quot;)
+        plt.close()
+</code></pre>
+<p>通过<code>print</code>打印中间数据，可得到<code>input_activation_freq</code>和<code>output_activation_freq</code>的内容完全一样。也就是说，两次<code>plt.bar</code>的参数除了颜色都是一样的。但是，画出来的两个图像却长得不一样！</p>
+<h2 id="解决过程">解决过程</h2>
+<ol>
+<li>笔者又直接把第二个<code>plt.bar</code>的参数也换成<code>input_activation_freq</code>，也就是说直接用相同的<code>input_activation_freq</code>连续画两次图，可得到的两个图仍然不一样。</li>
+<li>笔者又注释掉第二次<code>plt.bar</code>，只画一次图，结果得到的图甚至和之前得到的两种图都不一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>np.arange(0, 3000, 6)</code>，两边画的图一样了</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:2]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:100]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:1000]</code>，两边画的图又不一样了（<strong>重要</strong>）。</li>
+</ol>
+<p>也就是说，两次画图得到的图是否一样，竟然和数据量有关系？</p>
+<h2 id="原因">原因</h2>
+<p>原因其实是画的图横坐标太长（3072），也就是说有三千多条柱子，而图又太小（<code>plt.figure(figsize=(12, 6))</code>），而一条柱子的宽度起码要占一个像素点，就导致<strong>这么小的图其实无法完全展示所有的柱子</strong>。而左右两个<code>plt.subplot</code>画图时可能对柱子采的样不同（毕竟要在这么小的图内显示这么多柱子是不可能的，其实只能展示一部分柱子），就导致相同数据左右画的图不一致。</p>
+<h2 id="解决方案">解决方案</h2>
+<p>可以扩大图的大小，即调整<code>plt.figure</code>的参数大小。<br>
+更好的方式是把<code>png</code>换成使用<code>pdf</code>存储，即可解决问题。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（哈希表篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-hash-table/</id>
+        <link href="https://alleny.xyz/post/leetcode-hash-table/">
+        </link>
+        <updated>2024-04-15T11:04:07.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="242-valid-anagram">[242] Valid Anagram</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-anagram/description/">题目描述</a>。<br>
+题目限定了字符串里字符只能是小写英文字符，因此可以使用长度为26的数组直接当哈希表。若字符串可能包含Unicode字符，则把数组替换成<code>unordered_map</code>使用即可。<br>
+若大多数是短字符串，则<code>s</code>一个循环，<code>t</code>一个循环同时检查<code>table[t[i]]</code>是否小于0应该开销更小（两个次数为<code>size</code>的循环）。若大多数是长字符串，那么如下所示的一个循环写<code>table</code>，一个循环检查<code>table</code>应该开销更小（一个次数为<code>size</code>的循环和一个次数为26的循环）。虽然实际上长度超过26的单词应该非常稀有，但作为LeetCode题目，反而应该长字符串的测试用例比较多。</p>
+<pre><code class="language-c++">  bool isAnagram(string s, string t) {
+    int table[26] = {0};
+    int size = s.size();
+    if (t.size() != size) {
+      return false;
+    }
+    for (int i = 0; i &lt; size; ++i) {
+      table[s[i] - 'a']++;
+      table[t[i] - 'a']--;
+    }
+    for (int i = 0; i &lt; 26; ++i) {
+      if (table[i] != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+</code></pre>
+<h2 id="1002-find-common-characters">[1002] Find Common Characters</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-common-characters/description/">题目描述</a>。<br>
+“Easy”题并不Easy。<br>
+这道题的特殊点在于字符在结果中是可以重复的。一开始想到的是用一个<code>multimap</code>来做，但是感觉代码会比较麻烦，而且寻思Python也没有<code>multimap</code>的方便替代，于是好奇网上是怎么写的。关键点是为每个word都统计一个hash table，然后再取这些hash table之间的最小值。<br>
+用多个hash table取交集（取最小值）的想法确实不容易想到，如果思维被局限于只使用一个hash table，估计会被困扰很久。</p>
+<pre><code class="language-python">    def commonChars(self, words: List[str]) -&gt; List[str]:
+        min_count = [0] * 26
+        for c in words[0]:
+            min_count[ord(c) - ord(&quot;a&quot;)] += 1
+
+        for word in words[1:]:
+            count = [0] * 26
+            for c in word:
+                count[ord(c) - ord(&quot;a&quot;)] += 1
+            for i, cur in enumerate(min_count):
+                min_count[i] = min(cur, count[i])
+
+        ret = []
+        for i, num in enumerate(min_count):
+            for _ in range(num):
+                ret.append(chr(ord(&quot;a&quot;) + i))
+        return ret
+</code></pre>
+<h2 id="349-intersection-of-two-arrays">[349] Intersection of Two Arrays</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-arrays/description/">题目描述</a>。<br>
+把第一个array先做成hash set，再把第二个array对着第一个array做成的hash set来查，查完插入返回结果的hash set即可。基本没有难度。</p>
+<pre><code class="language-rust">use std::collections::HashSet;
+
+impl Solution {
+    pub fn intersection(nums1: Vec&lt;i32&gt;, nums2: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut ret_set: HashSet&lt;i32&gt; = HashSet::with_capacity(1000);
+        let mut set1: HashSet&lt;i32&gt; = nums1.into_iter().collect();
+
+        nums2
+            .iter()
+            .filter(|num| set1.contains(num))
+            .for_each(|&amp;num| {
+                ret_set.insert(num);
+            });
+
+        ret_set.into_iter().collect()
+    }
+}
+</code></pre>
+<h2 id="202-happy-number">[202] Happy Number</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/happy-number/description/">题目描述</a>。<br>
+没有难度。就是判断一个数字有没有出现过，用<code>unordered_set</code>即可（<code>set</code>用的是红黑树，<code>unordered_set</code>才是哈希），在此之上又套了一个数学计算的壳子。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool isHappy(int n) {
+    unordered_set&lt;int&gt; visited;
+    int cur = n;
+    while (visited.find(cur) == visited.end()) {
+      visited.insert(cur);
+      int sum = 0;
+      while (cur &gt; 0) {
+        sum += (cur % 10) * (cur % 10);
+        cur = cur / 10;
+      }
+      if (sum == 1) {
+        return true;
+      }
+      cur = sum;
+    }
+    return false;
+  }
+};
+</code></pre>
+<h2 id="1-two-sum">[1] Two Sum</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/two-sum/description/">题目描述</a>。<br>
+这道题的核心是只算两个数字的和而不是多个数字，所以一旦扫描到一个数字就能通过差值知道另一个需要的数字是多少。当我们扫描到一个数字，发现对应的另一个数字也已经遇到过了，就说明找到解了。<br>
+把<code>num1</code>需要的另一个数字<code>num2</code>作为key，自身<code>num1</code>的<code>index</code>作为value即可使用hash表存储需要的信息。对于遍历到的数字<code>num</code>，先查看当前数字是否在hash表中存在（被遍历过的另一个数字需要），若是则返回hash表对应的value（另一个数字的index）和当前index，否则将<code>target-num</code>与当前index插入hash表。<br>
+也可以选择插入的时候用<code>num</code>作为key，然后查找的时候查找<code>target-num</code>，没有什么本质区别。</p>
+<pre><code class="language-python">class Solution:
+    def twoSum(self, nums: List[int], target: int) -&gt; List[int]:
+        hash_table = {}
+        for i, num in enumerate(nums):
+            if num in hash_table:
+                return [hash_table[num], i]
+            hash_table[target - num] = i
+</code></pre>
+<h2 id="454-4sum-ii">[454] 4Sum II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum-ii/description/">题目描述</a>。<br>
+相比之前的两个数字，这里变为了四个数字，但是分布在四个array里。最坏的情况是暴力遍历一遍，复杂度为<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。这里我们可以把计算内容拆为两半，前两个array的数字两两相加的和放在<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>里，然后后两个array的数字两两相加的和被零减去，再去<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>中查找即可。这样一来，要算的就变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><msup><mi>n</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">n^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141079999999999em;vertical-align:0em;"></span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>，复杂度变为了<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum_count(
+        nums1: Vec&lt;i32&gt;,
+        nums2: Vec&lt;i32&gt;,
+        nums3: Vec&lt;i32&gt;,
+        nums4: Vec&lt;i32&gt;,
+    ) -&gt; i32 {
+        let mut map: HashMap&lt;i32, i32&gt; = HashMap::new();
+        let mut count = 0;
+
+        for a in &amp;nums1 {
+            for b in &amp;nums2 {
+                let value = map.entry(a + b).or_insert(0);
+                *value += 1;
+            }
+        }
+
+        for c in &amp;nums3 {
+            for d in &amp;nums4 {
+                if let Some(value) = map.get(&amp;(0 - (c + d))) {
+                    count += value;
+                }
+            }
+        }
+
+        count
+    }
+}
+</code></pre>
+<h2 id="383-ransom-note">[383] Ransom Note</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/ransom-note/description/">题目描述</a>。<br>
+没有难度的题。用第二个字符串做一个哈希表，再拿第一个字符串去查一遍即可。<br>
+题目限制了只有英文小写字符。如果是任意字符，把<code>int</code>数组换成使用<code>unordered_map</code>即可。</p>
+<pre><code class="language-c++">  bool canConstruct(string ransomNote, string magazine) {
+    int umap[26] = {0};
+    for (char c : magazine) {
+      umap[c - 'a']++;
+    }
+
+    for (char c : ransomNote) {
+      umap[c - 'a']--;
+      if (umap[c - 'a'] &lt; 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+</code></pre>
+<h2 id="15-3sum">[15] 3Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/3sum/description/">题目描述</a>。<br>
+不太好做的一道题。咋一看只要把两个数字的和算出来，再拿第三个数字查哈希就可以，但实际上这道题要求要去重，而这个去重就是难度的来源。<br>
+可以把题目要求的去重理解成两个维度：</p>
+<ol>
+<li>同一个index位置的数字不能在一个3 sum中使用两次（但是输入是可能有重复的数字的，也就是说某数字在输入中有几个重复的，该数字在一次求和中就最多只能用几次）</li>
+<li>结果中的顺序是无所谓的，也就是说[0, 1, -1]和[0, -1, 1]是一样的，因此顺序不同导致的结果重复也要去掉。</li>
+</ol>
+<p>由此，可得到如下代码。<br>
+解法的关键在于对list做了排序，这样一来同样的数字就会被排列到一起，方便做去重。<br>
+首先，<code>j</code>从<code>i+1</code>开始，<code>n3</code>的index又要求大于<code>j</code>，防止了选择同一index位置的元素，避免出现第一种重复。<code>n1==nums[i-1]</code>和<code>n2=nums[j-1]</code>时的跳过避免了出现同样的解（通过n1不选重复选过的数字，n2也不选重复选过的数字），最后<code>n1</code>，<code>n2</code>和<code>n3</code>的index严格有序保证了不出现顺序打乱出现的重复。<br>
+另外，最后的early stop是源于，数组是排过序的，而<code>n3</code>又是从<code>0 - n1 - n2</code>得到。在第二个循环中，<code>n2</code>不断递增，因此<code>n3</code>严格减小。如果某一时刻<code>n3</code>的index小于<code>n2</code>，那么后面<code>n3</code>的index也都会一直小于<code>n2</code>，也就没必要再算了，可以提前退出。<br>
+实际上，这道题网上更广泛的解法是使用双指针，可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0015.%E4%B8%89%E6%95%B0%E4%B9%8B%E5%92%8C.md">这篇solution</a>。其如果用哈希表来做会比较麻烦。但是在本人所看的刷题攻略中，这道题被放在了哈希表部分，所以就当用来锻炼了。</p>
+<pre><code class="language-python">class Solution:
+    def threeSum(self, nums: List[int]) -&gt; List[List[int]]:
+        num_table = {}
+        res = []
+        nums.sort()
+        for i, n in enumerate(nums):
+            num_table[n] = i
+
+        for i, n1 in enumerate(nums):
+            if i &gt; 0 and n1 == nums[i - 1]:
+                continue
+            for j, n2 in enumerate(nums[i + 1 :], i + 1):
+                if j &gt; i + 1 and n2 == nums[j - 1]:
+                    continue
+                n3 = 0 - n1 - n2
+                if n3 in num_table:
+                    if num_table[n3] &gt; j:
+                        res.append([n1, n2, n3])
+                    else:
+                        # Early stop
+                        break
+
+        return res
+</code></pre>
+<h2 id="18-4sum">[18] 4Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言： Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum/description/">题目描述</a>。<br>
+相比<a href="#15-3sum">3Sum</a>只是多了一层循环，其他没有太大区别。中间转成64位是为了防止溢出。<br>
+此外，这道题同样可以（并更推荐）使用双指针法来做。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum(nums: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;Vec&lt;i32&gt;&gt; {
+        let mut nums = nums;
+        let mut num_table: HashMap&lt;i32, usize&gt; = HashMap::new();
+        let mut res: Vec&lt;Vec&lt;i32&gt;&gt; = Vec::new();
+        let len = nums.len();
+        nums.sort();
+        for (i, n) in nums.iter().enumerate() {
+            num_table.insert(*n, i);
+        }
+
+        for i in 0..len {
+            if i &gt; 0 &amp;&amp; nums[i] == nums[i - 1] {
+                continue;
+            }
+            for j in i + 1..len {
+                if j &gt; i + 1 &amp;&amp; nums[j] == nums[j - 1] {
+                    continue;
+                }
+                for k in j + 1..len {
+                    if k &gt; j + 1 &amp;&amp; nums[k] == nums[k - 1] {
+                        continue;
+                    }
+                    let n = target as i64 - nums[i] as i64 - nums[j] as i64 - nums[k] as i64;
+                    if n &lt; i32::MIN as i64 || n &gt; i32::MAX as i64 {
+                        continue;
+                    }
+                    let n = n as i32;
+                    if num_table.contains_key(&amp;n) {
+                        if *num_table.get(&amp;n).unwrap() &gt; k {
+                            res.push(vec![nums[i], nums[j], nums[k], n]);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+}
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>只需要key，可以使用set；同时需要key和value，可使用map。<br>
+其中C++只有<code>std::unordered_map</code>和<code>std::unordered_set</code>底层是哈希实现，其他的例如<code>std::map</code>是红黑树实现，key是有序的，且查询、增删效率是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>l</mi><mi>o</mi><mi>g</mi><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(log n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>而不是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>。<br>
+如果key的范围很小，数量也不多且固定，可以考虑使用数组作为哈希表，例如用长度为26的数组表示所有的英文小写字母，以节省开销。更复杂的场景则使用标准库中的类型即可。<br>
+部分题目比较简单，也有些题目有不好想到的内容，例如：</p>
+<ol>
+<li><a href="#1002-find-common-characters">[1002] Find Common Characters</a>使用了多个哈希表而不是一个哈希表。</li>
+<li>有一些“NSum”类的题，比较相似又各有区别。<a href="#1-two-sum">[1] Two Sum</a>因为只会有一个答案，所以只要查一遍即可。<a href="#454-4sum-ii">[454] 4Sum II</a>需要前两个数组做一个哈希表，后两个数组再去查，把<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>，又因为四个数组来自四个不同的数组，所以不用考虑去重的问题。而<a href="#15-3sum">[15] 3Sum</a>的数组来自同一个数组，所以需要考虑到同样的value，但是打乱顺序的重复问题。<a href="#18-4sum">[18] 4Sum</a>则只是在3Sum上面多包了一层，无本质区别。</li>
+</ol>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Linux 内核中的 SELinux 机制]]></title>
+        <id>https://alleny.xyz/post/selinux/</id>
+        <link href="https://alleny.xyz/post/selinux/">
+        </link>
+        <updated>2024-04-15T02:45:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。</p>
+<!-- more -->
+<h2 id="能力">能力</h2>
+<h3 id="selinux-是什么">SELinux 是什么</h3>
+<p>SELinux 是一个灵活的强制访问控制（MAC）系统，内置于 Linux 内核中。SELinux 为管理员提供了一种全面的访问控制机制，使其能够比现有的 Linux 自主访问控制（DAC）更精细地管理权限，并存在于许多主要的 Linux 发行版中。</p>
+<blockquote>
+<p>它最初是作为 Linux 内核的一系列补丁，由美国国家安全局（NSA）利用 Linux 安全模块（LSM）开发而成。<br>
+SELinux 于 2000 年发布到开源社区，并于 2003 年集成到上游 Linux 内核中。</p>
+</blockquote>
+<h4 id="dacdiscretionary-access-control自主访问控制">DAC（Discretionary Access Control，自主访问控制）</h4>
+<p>对于 DAC 而言，文件和进程都有相应的所有者。您可以让用户拥有某个文件，让群组拥有某个文件，或让其他人（可以是其他任何人）拥有某个文件。用户可以更改自己文件的权限。在没有使用 SELinux 的操作系统中，决定一个资源是否能被访问的因素是：某个资源是否拥有对应用户的权限（读、写、执行）。只要访问这个资源的进程符合以上的条件就可以被访问。</p>
+<p>根用户对 DAC 系统拥有完全访问控制权。如果拥有根访问权限，则可以访问其他任何用户的文件，或在系统上执行任何操作，这也是最致命的问题。</p>
+<h4 id="macmandatory-access-control强制访问控制">MAC（Mandatory Access Control，强制访问控制）</h4>
+<p>传统上， Linux 和 UNIX 系统都采用 DAC，而 <strong>SELinux 是 Linux 采用 MAC 系统的示例</strong>。</p>
+<p>强制访问控制模型 (MAC, Mandatory Access Control), 是为了弥补 DAC 权限控制过于分散的问题而诞生的。在计算机安全领域指一种由操作系统约束的访问控制，目标是限制主体或发起者访问或对对象或目标执行某种操作的能力。任何主体对任何对象的任何操作都将根据一组**授权规则（也称策略）**进行测试，决定操作是否允许。</p>
+<p>即使是以 root 身份运行的服务进程，一般也只能访问到它所需要的资源。即使程序出了漏洞，影响范围也只有在其允许访问的资源范围内。安全性大大增加。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1713149204595.png" alt="" loading="lazy"></figure>
+<p>MAC 的目的是弥补 DAC 的不足，而不是用來取代 DAC。</p>
+<h3 id="使用-selinux-的好处">使用 SELinux 的好处</h3>
+<ul>
+<li>所有进程和文件都被标记。SELinux 策略规则定义了进程如何与文件交互，以及进程如何相互交互。只有存在明确允许的 SELinux 策略规则时，才能允许访问。</li>
+<li>精细访问控制。传统的 UNIX 通过用户的授权、基于 Linux 的用户和组进行控制。而 SELinux 的访问控制基于所有可用信息，如 SELinux 用户、角色、类型以及可选的安全级别。</li>
+<li>SELinux 策略由系统管理员进行定义，并在系统范围内强制执行。</li>
+<li>改进了权限升级攻击的缓解方案。进程在域中运行，因此是相互分离的。SELinux 策略规则定义了如何处理访问文件和其它进程。如果某个进程被破坏，攻击者只能访问该进程的正常功能，而且只能访问已被配置为可以被该进程访问的文件。例如：如果 Apache HTTP 服务器被破坏，攻击者无法使用该进程读取用户主目录中的文件，除非添加或者配置了特定的 SELinux 策略规则允许这类访问。</li>
+<li>SELinux 可以用来强制实施数据机密性和完整性，同时保护进程不受不可信输入的影响。</li>
+</ul>
+<h2 id="接口和使用方法">接口和使用方法</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>SELinux 通过 MAC 方式来管控进程，进程是主体，而目标则是该进程想要读取的资源。</p>
+<ul>
+<li>
+<p><strong>主体 Subject</strong>：可以看成就是进程。</p>
+</li>
+<li>
+<p><strong>目标 Object</strong>：目标资源，被主体访问的资源。可以是文件、目录、端口等。</p>
+</li>
+<li>
+<p><strong>政策 Policy</strong>：<br>
+系统中通常有大量的文件和进程，为了节省时间和开销，通常我们只是选择性地对某些进程进行管制。<br>
+而哪些进程需要管制、要怎么管制是由政策决定的。<br>
+一套政策里面有多个规则。部分规则可以按照需求启用或禁用（以下把该类型的规则称为布尔型规则）。<br>
+在 CentOS 7 系统中，有三套政策，分别为：</p>
+<ul>
+<li><code>targeted</code>：对大部分网络服务进程进行管制。这是系统<strong>默认使用</strong>的政策（下文均使用此政策）。</li>
+<li><code>minimum</code>：以 <code>targeted</code> 为基础，仅对选定的网络服务进程进行管制。一般不用。</li>
+<li><code>mls</code>：多级安全保护。对所有的进程进行管制。这是最严格的政策，配置难度非常大。一般不用，除非对安全性有极高的要求。</li>
+</ul>
+</li>
+<li>
+<p><strong>安全上下文 security context：</strong><br>
+只有两者的安全上下文对应上了，主题才能访问目标。它们的对应关系由政策中的规则决定。</p>
+</li>
+</ul>
+<h3 id="selinux-状态和模式">SELinux 状态和模式</h3>
+<p>SELinux 可使用三种模式之一运行： enforcing（强制）、permissive（宽容）或 disabled（禁用）。</p>
+<ul>
+<li>Enforcing 模式是默认操作模式，在 enforcing 模式下 SELinux 可正常运行，并在整个系统中强制实施载入的安全策略。</li>
+<li>在 permissive 模式中，系统会象 enforcing 模式一样加载安全策略，包括标记对象并在日志中记录访问拒绝条目，但它并不会拒绝任何操作。不建议在生产环境系统中使用 permissive 模式，但 permissive 模式对 SELinux 策略开发和调试很有帮助。</li>
+<li>强烈建议不要使用禁用（disabled）模式。它不仅会使系统避免强制使用 SELinux 策略，还会避免为任何持久对象（如文件）添加标签，这使得在以后启用 SELinux 非常困难。</li>
+</ul>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1713149237443.png" alt="" loading="lazy"></figure>
+<h4 id="检查-selinux-的运行模式">检查 SELinux 的运行模式</h4>
+<p>使用 <code>getenforce</code> 或 <code>sestatus</code> 命令检查 SELinux 的运行模式。</p>
+<p><code>getenforce</code> 命令返回 <code>Enforcing</code>、<code>Permissive</code> 或 <code>Disabled</code>。</p>
+<p><code>sestatus</code> 命令返回 SELinux 状态以及正在使用的 SELinux 策略：</p>
+<pre><code>$ sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      31
+</code></pre>
+<h4 id="更改-selinux-状态和模式">更改 SELinux 状态和模式</h4>
+<p>使用 <code>setenforce</code> 实用程序在 enforcing 模式和 permissive 模式之间切换。使用 <code>setenforce</code> 所做的更改在重新引导后不会保留。要更改为 enforcing 模式，以 Linux root 用户身份输入 <code>setenforce 1</code> 命令。要更改为 permissive 模式，输入 <code>setenforce 0</code> 命令。</p>
+<pre><code># setenforce 0
+# getenforce
+Permissive
+</code></pre>
+<pre><code># setenforce 1
+# getenforce
+Enforcing
+</code></pre>
+<p>也可以通过更改配置文件来永久更改 SELinux 模式。</p>
+<pre><code># vi /etc/selinux/config
+</code></pre>
+<pre><code># This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#       enforcing - SELinux security policy is enforced.
+#       permissive - SELinux prints warnings instead of enforcing.
+#       disabled - No SELinux policy is loaded.
+SELINUX=permissive
+# SELINUXTYPE= can take one of these two values:
+#       targeted - Targeted processes are protected,
+#       mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+</code></pre>
+<pre><code># reboot
+</code></pre>
+<p>需要注意的是，如果系统已经在关闭 SELinux 的状态下运行了一段时间，再打开 SELinux 之后的第一次重启速度可能会比较慢。因为系统必须为磁盘中的文件创建安全上下文。</p>
+<h3 id="安全上下文">安全上下文</h3>
+<h4 id="格式">格式</h4>
+<p>每个进程和系统资源都有一个特殊的安全性标签,称为 <em>SELinux 上下文（context）</em>。SELinux 上下文有时被称为 <em>SELinux 标签</em>，它是一个提取系统级别细节并专注于实体的安全属性的<strong>标识符</strong>。这不仅提供了在 SELinux 策略中引用对象的一个一致方法，而且消除了在其他身份识别系统中可能存在的模糊性。例如，某个文件可以在使用绑定挂载的系统中有多个有效的路径名称。</p>
+<p><strong>SELinux 策略在一系列规则中使用这些上下文</strong>，它们定义进程如何相互交互以及与各种系统资源进行交互。默认情况下,策略不允许任何交互,除非规则明确授予了相应的权限。</p>
+<p>Linux 用户的安全上下文由 SELinux 用户、SELinux 角色和 SELinux 类型组成。例如：</p>
+<pre><code>User:Role:Type:Level
+</code></pre>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1713149279655.png" alt="" loading="lazy"></figure>
+<p>需要注意的是，第三个域即类型域在进程和文件上又有不同的称呼</p>
+<ul>
+<li>type：在文件资源（object）上面称为类型（type）</li>
+<li>domain：在主体进程（subject）则称为域（domain）</li>
+</ul>
+<h4 id="查询安全上下文">查询安全上下文</h4>
+<pre><code># 查询进程的安全上下文
+[root@localhost ~]# ps -auxZ | egrep 'bash|chronyd|LABEL'
+LABEL                                                 USER   ...  COMMAND
+system_u:system_r:chronyd_t:s0                        chrony ...  /usr/sbin/chronyd -F 2
+unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 root   ...  -bash
+
+# 查询文件的安全上下文
+[root@localhost ~]# ll -Z /usr/sbin/chronyd /etc/chrony.keys
+-rw-r-----. 1 root chrony system_u:object_r:chronyd_keys_t:s0    540 Aug 29  2022 /etc/chrony.keys
+-rwxr-xr-x. 1 root root   system_u:object_r:chronyd_exec_t:s0 353408 Apr 17 07:40 /usr/sbin/chronyd
+
+[root@localhost ~]# ll -Zd /root/anaconda-ks.cfg /home/vbird
+drwx------. 2 vbird vbird unconfined_u:object_r:user_home_dir_t:s0  113 Aug  4 13:43 /home/vbird
+-rw-------. 1 root  root  system_u:object_r:admin_home_t:s0        1204 Aug  4 13:05 /root/anaconda-ks.cfg
+</code></pre>
+<h4 id="安全上下文的修改">安全上下文的修改</h4>
+<h5 id="手动修改">手动修改</h5>
+<p>使用 <code>chcon</code> 手动修改安全上下文类型。</p>
+<pre><code>[root@localhost ~]# chcon [OPTION]... [-t TYPE] FILE...
+[root@localhost ~]# chcon [OPTION]... --reference=RFILE FILE...
+选项与参数：
+-t  ：后面接安全上下文的类型，例如 httpd_sys_content_t
+--reference=RFILE：用文件名为 RFILE 当范例來修改后续接的文件的类型
+
+# 将 /etc/hosts 复制到 /dev/shm/hosts，并修改类型为 etc_t
+[root@localhost ~]# cd /dev/shm
+[root@localhost shm]# cp -a /etc/hosts .
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:net_conf_t:s0 158 Jun 23  2020 hosts
+
+[root@localhost shm]# chcon -t etc_t hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:etc_t:s0 158 Jun 23  2020 hosts
+
+# 将类型改成与 /var/spool/mail 相同
+[root@localhost shm]# ll -Zd /var/spool/mail/
+drwxrwxr-x. 2 root mail system_u:object_r:mail_spool_t:s0 19 Jul 21 15:01 /var/spool/mail/
+
+[root@localhost shm]# chcon --reference=/var/spool/mail hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:mail_spool_t:s0 158 Jun 23  2020 hosts
+</code></pre>
+<h5 id="使用目录的默认安全上下文来修改">使用目录的默认安全上下文来修改</h5>
+<p>目录是有默认的安全上下文的。可以使用 <code>semanage</code> 来查询和修改目录的默认安全上下文。</p>
+<pre><code class="language-bash">semanage {login|user|port|interface|fcontext|translation} -l
+semanage fcontext -{a|d|m} [-frst] file_spec
+
+选项与参数：
+        fcontext：主要用在安全上下文方面的用途， -l 为查询
+        -a：增加；可以增加一些目录的默认安全上下文类型设置
+        -m：修改
+        -d：删除
+</code></pre>
+<p>例如查询 <code>/etc/sysconfig</code> 相关的默认 SELinux 安全上下文类型：</p>
+<pre><code>[root@localhost ~]# semanage fcontext --list | grep /etc/sysconfig
+SELinux fcontext              type           Context
+/etc/sysconfig/.*l2tpd        regular file   system_u:object_r:l2tp_conf_t:s0
+/etc/sysconfig/MailScanner    regular file   system_u:object_r:mscan_etc_t:s0
+</code></pre>
+<p>假设我们想要创建一个名为 <code>/www</code> 的目录，我们想要指定其安全上下文默认值与 <code>/var/www</code> 目录相同：</p>
+<pre><code># 1. 先找到 /var/www 的类型是什么
+[root@localhost ~]# semanage fcontext -l | grep '/var/www('
+/var/www(/.*)?              all files   system_u:object_r:httpd_sys_content_t:s0
+/var/www(/.*)?/logs(/.*)?   all files   system_u:object_r:httpd_log_t:s0
+
+# 2. 建立所需目录，并且查看其预设的安全上下文的值
+[root@localhost ~]# mkdir /www
+[root@localhost ~]# echo check &gt; /www/index.html
+[root@localhost ~]# ll -Zd /www /www/index.html
+drwxr-xr-x. 2 root root unconfined_u:object_r:default_t:s0 24 Jul 22 14:40 /www
+-rw-r--r--. 1 root root unconfined_u:object_r:default_t:s0  6 Jul 22 14:40 /www/index.html
+# 值为 default_t
+
+# 3. 增加 /www 默认为 httpd_sys_content_t 的类型
+[root@localhost ~]# semanage fcontext -a -t httpd_sys_content_t &quot;/www(/.*)?&quot;
+[root@localhost ~]# semanage fcontext -l | grep '^/www'
+/www(/.*)?    all files     system_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<p>现在，我们已经设置好了 <code>/www</code> 的默认类型，可以使用 <code>restorecon</code> 直接把文件或目录的安全上下文恢复到默认值。</p>
+<pre><code>[root@localhost ~]# restorecon -Rv /www
+Relabeled /www from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+Relabeled /www/index.html from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<h4 id="端口安全上下文查询与修改-使用-semanage-port">端口安全上下文查询与修改 -- 使用 <code>semanage port</code></h4>
+<p>一个端口的 SELinux 安全上下文通常只包括类型信息。</p>
+<p><code>semanage port -l</code> 用于查看所有端口的安全上下文，例如：</p>
+<pre><code class="language-cpp">[root@localhost ~]# semanage port --list | grep http
+http_cache_port_t  tcp  8080, 8118, 8123, 10001-10010
+http_cache_port_t  udp  3130
+http_port_t        tcp  80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<p>也可以添加某类进程允许访问的端口，例如：</p>
+<pre><code>[root@localhost ~]# semanage port -a -t TYPE -p [tcp|udp] port_range
+-a   新增一个记录
+-t   修改的端口类型，例如 httpd_port_t
+-p   使用 tcp 或 udp 协议
+port_range 使用的端口号
+
+# 加入 port 98 的使用到 http 中
+[root@localhost ~]# semanage port -a -t http_port_t -p tcp 98
+[root@localhost ~]# semanage port --list | grep http
+http_port_t    tcp     98, 80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<h3 id="selinux-政策内的规则管理"><strong>SELinux 政策内的规则管理</strong></h3>
+<p><code>getsebool -a</code> 命令列出规则布尔值（规则是打开还是关闭状态）。</p>
+<pre><code>~]$ getsebool -a
+cvs_read_shadow --&gt; off
+daemons_dump_core --&gt; on
+</code></pre>
+<p><code>setsebool</code> 修改 SELinux 规则的布尔值。</p>
+<pre><code>setsebool [-p] [规则名称][0|1]
+
+-P：直接将设置值写入配置文件，该设置数据未来会生效
+</code></pre>
+<pre><code># 范例：查询 httpd_enable_homedirs 这个规则的状态，并且修改这个规则为不同的布尔值
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; off                        # 关闭状态
+[root@study ~]# setsebool -P httpd_enable_homedirs 1                # 开启它
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; on
+</code></pre>
+<p><code>seinfo</code> 可用于描述策略的细分，如类、类型、布尔值、允许规则等。</p>
+<pre><code class="language-sql">seinfo [-Atrub]
+
+选项与参数：
+        -A：列出 SELinux 的状态、规则布尔值、身份识别、角色、类型等所有信息
+        -u：列出 SELinux 的所有身份识别 user 种类
+        -r：列出 SELinux 的所有角色 role 种类
+        -t：列出 SELinux 的所有类型 type 种类
+        -b：列出所有规则的种类（布尔值）
+</code></pre>
+<pre><code class="language-sql">~]# seinfo
+
+Statistics for policy file: /sys/fs/selinux/policy
+Policy Version &amp; Type: v.28 (binary, mls)
+
+   Classes:            77    Permissions:       229
+   Sensitivities:       1    Categories:       1024
+   Types:            3001    Attributes:        244
+   Users:               9    Roles:              13
+   Booleans:          158    Cond. Expr.:       193
+   Allow:          262796    Neverallow:          0
+   Auditallow:         44    Dontaudit:      156710
+   Type_trans:      10760    Type_change:        38
+   Type_member:        44    Role allow:         20
+   Role_trans:        237    Range_trans:      2546
+   Constraints:        62    Validatetrans:       0
+   Initial SIDs:       27    Fs_use:             22
+   Genfscon:           82    Portcon:           373
+   Netifcon:            0    Nodecon:             0
+   Permissives:        22    Polcap:              2
+</code></pre>
+<p><code>sesearch</code> 搜索策略中的特定规则。</p>
+<pre><code class="language-sql">sesearch [-A] [-s 主体类别] [-t 目标类别] [-b 布尔值]
+
+选项与参数：
+        -A：列出后面数据中，允许「读取或放行」的相关数据
+        -t：后面还要接 type、例如 -t httpd_t
+        -b：后面接 SELinux 的规则，例如 -b httpd_enable_ftp_server
+</code></pre>
+<pre><code># 范例：找出 crond_t 主体进程能够读取的文件 SELinux type
+[root@study ~]# sesearch -A -s crond_t | grep spool
+   allow crond_t var_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t system_cron_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t user_cron_spool_t : lnk_file { read getattr } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t var_spool_t : file { ioctl read getattr lock open } ; 
+   allow crond_t cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow daemon user_cron_spool_t : file { ioctl read write getattr lock append } ; 
+   allow crond_t cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ;
+</code></pre>
+<h3 id="案例当-port-出问题时让-httpd-开放在非正规端口">案例：当 port 出问题时：让 httpd 开放在非正规端口</h3>
+<p>如果 <code>auditd</code> 守护进程正在运行，则 SELinux 拒绝信息会默认写入 <code>/var/log/audit/audit.log</code> ：</p>
+<pre><code>type=AVC msg=audit(1223024155.684:49): avc:  denied  { getattr } for  pid=2000 comm=&quot;httpd&quot; path=&quot;/var/www/html/file1&quot; dev=dm-0 ino=399185 scontext=unconfined_u:system_r:httpd_t:s0 tcontext=system_u:object_r:samba_share_t:s0 tclass=file
+</code></pre>
+<p>另外，类似以下的消息被写入 <code>/var/log/message</code> 文件中：</p>
+<pre><code>May 7 18:55:56 localhost setroubleshoot: SELinux is preventing httpd (httpd_t) &quot;getattr&quot; to /var/www/html/file1 (samba_share_t). For complete SELinux messages. run sealert -l de7e30d6-5488-466d-a606-92c9f40d316d
+</code></pre>
+<p>接下来我们模拟一个场景，让 <code>httpd</code> 使用非正规的 377 端口：</p>
+<pre><code># 1. 修改端口号码
+[root@localhost ~]# vim /etc/httpd/conf/httpd.conf
+Listen 377
+
+# 2. 尝试启动 httpd 服务
+[root@localhost ~]# systemctl start httpd
+Job for httpd.service failed because the control process exited with error code.
+See &quot;systemctl status httpd.service&quot; and &quot;journalctl -xeu httpd.service&quot; for details.
+_# 如上所示，提示出现错误_
+
+# 3. 确认 /var/log/messages 是否记录错误解决方案
+[root@localhost ~]# grep setrouble /var/log/messages | grep sealert
+Aug  4 22:13:38 localhost setroubleshoot[3553]: SELinux is preventing /usr/sbin/httpd
+  from name_bind access on the tcp_socket port 377. For complete SELinux messages
+  run: sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+# 找到 sealert 关键字
+
+# 4. 运行找到的 sealert 指令，并依据提示处理问题
+[root@localhost ~]# sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+SELinux is preventing /usr/sbin/httpd from name_bind access on the tcp_socket port 377.
+
+*****  Plugin bind_ports (99.5 confidence) suggests   ************************
+
+If you want to allow /usr/sbin/httpd to bind to network port 377
+Then you need to modify the port type.
+Do
+# semanage port -a -t PORT_TYPE -p tcp 377
+    where PORT_TYPE is one of the following: http_cache_port_t, http_port_t, ...
+
+***  Plugin catchall (1.49 confidence) suggests   **************************
+....
+</code></pre>
+<p><code>sealert</code> 是 <code>setroubleshoot</code> 包提供的工具。<code>sealert</code> 可能会提供好几个解决方案，选择置信度最高的即可。</p>
+<pre><code>[root@localhost ~]# semanage port -a -t http_port_t -p tcp 377
+[root@localhost ~]# systemctl restart httpd
+</code></pre>
+<h2 id="原理">原理</h2>
+<h3 id="lsm">LSM</h3>
+<h4 id="overview">Overview</h4>
+<p>Linux 安全模块（英语：Linux Security Modules，简称 LSM）是 Linux 内核中用于支持各种计算机安全模型的框架，它与任何单独的安全实现无关。这个框架使用 GNU 通用公共许可证授权，并且从 Linux 2.6 开始成为官方 Linux 内核的一部分。目前，AppArmor、SELinux、Smack、TOMOYO Linux 和 Yama 是官方 Linux 内核中支持的安全模块。</p>
+<blockquote>
+<p>简单来说，LSM 是目前 linux 的安全框架，而 SELinux 是其中的一个 modules。</p>
+</blockquote>
+<p>LSM 在 linux 安全体系中所处位置可以用下图表述：</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1713149321948.png" alt="" loading="lazy"></figure>
+<p>LSM 在内核系统调用逻辑中提供了一套钩子（hooks）。LSM hook 会插入到访问 kernel 对象前面，DAC 检查之后，然后 LSM 调用系统中启用的访问控制模块，检查是否可以访问。若有多个访问控制模块，会根据初始化的优先顺序执行，都允许访问才能进一步访问 kernel 对象。</p>
+<h4 id="lsm-中的接口管理"><strong>LSM 中的接口管理</strong></h4>
+<p>LSM 中使用 <code>security_hook_heads</code> 将各访问控制模块的接口管理起来。</p>
+<pre><code>struct security_hook_heads {
+        #define LSM_HOOK(RET, DEFAULT, NAME, ...) struct hlist_head NAME; // 此处定义 LSM_HOOK 为只取接口名字
+        #include &quot;lsm_hook_defs.h&quot; // 包含接口文件
+        #undef LSM_HOOK
+} __randomize_layout;
+</code></pre>
+<p>接口文件 <code>lsm_hook_defs.h</code> 中的内容是这样的：</p>
+<pre><code class="language-cpp">... ...
+LSM_HOOK(int, 0, file_permission, struct file *file, int mask)
+LSM_HOOK(int, 0, file_alloc_security, struct file *file)
+LSM_HOOK(int, 0, file_ioctl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_mprotect, struct vm_area_struct *vma, unsigned long reqprot, unsigned long prot)
+LSM_HOOK(int, 0, file_lock, struct file *file, unsigned int cmd)
+LSM_HOOK(int, 0, file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_receive, struct file *file)
+LSM_HOOK(int, 0, file_open, struct file *file)
+... ...
+</code></pre>
+<p>因此实际 <code>security_hook_heads</code> 是这样的：</p>
+<pre><code class="language-cpp">struct security_hook_heads {
+        ... ...
+    struct hlist_head file_permission;
+    struct hlist_head file_alloc_security;
+    struct hlist_head file_ioctl;
+    struct hlist_head file_mprotect;
+    struct hlist_head file_lock;
+    struct hlist_head file_fcntl;
+    struct hlist_head file_receive;
+    struct hlist_head file_open;
+    ... ...
+} __randomize_layout;
+</code></pre>
+<p>每个访问控制模块需要定义 <code>security_hook_list</code> 数组，<code>security_hook_list</code> 记录单个接口的信息，然后模块初始化函数中会调用 <code>security_add_hooks</code> 将 <code>security_hook_list</code> 数组链接到上面的 <code>security_hook_heads</code> 上。</p>
+<pre><code>struct security_hook_list {
+        struct hlist_node                list; // 会将该 hlist_node 链接到 security_hook_heads.接口 上
+        struct hlist_head                *head; // 指向 security_hook_heads.接口
+        union security_list_options        hook; // 接口函数实现
+        char                                *lsm; // 该模块名字
+} __randomize_layout;
+</code></pre>
+<p><code>security_hook_list</code> 是通过 LSM_HOOK_INIT 宏赋值的，调用方法为 <code>LSM_HOOK_INIT(接口, 接口实现)</code>，会赋值 <code>head</code> 和 <code>hook</code> 成员变量。</p>
+<pre><code class="language-cpp">#define LSM_HOOK_INIT(HEAD, HOOK) \
+        { .head = &amp;security_hook_heads.HEAD, .hook = { .HEAD = HOOK } }
+</code></pre>
+<p><code>security_add_hooks</code> 将每个接口的 <code>security_hook_list.list</code> 实际添加到 <code>security_hook_heads.接口</code> 的末尾。</p>
+<pre><code class="language-cpp">void __init security_add_hooks(struct security_hook_list *hooks, int count,
+                                char *lsm)
+{
+        int i;
+
+        for (i = 0; i &lt; count; i++) {
+                hooks[i].lsm = lsm;
+                hlist_add_tail_rcu(&amp;hooks[i].list, hooks[i].head);
+        }
+
+... ...
+}
+</code></pre>
+<h4 id="从-lsm-到-selinux">从 LSM 到 SELinux</h4>
+<p>当我们想要调用 <code>open</code> 打开一个文件，其简化版的调用路径如下所示：</p>
+<pre><code>open
+-------
+    sys_open
+        do_filp_open
+            path_openat
+                do_open
+                    vfs_open
+                        do_dentry_open
+                            security_file_open
+    error = security_file_open(f);
+    if (error)
+        goto cleanup_all;
+</code></pre>
+<p>其中 <code>security_file_open</code> 就是 open 系统调用的一个 LSM Hook 点，当执行到此处的时候，它会执行所有挂在此 hook 点上的安全检查函数。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1713149344001.png" alt="" loading="lazy"></figure>
+<p>以 SELinux 为例，最终会调用到 <code>selinux_file_open</code> 函数。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1713149360497.png" alt="" loading="lazy"></figure>
+<h3 id="selinux-内部结构">SELinux 内部结构</h3>
+<p>在看 <code>selinux_file_open</code> 的代码之前，我们先看一下 SELinux 的内部结构。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1713149373507.png" alt="" loading="lazy"></figure>
+<p>根据上图，我们可以把操作分为以下几个步骤。</p>
+<ol>
+<li>操作系统主体尝试访问特定对象（文件、套接字）上的某个操作，这在 Linux 标准自主安全系统（DAC）中是允许的。这将向对象发起一个请求流。</li>
+<li>每个要求对对象执行操作的请求都由 Linux Security Modules 截获并传递给 SELinux Abstraction &amp; Hook Logic 子系统，同时还包括主体和对象的安全上下文，SELinux Abstraction &amp; Hook Logic 子系统负责与 LSM 交互。</li>
+<li>从 SELinux Abstraction and Hook Logic 子系统接收到的信息将转发给基本的 Policy Enforcement Server 模块，后者负责确定是否允许主体访问该对象。</li>
+<li>要接收是否允许或禁止该操作的决定，策略实施服务器将与 Access Vector Cache 子系统通信，后者通常会缓存要使用的规则。</li>
+<li>如果 AVC 没有包含相关策略的缓存规则，对所需的安全策略的请求将再次转发给安全策略数据库。</li>
+<li>在找到安全策略后，该策略将被传递给接收决策的策略服务器。</li>
+<li>如果所请求的操作符合找到的策略，那么将允许执行该操作。反之，将禁止执行该操作，并且所有决策制定信息将被写入到 SELinux 日志文件中。</li>
+</ol>
+<p>除了判断是否允许或禁止某些操作外，Policy Enforcement Server 模块还负责执行一些辅助任务，例如安全标签管理（分配和移除）。</p>
+<blockquote>
+<p>一句话总结：请求来了去 AVC（以及后面的 database）查一下，比对是否有权限即可。</p>
+</blockquote>
+<figure data-type="image" tabindex="8"><img src="https://alleny.xyz/post-images/1713149392656.png" alt="" loading="lazy"></figure>
+<p>现在我们再来看 <code>selinux_file_open</code> 的代码，其实就是一个去 AVC 查找，然后比对权限，返回结果的过程。</p>
+<pre><code class="language-cpp">static int selinux_file_open(struct file *file)
+{
+        struct file_security_struct *fsec;
+        struct inode_security_struct *isec;
+
+        fsec = selinux_file(file);
+        isec = inode_security(file_inode(file));
+        /*
+         * Save inode label and policy sequence number
+         * at open-time so that selinux_file_permission
+         * can determine whether revalidation is necessary.
+         * Task label is already saved in the file security
+         * struct as its SID.
+         */
+        fsec-&gt;isid = isec-&gt;sid;
+        fsec-&gt;pseqno = avc_policy_seqno();
+        /*
+         * Since the inode label or policy seqno may have changed
+         * between the selinux_inode_permission check and the saving
+         * of state above, recheck that access is still permitted.
+         * Otherwise, access might never be revalidated against the
+         * new inode label or new policy.
+         * This check is not redundant - do not remove.
+         */
+        return file_path_has_perm(file-&gt;f_cred, file, open_file_to_av(file));
+}
+</code></pre>
+<p><code>selinux_file_open</code> 会调用到 <code>file_path_has_perm</code></p>
+<pre><code class="language-cpp">/* Same as path_has_perm, but uses the inode from the file struct. */
+static inline int file_path_has_perm(const struct cred *cred,
+                                     struct file *file,
+                                     u32 av)
+{
+        struct common_audit_data ad;
+
+        ad.type = LSM_AUDIT_DATA_FILE;
+        ad.u.file = file;
+        return inode_has_perm(cred, file_inode(file), av, &amp;ad);
+}
+</code></pre>
+<p>再调用到 <code>inode_has_perm</code></p>
+<pre><code class="language-cpp">/* Check whether a task has a particular permission to an inode.
+   The 'adp' parameter is optional and allows other audit
+   data to be passed (e.g. the dentry). */
+static int inode_has_perm(const struct cred *cred,
+                          struct inode *inode,
+                          u32 perms,
+                          struct common_audit_data *adp)
+{
+        struct inode_security_struct *isec;
+        u32 sid;
+
+        if (unlikely(IS_PRIVATE(inode)))
+                return 0;
+
+        sid = cred_sid(cred);
+        isec = selinux_inode(inode);
+
+        return avc_has_perm(sid, isec-&gt;sid, isec-&gt;sclass, perms, adp);
+}
+</code></pre>
+<p>再调用到 <code>avc_has_perm</code></p>
+<pre><code class="language-cpp">int avc_has_perm(u32 ssid, u32 tsid, u16 tclass,
+                 u32 requested, struct common_audit_data *auditdata)
+{
+        struct av_decision avd;
+        int rc, rc2;
+
+        rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, 0,
+                                  &amp;avd);
+
+        rc2 = avc_audit(ssid, tsid, tclass, requested, &amp;avd, rc,
+                        auditdata);
+        if (rc2)
+                return rc2;
+        return rc;
+}
+</code></pre>
+<p>再到 <code>avc_has_perm_noaudit</code></p>
+<pre><code class="language-cpp">inline int avc_has_perm_noaudit(u32 ssid, u32 tsid,
+                                u16 tclass, u32 requested,
+                                unsigned int flags,
+                                struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_node *node;
+
+        if (WARN_ON(!requested))
+                return -EACCES;
+
+        rcu_read_lock();
+        node = avc_lookup(ssid, tsid, tclass);
+        if (unlikely(!node)) {
+                rcu_read_unlock();
+                return avc_perm_nonode(ssid, tsid, tclass, requested,
+                                       flags, avd);
+        }
+        denied = requested &amp; ~node-&gt;ae.avd.allowed;
+        memcpy(avd, &amp;node-&gt;ae.avd, sizeof(*avd));
+        rcu_read_unlock();
+
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>如果 AVC 没查找到，还会调用到 <code>avc_perm_nonode</code></p>
+<pre><code class="language-cpp">static noinline int avc_perm_nonode(u32 ssid, u32 tsid, u16 tclass,
+                                    u32 requested, unsigned int flags,
+                                    struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_xperms_node xp_node;
+
+        avc_compute_av(ssid, tsid, tclass, avd, &amp;xp_node);
+        denied = requested &amp; ~(avd-&gt;allowed);
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>注意上面两个函数中的 <code>denied = requested &amp; ~node-&gt;ae.avd.allowed;</code> 和 <code>denied = requested &amp; ~(avd-&gt;allowed);</code> 就是在检查权限了。如果权限不满足，就会返回 <code>avc_denied(ssid, tsid, tclass, requested, 0, 0, flags, avd)</code>。</p>
+<p>最后放一张更全面的图，上面是用户态，下面是内核态。</p>
+<figure data-type="image" tabindex="9"><img src="https://alleny.xyz/post-images/1713149411256.png" alt="" loading="lazy"></figure>
+<h2 id="参考文献">参考文献</h2>
+<ul>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/8/html/using_selinux/index">使用 SELinux - Red Hat</a></li>
+<li><a href="https://wizardforcel.gitbooks.io/vbird-linux-basic-4e/content/143.html">SELinux 初探</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html-single/selinux_users_and_administrators_guide/index">SELinux 用户和管理员指南 -  Red Hat</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/352103792">Linux Security Modules 框架源码分析 - 知乎</a></li>
+<li><a href="https://saucer-man.com/operation_and_maintenance/84.html#cl-13">SELinux 的工作模式和架构</a></li>
+<li><a href="https://liwugang.github.io/2020/10/18/introduce_lsm.html">Linux Security Module 框架介绍</a></li>
+<li><a href="https://github.com/torvalds/linux/blob/20cb38a7af88dc40095da7c2c9094da3873fea23/security/selinux/hooks.c#L3962"><code>selinux_file_open</code>源码</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[LeetCode刷题记录（链表篇）]]></title>
+        <id>https://alleny.xyz/post/leetcode-linked-list/</id>
+        <link href="https://alleny.xyz/post/leetcode-linked-list/">
+        </link>
+        <updated>2024-03-31T06:47:20.000Z</updated>
+        <summary type="html"><![CDATA[<p>LeetCode刷题记录（链表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>LeetCode刷题记录（链表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="203-remove-linked-list-elements">[203] Remove Linked List Elements</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-linked-list-elements/description/">题目描述</a>。<br>
+基本的数据结构操作，按道理没有难度可言。问题是如果用Rust来写，难度就会暴增。</p>
+<pre><code class="language-rust">    pub fn remove_elements(head: Option&lt;Box&lt;ListNode&gt;&gt;, val: i32) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+        let mut dummy_head = Box::new(ListNode::new(0));
+        dummy_head.next = head;
+
+        let mut cur = dummy_head.as_mut();
+        while let Some(nxt) = cur.next.as_mut() {
+            if nxt.val == val {
+                cur.next = nxt.next.take();
+            } else {
+                cur = cur.next.as_mut().unwrap();
+            }
+        }
+
+        dummy_head.next
+    }
+</code></pre>
+<h2 id="707-design-linked-list">[707] Design Linked List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/design-linked-list/description/">题目描述</a>。<br>
+实现一个链表，可以是单向链表或双向链表。基本的数据结构实现，这居然是Medium？<br>
+虽然如此，还是需要注意一些细节，不能看错题目，例如<code>addAtIndex</code>是在指定节点之前而不是之后插入；以及当<code>index</code>等于<code>length</code>时需要在链表尾部插入。<br>
+本人这里实现的是双链表。相比题目要求实现的函数，额外增加实现了可复用函数<code>get_node</code>用来精简代码。实际上这里<code>addAtHead</code>和<code>addAtTail</code>函数还可以复用<code>addAtIndex</code>的代码，但是没有必要了，因为这两个函数本身就很简单，也不需要一些多余的条件判断，不复用可以提升一下性能。<br>
+此外，这里的实现还加了一个优化，即<code>get_node</code>的时候会判断一下目标是在链表前半段还是后半段，即从<code>head</code>遍历过去快还是从<code>tail</code>遍历过去快，充分榨干双向链表性能。</p>
+<pre><code class="language-c++">class MyLinkedList {
+ public:
+  struct Node {
+    int val;
+    Node* next;
+    Node* prev;
+    Node(int val) : val(val), next(nullptr), prev(nullptr) {}
+  };
+
+  Node* head;
+  Node* tail;
+  int length;
+
+  MyLinkedList() {
+    head = new Node(0);
+    tail = new Node(0);
+    length = 0;
+
+    head-&gt;next = tail;
+    tail-&gt;prev = head;
+  }
+
+  Node* get_node(int index) {
+    if (index &lt; 0 || index &gt;= length) {
+      return nullptr;
+    }
+
+    Node* curr = head-&gt;next;
+    if (index &lt; length / 2) {
+      for (int i = 0; i &lt; index; ++i) {
+        curr = curr-&gt;next;
+      }
+    } else {
+      // Opt: near to tail
+      curr = tail-&gt;prev;
+      for (int i = 0; i &lt; length - index - 1; ++i) {
+        curr = curr-&gt;prev;
+      }
+    }
+
+    return curr;
+  }
+
+  int get(int index) {
+    Node* node = get_node(index);
+
+    return node != nullptr ? node-&gt;val : -1;
+  }
+
+  void addAtHead(int val) {
+    Node* node = new Node(val);
+    head-&gt;next-&gt;prev = node;
+    node-&gt;next = head-&gt;next;
+    node-&gt;prev = head;
+    head-&gt;next = node;
+
+    length++;
+  }
+
+  void addAtTail(int val) {
+    Node* node = new Node(val);
+    tail-&gt;prev-&gt;next = node;
+    node-&gt;prev = tail-&gt;prev;
+    node-&gt;next = tail;
+    tail-&gt;prev = node;
+
+    length++;
+  }
+
+  void addAtIndex(int index, int val) {
+    Node* node = new Node(val);
+    Node* curr = tail;
+
+    if (index != length) {
+      curr = get_node(index);
+    }
+    if (curr == nullptr) {
+      return;
+    }
+
+    node-&gt;prev = curr-&gt;prev;
+    curr-&gt;prev-&gt;next = node;
+    node-&gt;next = curr;
+    curr-&gt;prev = node;
+    length++;
+  }
+
+  void deleteAtIndex(int index) {
+    Node* curr = get_node(index);
+    if (curr == nullptr) {
+      return;
+    }
+
+    curr-&gt;prev-&gt;next = curr-&gt;next;
+    curr-&gt;next-&gt;prev = curr-&gt;prev;
+    delete curr;
+    length--;
+  }
+};
+</code></pre>
+<h2 id="206-reverse-linked-list">[206] Reverse Linked List</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-linked-list/description/">题目描述</a>。<br>
+没有任何难度的极简题目，包含<code>return</code>一共只用八行代码。遍历链表，每次记录一下下一个节点（<code>succ</code>），然后翻转当前节点指针即可。</p>
+<pre><code class="language-python">    def reverseList(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        prev = None
+        curr = head
+
+        while curr is not None:
+            succ = curr.next
+            curr.next = prev
+            prev = curr
+            curr = succ
+
+        return prev
+</code></pre>
+<h2 id="24-swap-nodes-in-pairs">[24] Swap Nodes in Pairs</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/swap-nodes-in-pairs/description/">题目描述</a>。<br>
+题目不难，脑里想好每次循环时要做的操作即可。<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0024.%E4%B8%A4%E4%B8%A4%E4%BA%A4%E6%8D%A2%E9%93%BE%E8%A1%A8%E4%B8%AD%E7%9A%84%E8%8A%82%E7%82%B9.md">网上有解法</a>是把每次操作分为三个步骤。本人的解法只把操作分为两个步骤，缺点是每次要检查一下<code>curr-&gt;next</code>是否存在，即元素个数是否是奇数个。</p>
+<pre><code class="language-c++">  ListNode* swapPairs(ListNode* head) {
+    ListNode* dummy_head = new ListNode(0, head);
+    ListNode* prev = dummy_head;
+    ListNode* curr = head;
+    ListNode* next_pair = nullptr;
+    while (curr) {
+      if (!(curr-&gt;next)) {
+        prev-&gt;next = curr;
+        prev = curr;
+        break;
+      }
+      next_pair = curr-&gt;next-&gt;next;
+
+      curr-&gt;next-&gt;next = curr;
+      prev-&gt;next = curr-&gt;next;
+
+      prev = curr;
+      curr = next_pair;
+    }
+    prev-&gt;next = nullptr;
+
+    ListNode* result = dummy_head-&gt;next;
+    delete dummy_head;
+    return result;
+  }
+</code></pre>
+<h2 id="19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-nth-node-from-end-of-list/description/">题目描述</a>。<br>
+小学生都会的最直观的想法就是先扫一遍得出size再遍历第二遍找要删除的node，但是要扫描两遍，不够优雅。网上的解法是使用快慢指针，一前一后保持距离，就可以找到倒数第N个node。这种解法看似只用了一次遍历，但每次循环从一次操作变成了两次操作，本质其实是一样的，看起来花里胡哨了而已（毫无含金量的Medium）。但循环变量更新和条件判断本身也是有开销的，快慢指针这种解法把两个循环拍扁合成一个循环，也不能说没有提升吧。<br>
+真正的只需要一次Walk的解法应该是使用哈希表把node存起来，但是这需要O(n)的空间复杂度，性价比貌似不是很高。</p>
+<pre><code class="language-python">    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -&gt; Optional[ListNode]:
+        dummy_head = ListNode(0, head)
+        fast = dummy_head
+        slow = dummy_head
+        for _ in range(0, n):
+            fast = fast.next
+            if fast is None:
+                # Actually this will not happen because 1 &lt;= n &lt;= sz
+                return None
+        fast = fast.next
+        while fast is not None:
+            slow = slow.next
+            fast = fast.next
+        slow.next = slow.next.next
+        return dummy_head.next
+</code></pre>
+<h2 id="160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/description/">题目描述</a>。<br>
+题目要求O(m+n)的时间复杂度和O(1)的空间复杂度，因此哈希表之类的把节点存下来的解法是不能用的。一种容易想到的做法是先算一下两个链表的长度，然后把链表尾部对齐，从短链表的头部开始依次对比两个链表对应位置的节点是否相同（说人话就是把长链表开头超出的部分截断）。<br>
+网上也有一种<a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/solutions/811625/xiang-jiao-lian-biao-by-leetcode-solutio-a8jn/">双指针的解法</a>，用了一点数学技巧，说实话真的到了面试笔试临时很难想出来。对齐链表的方法虽然代码长了一些但思路很简单，个人还是更推荐。</p>
+<pre><code class="language-c++">  ListNode *getIntersectionNode(ListNode *headA, ListNode *headB) {
+    int size_a = 0;
+    int size_b = 0;
+    int diff = 0;
+    ListNode *tmp_a = headA;
+    ListNode *tmp_b = headB;
+    while (tmp_a) {
+      tmp_a = tmp_a-&gt;next;
+      size_a++;
+    }
+    while (tmp_b) {
+      tmp_b = tmp_b-&gt;next;
+      size_b++;
+    }
+
+    tmp_a = headA;
+    tmp_b = headB;
+    diff = size_a - size_b;
+    while (diff &gt; 0) {
+      tmp_a = tmp_a-&gt;next;
+      --diff;
+    }
+    while (diff &lt; 0) {
+      tmp_b = tmp_b-&gt;next;
+      ++diff;
+    }
+    while (tmp_a &amp;&amp; tmp_b) {
+      if (tmp_a == tmp_b) {
+        return tmp_a;
+      }
+      tmp_a = tmp_a-&gt;next;
+      tmp_b = tmp_b-&gt;next;
+    }
+    return nullptr;
+  }
+</code></pre>
+<h2 id="142-linked-list-cycle-ii">[142] Linked List Cycle II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/linked-list-cycle-ii/description/">题目描述</a>。<br>
+较有难度的一道题。<br>
+图论中，环是只有首末顶点重复的非空路径。直观想法是判断遍历中是否会第二次经过同一个点，但由于题目要求O(1)的空间复杂度，我们显然并不能用哈希表之类的数据结构把见过的点都存下来。因此这道题只能用一些数学推断来解，而难度也源于此。<br>
+数学推导的具体过程可以参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0142.%E7%8E%AF%E5%BD%A2%E9%93%BE%E8%A1%A8II.md">这篇解答</a>。简单来说，关键在于通过以下两点</p>
+<ul>
+<li>快指针走过的长度是慢指针的两倍</li>
+<li>把快指针和慢指针走过的长度都用<code>x</code>，<code>y</code>和<code>z</code>表示出来</li>
+</ul>
+<p>来共同解出从头节点到环入口的距离<code>x</code>。由于通过第一次快慢指针的相遇，<code>y</code>和<code>z</code>都已经是已知值，所以我们就可以成功找出<code>x</code>，并且发现<code>x</code>原来就等于<code>z</code>再加上若干圈环的长度。最后，同时从头结点和相遇节点出发，找出<code>x</code>对应位置的节点即可。</p>
+<pre><code class="language-python">    def detectCycle(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        slow = head
+        fast = head
+        while True:
+            if fast is None or fast.next is None:
+                return None
+            fast = fast.next.next
+            slow = slow.next  # No need to check slow
+            if slow == fast:
+                break
+        slow = head
+        while slow != fast:
+            slow = slow.next
+            fast = fast.next
+        return slow
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>涉及链表基本操作的题（如<a href="#203-remove-linked-list-elements">203</a>、<a href="#707-design-linked-list">707</a>、<a href="#206-reverse-linked-list">206</a>和<a href="#24-swap-nodes-in-pairs">24</a>）基本没有难度，要点就是加一个<code>dummy_head</code>可以大大减小代码的复杂程度（避免对头结点特殊情况的判断）。<br>
+涉及算法的题目则都会要求O(1)的空间复杂度，也就是我们不能把节点都存下来。在链表有限的遍历方式下，大多数题目都会使用双指针来解，通过推导以及利用多个指针之间的关系来达成我们想要的目的，例如</p>
+<ul>
+<li><a href="#19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</a><br>
+两个指针间的距离保持固定，因此前一个指针就是倒数第N个节点。</li>
+<li><a href="#160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</a><br>
+两个指针从不同链表开始交错遍历，到相交节点走过的距离相同。</li>
+<li><a href="#142-linked-list-cycle-ii">[142] Linked List Cycle II</a>
+<ul>
+<li>两个指针走过的距离有两倍的关系，可以列方程把<code>x</code>用已知的<code>y</code>和<code>z</code>表示。</li>
+<li>两个指针走过的距离相同，来找到<code>x</code>对应的节点。</li>
+</ul>
+</li>
+</ul>
+]]></content>
+    </entry>
+</feed>

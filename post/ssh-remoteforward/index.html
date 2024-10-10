@@ -1,0 +1,243 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>使用ssh端口转发让远程服务器访问本地代理 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1728542611014">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="使用ssh端口转发让远程服务器访问本地代理 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？
+
+Motivation
+最近在实验室的服务器上尝试运行vLLM。由于代码里面需要使用t..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1728542611014" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              使用ssh端口转发让远程服务器访问本地代理
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-09
+              </span>
+              <span>
+                2 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/ssh-remoteforward.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本地个人使用的proxy能够访问大多数服务，而在远端服务器配置一个自己的proxy又太过麻烦。有什么办法能在ssh的时候让远程可以直接使用本地的代理呢？</p>
+<!-- more -->
+<h1 id="motivation">Motivation</h1>
+<p>最近在实验室的服务器上尝试运行vLLM。由于代码里面需要使用<code>transformers</code>库访问huggingface下载模型，于是在服务器shell里面配置了实验室提供的proxy，但结果代码里面访问huggingface依然报错。尝试curl https://huggingface.co/，结果如下：</p>
+<pre><code class="language-shell">~/Workspace/vllm$ curl https://huggingface.co/
+curl: (56) Received HTTP code 407 from proxy after CONNECT
+</code></pre>
+<p>看来实验室的proxy是用不了。但是我在本地使用自己的proxy可以访问到huggingface，那么能否让ssh的远程服务器直接使用本地的proxy呢？</p>
+<h1 id="solution">Solution</h1>
+<p>修改本地的~/.ssh/config，添加远程端口转发</p>
+<pre><code>Host Name
+  HostName hostip
+  User username
+  RemoteForward 17890 localhost:7890
+</code></pre>
+<p>通过以上配置，远程就能直接通过自身的17890端口，使用本地7890端口提供的proxy。<br>
+可以在服务器的<code>~/.bashrc</code>中再添加如下配置：</p>
+<pre><code class="language-shell">alias setlocalproxy='
+    export https_proxy=http://127.0.0.1:17890 http_proxy=http://127.0.0.1:17890 all_proxy=socks5://127.0.0.1:17890
+'
+</code></pre>
+<p>然后</p>
+<pre><code class="language-shell">~$ setlocalproxy
+</code></pre>
+<p>即可正常使用本地机器提供的代理。<br>
+再次<code>curl https://huggingface.co</code>，成功。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#motivation">Motivation</a></li>
+<li><a href="#solution">Solution</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/deepum/">
+              <h3 class="post-title">
+                ASPLOS&#39;23 &#34;DeepUM: Tensor Migration and Prefetching in Unified Memory&#34; 论文解析
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
