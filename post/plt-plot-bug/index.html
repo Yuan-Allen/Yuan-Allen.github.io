@@ -1,0 +1,284 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>踩坑记录：相同数据，两次plt画图结果不一致 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1733652174568">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="踩坑记录：相同数据，两次plt画图结果不一致 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="使用完全相同的数据，plt画图却能得到不同的图像。
+
+问题
+笔者使用plt画柱状图，代码如下：
+def plot_activation_frequencies():
+    if not os.path.exists(&quot;img&q..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1733652174568" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              踩坑记录：相同数据，两次plt画图结果不一致
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-02
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/plt-plot-bug.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>使用完全相同的数据，plt画图却能得到不同的图像。</p>
+<!-- more -->
+<h2 id="问题">问题</h2>
+<p>笔者使用<code>plt</code>画柱状图，代码如下：</p>
+<pre><code class="language-python">def plot_activation_frequencies():
+    if not os.path.exists(&quot;img&quot;):
+        os.makedirs(&quot;img&quot;)
+    for layer_name, activations in layer_activations.items():
+
+        input_data = flatten_activations(activations[&quot;inputs&quot;])
+        output_data = flatten_activations(activations[&quot;outputs&quot;])
+
+        input_activation_freq = (input_data &gt; 0).mean(axis=0)
+        output_activation_freq = (output_data &gt; 0).mean(axis=0)
+
+        plt.figure(figsize=(12, 6))
+
+        plt.subplot(1, 2, 1)
+        plt.bar(
+            range(len(input_activation_freq)),
+            input_activation_freq,
+            color=&quot;blue&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Input Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.subplot(1, 2, 2)
+        plt.bar(
+            range(len(output_activation_freq)),
+            output_activation_freq,
+            color=&quot;green&quot;,
+            alpha=0.7,
+        )
+        plt.title(f&quot;{layer_name} Output Activation Frequency&quot;)
+        plt.xlabel(&quot;Index&quot;)
+        plt.ylabel(&quot;Frequency&quot;)
+
+        plt.tight_layout()
+        plt.savefig(f&quot;img/{layer_name}_activation_frequency.png&quot;)
+        plt.close()
+</code></pre>
+<p>通过<code>print</code>打印中间数据，可得到<code>input_activation_freq</code>和<code>output_activation_freq</code>的内容完全一样。也就是说，两次<code>plt.bar</code>的参数除了颜色都是一样的。但是，画出来的两个图像却长得不一样！</p>
+<h2 id="解决过程">解决过程</h2>
+<ol>
+<li>笔者又直接把第二个<code>plt.bar</code>的参数也换成<code>input_activation_freq</code>，也就是说直接用相同的<code>input_activation_freq</code>连续画两次图，可得到的两个图仍然不一样。</li>
+<li>笔者又注释掉第二次<code>plt.bar</code>，只画一次图，结果得到的图甚至和之前得到的两种图都不一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>np.arange(0, 3000, 6)</code>，两边画的图一样了</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:2]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:100]</code>，两边画的图一样。</li>
+<li>笔者尝试把<code>input_activation_freq</code>换成<code>input_activation_freq[:1000]</code>，两边画的图又不一样了（<strong>重要</strong>）。</li>
+</ol>
+<p>也就是说，两次画图得到的图是否一样，竟然和数据量有关系？</p>
+<h2 id="原因">原因</h2>
+<p>原因其实是画的图横坐标太长（3072），也就是说有三千多条柱子，而图又太小（<code>plt.figure(figsize=(12, 6))</code>），而一条柱子的宽度起码要占一个像素点，就导致<strong>这么小的图其实无法完全展示所有的柱子</strong>。而左右两个<code>plt.subplot</code>画图时可能对柱子采的样不同（毕竟要在这么小的图内显示这么多柱子是不可能的，其实只能展示一部分柱子），就导致相同数据左右画的图不一致。</p>
+<h2 id="解决方案">解决方案</h2>
+<p>可以扩大图的大小，即调整<code>plt.figure</code>的参数大小。<br>
+更好的方式是把<code>png</code>换成使用<code>pdf</code>存储，即可解决问题。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E9%97%AE%E9%A2%98">问题</a></li>
+<li><a href="#%E8%A7%A3%E5%86%B3%E8%BF%87%E7%A8%8B">解决过程</a></li>
+<li><a href="#%E5%8E%9F%E5%9B%A0">原因</a></li>
+<li><a href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88">解决方案</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-hash-table/">
+              <h3 class="post-title">
+                LeetCode刷题记录（哈希表篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
