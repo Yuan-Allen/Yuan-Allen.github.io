@@ -1,0 +1,544 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（二分查找篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1733714993013">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（二分查找篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（二分查找篇），个人向。
+
+[35] Search Insert Position
+
+难度：Easy
+语言：C++
+
+题目描述。
+基本的二分查找，在此基础上增加了一个寻找插入位置（即使不存在，也应该返回可以插入的位置..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1733714993013" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（二分查找篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-11-12
+              </span>
+              <span>
+                11 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（二分查找篇），个人向。</p>
+<!-- more -->
+<h2 id="35-search-insert-position">[35] Search Insert Position</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/search-insert-position/description/">题目描述</a>。<br>
+基本的二分查找，在此基础上增加了一个寻找插入位置（即使不存在，也应该返回可以插入的位置）。此类题目注意循环不变量即可，例如以下代码坚持了左闭右开<code>[left, right)</code>的写法。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int searchInsert(vector&lt;int&gt; &amp;nums, int target) {
+        int left = 0;
+        int right = nums.size();
+        while (left &lt; right) {
+            int mid = (left + right) / 2;
+            if (nums[mid] == target) {
+                return mid;
+            }
+            if (target &gt; nums[mid]) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+
+        return right;
+    }
+};
+</code></pre>
+<h2 id="74-search-a-2d-matrix">[74] Search a 2D Matrix</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/search-a-2d-matrix/description/">题目描述</a>。<br>
+两次二分查找，没什么好说的。需要注意第一次查找的结果是<code>down - 1</code>。<br>
+还有一种解法是把矩阵拉平，即把矩阵的几行拼起来成一行数组，然后直接在数组上做一次二分查找。可参考<a href="https://leetcode.cn/problems/search-a-2d-matrix/solutions/688117/sou-suo-er-wei-ju-zhen-by-leetcode-solut-vxui/">这篇solution</a>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool searchMatrix(vector&lt;vector&lt;int&gt;&gt; &amp;matrix, int target) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+        int up = 0;
+        int down = m;
+        int row = 0;
+        while (up &lt; down) {
+            row = up + (down - up) / 2; // To avoid overflow
+            if (target == matrix[row][0]) {
+                return true;
+            } else if (target &lt; matrix[row][0]) {
+                down = row;
+            } else {
+                up = row + 1;
+            }
+        }
+        row = down - 1;
+        if (row &lt; 0) {
+            return false;
+        }
+        int left = 0;
+        int right = n;
+        while (left &lt; right) {
+            int col = left + (right - left) / 2;
+            if (target == matrix[row][col]) {
+                return true;
+            } else if (target &lt; matrix[row][col]) {
+                right = col;
+            } else {
+                left = col + 1;
+            }
+        }
+        return false;
+    }
+};
+</code></pre>
+<h2 id="34-find-first-and-last-position-of-element-in-sorted-array">[34] Find First and Last Position of Element in Sorted Array</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/description/">题目描述</a>。<br>
+先尝试自己写了一种解法。先用二分查找找到<code>target</code>，再在该数字左边（包括该数字）用二分查找找到最左的<code>target</code>（即左边的数字不等于<code>target</code>），同理再找到最右的<code>target</code>，最后返回即可。但该代码太过繁琐冗长。<br>
+另一种解法的核心是，通过调整<code>nums[mid] == target</code>时是应该调整左边界还是右边界，来找到<code>target</code>的左边界和右边界，最后返回即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; searchRangeDivide(vector&lt;int&gt; &amp;nums, int target) {
+        int size = nums.size();
+        if (size == 0) {
+            return vector&lt;int&gt;(2, -1);
+        }
+        int left = 0, right = size;
+        int mid = 0;
+        vector&lt;int&gt; result;
+        while (left &lt; right) {
+            mid = left + (right - left) / 2;
+            if (nums[mid] == target) {
+                break;
+            } else if (nums[mid] &lt; target) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        if (nums[mid] != target) {
+            result.assign(2, -1);
+            return result;
+        }
+
+        if (mid == 0 || nums[mid - 1] != target) {
+            result.push_back(mid);
+        } else {
+            int left_left = 0, left_right = mid + 1;
+            while (left_left &lt; left_right) {
+                int left_mid = left_left + (left_right - left_left) / 2;
+                if (nums[left_mid] == target &amp;&amp;
+                    (left_mid == 0 || nums[left_mid - 1] != target)) {
+                    result.push_back(left_mid);
+                    break;
+                } else if (nums[left_mid] &gt;= target) {
+                    left_right = left_mid;
+                } else {
+                    left_left = left_mid + 1;
+                }
+            }
+        }
+
+        if (mid == size - 1 || nums[mid + 1] != target) {
+            result.push_back(mid);
+        } else {
+            int right_left = mid, right_right = size;
+            while (right_left &lt; right_right) {
+                int right_mid = right_left + (right_right - right_left) / 2;
+                if (nums[right_mid] == target &amp;&amp;
+                    (right_mid == size - 1 || nums[right_mid + 1] != target)) {
+                    result.push_back(right_mid);
+                    break;
+                } else if (nums[right_mid] &lt;= target) {
+                    right_left = right_mid + 1;
+                } else {
+                    right_right = right_mid;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    int findTarget(const vector&lt;int&gt; &amp;nums, int target, bool left_flag) {
+        int left = 0, right = nums.size();
+        int border = -1;
+        while (left &lt; right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) {
+                border = mid;
+                if (left_flag) {
+                    right = mid;
+                } else {
+                    left = mid + 1;
+                }
+            } else if (nums[mid] &lt; target) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        return border;
+    }
+
+    vector&lt;int&gt; searchRange(vector&lt;int&gt; &amp;nums, int target) {
+        int left = findTarget(nums, target, true);
+        int right = findTarget(nums, target, false);
+        if (left == -1 || right == -1) {
+            return {-1, -1};
+        } else if (right &gt;= left) {
+            return {left, right};
+        } else {
+            return {-1, -1};
+        }
+    }
+};
+</code></pre>
+<h2 id="33-search-in-rotated-sorted-array">[33] Search in Rotated Sorted Array</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/search-in-rotated-sorted-array/description/">题目描述</a>。<br>
+判断<code>first</code>即<code>nums[0]</code>与<code>target</code>和<code>nums[mid]</code>三者之间的大小关系即可。<code>nums[mid] &lt; target</code>的情况下，可能<code>target</code>比<code>first</code>大，即<code>target</code>在左边的递增序列部分，而<code>nums[mid]</code>在右边的序列部分，此时应该调整右指针而不是左指针。同理，<code>target &lt;= nums[mid]</code>的情况也有可能是<code>first ... nums[mid] ... target</code>这样的排列，此时应该调整左指针而不是右指针。<br>
+另一种思考方式是，先考虑<code>nums[mid]</code>和<code>first</code>之间的大小关系，从而得知是<code>nums[mid]</code>左边有序还是右边有序，然后根据<code>target</code>是否落在该有序部分来决定是该搜索<code>mid</code>左边还是右边。具体可参考<a href="https://leetcode.cn/problems/search-in-rotated-sorted-array/solutions/220083/sou-suo-xuan-zhuan-pai-xu-shu-zu-by-leetcode-solut/">这篇solution</a>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int search(vector&lt;int&gt; &amp;nums, int target) {
+        int left = 0;
+        int right = nums.size();
+        int first = nums[0];
+        while (left &lt; right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) {
+                return mid;
+            }
+            if (nums[mid] &lt; target) {
+                if (first &lt;= target &amp;&amp;
+                    first &gt;= nums[mid]) { // first ... target ... nums[mid]
+                    right = mid;
+                } else {
+                    left = mid + 1;
+                }
+            } else {
+                if (target &lt; first &amp;&amp;
+                    nums[mid] &gt;= first) { // first ... nums[mid] ... target
+                    left = mid + 1;
+                } else {
+                    right = mid;
+                }
+            }
+        }
+
+        return -1;
+    }
+};
+</code></pre>
+<h2 id="153-find-minimum-in-rotated-sorted-array">[153] Find Minimum in Rotated Sorted Array</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-minimum-in-rotated-sorted-array/description/">题目描述</a>。<br>
+判断<code>nums[mid]</code>与右边界元素即<code>nums[right]</code>之间的大小关系。如果<code>nums[mid] &lt; nums[right]</code>，则说明<code>nums[mid]</code>在数组右边递增部分（较小部分），最小值索引在<code>[left, mid]</code>之间，可调整右指针使查找范围靠左；反之则调整左指针使查找范围靠右。由于是闭区间，最终会<code>left == right</code>即区间长度为一，此时返回结果即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int findMin(vector&lt;int&gt; &amp;nums) {
+        int left = 0;
+        int right = nums.size() - 1;
+        while (left &lt; right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] &lt; nums[right]) {
+                right = mid;
+            } else {
+                left = mid + 1;
+            }
+        }
+        return nums[right];
+    }
+};
+</code></pre>
+<h2 id="4-median-of-two-sorted-arrays">[4] Median of Two Sorted Arrays</h2>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/median-of-two-sorted-arrays/description/">题目描述</a>。<br>
+较有挑战性的一道题目。即使知道大概的算法，实际实现时也要注意各种边界条件的处理等。</p>
+<ul>
+<li>
+<p>首先，我们假设<code>nums1</code>的长度不长于<code>nums2</code>。如果不满足，就交换一下<code>nums1</code>和<code>nums2</code>即可。</p>
+</li>
+<li>
+<p>我们想找到一个划分，该划分把<code>nums1</code>和<code>nums2</code>各自分为了左右部分，我们可以称其为<code>nums1_left_part</code>, <code>nums1_right_part</code>, <code>nums2_left_part</code>和<code>nums2_right_part</code>。该划分满足：</p>
+<ul>
+<li>如果总长度<code>m + n</code>为偶数，则划分左部分（即<code>nums1_left_part</code>与<code>nums2_left_part</code>）长度之和与右部分相等；若为奇数，则左部分数量比右部分多1。</li>
+<li>左部分的所有元素均不大于右部分的所有元素。</li>
+</ul>
+<p>当我们找到了这样的一个划分，中位数就是左部分的最大元素和右部分的最小元素的平均值（或者就是左边的最大元素，取决于<code>m + n</code>是否为奇数）。</p>
+</li>
+<li>
+<p>我们可以通过二分查找的方式来找到这个划分的位置。先使用二分查找找到<code>nums1</code>中的划分位置<code>i</code>，然后以此作为自变量，把<code>nums2</code>对应的划分位置<code>j</code>作为因变量，通过<code>i + j = (m + n + 1) / 2</code>的方式把<code>j</code>算出来。<code>+1</code>是为了保证左半部分元素的数量大于等于右半部分的数量（如果是偶数，没有影响；如果是奇数，则左边比右边多1）。</p>
+</li>
+<li>
+<p>然后，我们比较划分左右的四个元素，接着比较<code>nums1[i-1]</code>和<code>nums2[j]</code>的大小。若满足<code>nums1[i-1] &lt;= nums2[j]</code>，则记录此时左边最大值和右边最小值，然后更新左指针（尝试从<code>nums1</code>的更右边去划分）；否则，更新右指针（说明<code>nums1</code>划分得太靠右了，需要往左划分来减小<code>nums1[i-1]</code>的值同时增大<code>nums2[j]</code>的值）。这样，我们会找到一个最大的<code>i</code>使得<code>nums1[i-1] &lt;= nums2[j]</code>，此时也会自动满足<code>nums2[j-1] &lt;= nums1[i]</code>，这是因为<code>i</code>已经是最大的，说明<code>i+1</code>不满足，说明<code>nums1[i]</code> &gt;= <code>nums2[j-1]</code>，就正好是第二个公式。这样一来，我们找到了划分的位置，在保证左右元素数量相等（或左边多一）的同时使左边的所有元素均不大于右边的所有元素。</p>
+</li>
+<li>
+<p>最后，根据<code>m + n</code>是否是偶数，返回左边最大值(<code>median1</code>)与右边最小值(<code>median2</code>)的平均值或直接返回<code>median1</code>即可。</p>
+</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    double findMedianSortedArrays(vector&lt;int&gt; &amp;nums1, vector&lt;int&gt; &amp;nums2) {
+        if (nums1.size() &gt; nums2.size()) {
+            // to make sure that nums1.size() &lt;= nums2.size()
+            return findMedianSortedArrays(nums2, nums1);
+        }
+
+        int m = nums1.size();
+        int n = nums2.size();
+        int left = 0, right = m;
+        int median1 = 0, median2 = 0;
+
+        while (left &lt;= right) {
+            int i = (left + right) / 2;
+            // i + j = (m + n + 1) / 2
+            int j = (m + n + 1) / 2 - i;
+
+            int nums_im1 = (i == 0 ? INT_MIN : nums1[i - 1]);
+            int nums_i = (i == m ? INT_MAX : nums1[i]);
+            int nums_jm1 = (j == 0 ? INT_MIN : nums2[j - 1]);
+            int nums_j = (j == n ? INT_MAX : nums2[j]);
+
+            if (nums_im1 &lt;= nums_j) {
+                median1 = max(nums_im1, nums_jm1);
+                median2 = min(nums_i, nums_j);
+                left = i + 1;
+            } else {
+                right = i - 1;
+            }
+        }
+
+        return (m + n) % 2 == 0 ? (median1 + median2) / 2.0 : median1;
+    }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>定义左边界<code>left</code>和右边界<code>right</code>，然后判断<code>mid</code>与目标<code>target</code>之间的大小关系，以此来更新左边界或者右边界，应该是二分查找类题的基础模版。需要注意的是，需要约定好左边界和右边界分别是开区间还是闭区间，然后在实现时始终遵守这一点。例如本人习惯定义<code>[left, right)</code>，则<code>while</code>循环的条件应该是<code>left &lt; right</code>而不是<code>left &lt;= right</code>。</p>
+<p><a href="#33-search-in-rotated-sorted-array">33</a>和<a href="#153-find-minimum-in-rotated-sorted-array">153</a>都涉及到了Rotated Sorted Array。这里可以通过对比<code>mid</code>与array第一个元素或最后一个元素的大小关系来得知<code>mid</code>处于哪一段有序序列中，以此信息来调整<code>left</code>或<code>right</code>。</p>
+<p>最后的<a href="#4-median-of-two-sorted-arrays">4</a>是较有难度的题。这里我们先确保<code>nums1.size() &lt;= nums2.size()</code>，然后使用二分查找的方式找到<code>nums1</code>中的划分位置<code>i</code>，并以此为自变量计算出<code>nums2</code>中的划分位置出<code>j</code>。我们通过比较划分左右四个元素的大小关系（实际只需要比较两个即<code>nums1[i-1]</code>和<code>nums2[j]</code>)来更新左或右指针，直到找到最大的<code>i</code>使得<code>nums1[i-1] &lt;= nums2[j]</code>，此时直接计算出中位数即可（<code>(median1 + median2) / 2.0</code>或<code>median1</code>）。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#35-search-insert-position">[35] Search Insert Position</a></li>
+<li><a href="#74-search-a-2d-matrix">[74] Search a 2D Matrix</a></li>
+<li><a href="#34-find-first-and-last-position-of-element-in-sorted-array">[34] Find First and Last Position of Element in Sorted Array</a></li>
+<li><a href="#33-search-in-rotated-sorted-array">[33] Search in Rotated Sorted Array</a></li>
+<li><a href="#153-find-minimum-in-rotated-sorted-array">[153] Find Minimum in Rotated Sorted Array</a></li>
+<li><a href="#4-median-of-two-sorted-arrays">[4] Median of Two Sorted Arrays</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-backtracking/">
+              <h3 class="post-title">
+                LeetCode刷题记录（回溯篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

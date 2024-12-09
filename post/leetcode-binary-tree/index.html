@@ -1,0 +1,1370 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（二叉树篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1733714993013">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（二叉树篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（二叉树篇），个人向。
+这部分涉及频繁的指针操作，因此专精C++来做题。
+
+[144]、[145]、[94]
+
+难度：Easy
+语言：C++
+
+题目描述就不放了，就是二叉树的前中后序遍历。考察最基本的数据结构了解程度..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1733714993013" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（二叉树篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-09-25
+              </span>
+              <span>
+                30 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（二叉树篇），个人向。<br>
+这部分涉及频繁的指针操作，因此专精C++来做题。</p>
+<!-- more -->
+<h2 id="144-145-94">[144]、[145]、[94]</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p>题目描述就不放了，就是二叉树的前中后序遍历。考察最基本的数据结构了解程度，无难度。这里放几种不同的实现方式。</p>
+<h3 id="递归遍历">递归遍历</h3>
+<p>前序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    res.push_back(cur-&gt;val);
+    traverse(cur-&gt;left, res);
+    traverse(cur-&gt;right, res);
+  }
+
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>后序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    traverse(cur-&gt;left, res);
+    traverse(cur-&gt;right, res);
+    res.push_back(cur-&gt;val);
+  }
+
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>中序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traverse(TreeNode* cur, vector&lt;int&gt;&amp; res) {
+    if (!cur) {
+      return;
+    }
+    traverse(cur-&gt;left, res);
+    res.push_back(cur-&gt;val);
+    traverse(cur-&gt;right, res);
+  }
+
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    vector&lt;int&gt; res;
+    traverse(root, res);
+    return res;
+  }
+};
+</code></pre>
+<p>三种遍历的递归写法代码基本一样，改下<code>traverse</code>里面顺序即可。</p>
+<h3 id="迭代遍历">迭代遍历</h3>
+<p>前序遍历。使用栈来存放节点。<br>
+注意要先入右节点再入左节点，这样左节点会先出栈，才符合前序遍历顺序。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (!root) return result;
+    st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      result.push_back(cur-&gt;val);
+      if (cur-&gt;right) st.push(cur-&gt;right);
+      if (cur-&gt;left) st.push(cur-&gt;left);
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>后序遍历。和前序遍历类似。<br>
+为了满足后续遍历的顺序，我们可以交换左右节点入栈的顺序（即先入左节点再入右节点），最后再把结果反转一下顺序。<br>
+这样一来，原本前序遍历为<strong>中左右</strong>，交换入栈顺序变成<strong>中右左</strong>，结果反转后变成<strong>左右中</strong>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (!root) return result;
+    st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      result.push_back(cur-&gt;val);
+      if (cur-&gt;left) st.push(cur-&gt;left);
+      if (cur-&gt;right) st.push(cur-&gt;right);
+    }
+    reverse(result.begin(), result.end());
+    return result;
+  }
+};
+</code></pre>
+<p>中序遍历会更麻烦些。在前序遍历中，当前节点访问过就可以丢掉了，但是在中序遍历中我们需要把当前节点先入栈存起来，并尽量的先往左遍历，直到遍历到头再尝试弹栈并往右移动。<br>
+注意在后序遍历中，我们通过结果反转的方式巧妙规避了这些问题，但中序遍历就不行了。<br>
+在写代码时请注意在空节点是否入栈上达成统一意见（以防止写出bug），本人给出的是空节点不入栈的写法。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    TreeNode* cur = root;
+    while (cur || !st.empty()) {
+      if (cur) {
+        st.push(cur);
+        cur = cur-&gt;left;
+      } else {
+        cur = st.top();
+        st.pop();
+        result.push_back(cur-&gt;val);
+        cur = cur-&gt;right;
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h3 id="统一迭代法">统一迭代法</h3>
+<p>在前面的迭代方法中，前中后序的写法都不一样，没有做到像递归遍历一样的稍微改下代码顺序即可。因此，对于非递归的方法，也有统一的写法，可做到稍微改下代码顺序即可更改遍历顺序。<br>
+统一迭代法的关键是，利用了空指针来做标记，即访问到的节点后会再跟一个空指针入栈，弹栈时遇到空指针才把后面的节点进行处理（加入结果集）。<strong>即一个节点实际上会入栈出栈两次，第一次（入栈不带空指针）代表访问到（仅仅是路过），第二次（入栈后带空指针）才代表要处理该节点。</strong><br>
+于是，我们可以很容易得到三种遍历的写法。<br>
+前序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; preorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+        st.push(cur);
+        st.push(nullptr);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>后序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; postorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        st.push(cur);
+        st.push(nullptr);
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<p>中序遍历。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; inorderTraversal(TreeNode* root) {
+    stack&lt;TreeNode*&gt; st;
+    vector&lt;int&gt; result;
+    if (root) st.push(root);
+    while (!st.empty()) {
+      TreeNode* cur = st.top();
+      st.pop();
+      if (cur) {
+        if (cur-&gt;right) st.push(cur-&gt;right);
+        st.push(cur);
+        st.push(nullptr);
+        if (cur-&gt;left) st.push(cur-&gt;left);
+      } else {
+        result.push_back(st.top()-&gt;val);
+        st.pop();
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h2 id="102-binary-tree-level-order-traversal">[102] Binary Tree Level Order Traversal</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-tree-level-order-traversal/description/">题目描述</a>。<br>
+二叉树的层序遍历，也属于数据结构的基本操作。<br>
+层序遍历其实就相当于图论的广度优先搜索。只不过，这道题的返回类型是二维<code>vector</code>，即要求把每一层的节点单独作为一个<code>vector&lt;int&gt;</code>分出来，因此我们在内部嵌套一个循环来专门处理某一层的节点。否则，我们只保留最外层的<code>while</code>循环即可（不关心每层的节点从什么地方开始和结束，即退化到广度优先搜索）。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;vector&lt;int&gt;&gt; levelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; result;
+    if (!root) {
+      return result;
+    }
+
+    queue&lt;TreeNode*&gt; q;
+    q.push(root);
+
+    while (!q.empty()) {
+      int level_width = q.size();
+      vector&lt;int&gt; cur_level;
+      while (level_width-- &gt; 0) {
+        TreeNode* cur = q.front();
+        q.pop();
+        cur_level.push_back(cur-&gt;val);
+        if (cur-&gt;left) {
+          q.push(cur-&gt;left);
+        }
+        if (cur-&gt;right) {
+          q.push(cur-&gt;right);
+        }
+      }
+      result.push_back(cur_level);
+    }
+
+    return result;
+  }
+};
+</code></pre>
+<h2 id="226-invert-binary-tree">[226] Invert Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/invert-binary-tree/description/">题目描述</a>。<br>
+之前讲了很多种遍历方法，随便选一种用，遍历的同时交换当前节点的左右儿子即可。这里我选用的是递归前序遍历。<br>
+需要注意的是，如果选用的是递归中序遍历，两次<code>traversal</code>都要对<code>cur-&gt;left</code>进行，因为左右儿子在中间被交换了。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traversal(TreeNode* cur) {
+    if (!cur) {
+      return;
+    }
+    TreeNode* tmp = cur-&gt;left;
+    cur-&gt;left = cur-&gt;right;
+    cur-&gt;right = tmp;
+    traversal(cur-&gt;left);
+    traversal(cur-&gt;right);
+  }
+  TreeNode* invertTree(TreeNode* root) {
+    traversal(root);
+    return root;
+  }
+};
+</code></pre>
+<h2 id="101-symmetric-tree">[101] Symmetric Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/symmetric-tree/description/">题目描述</a>。<br>
+同时遍历根节点的左右子树，遍历的同时进行比较即可。注意左子树的<code>left</code>和右子树的<code>right</code>比较，左子树的<code>right</code>和右子树的<code>left</code>比较。<br>
+这里使用的是递归的写法。实际上，用队列或者栈等等也可以有不递归的写法（迭代法）。具体来说，就是把<code>left_cur-&gt;left, right_cur-&gt;right</code>放进容器中，<code>left_cur-&gt;right, right_cur-&gt;left</code>放进容器中，然后成对从容器中取元素，进行判断即可。具体可见这篇<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0101.%E5%AF%B9%E7%A7%B0%E4%BA%8C%E5%8F%89%E6%A0%91.md">solution</a>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool traversal(TreeNode* left_cur, TreeNode* right_cur) {
+    if (!left_cur || !right_cur) {
+      if (left_cur == right_cur) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    if (left_cur-&gt;val != right_cur-&gt;val) {
+      return false;
+    }
+
+    return traversal(left_cur-&gt;left, right_cur-&gt;right) &amp;&amp;
+           traversal(left_cur-&gt;right, right_cur-&gt;left);
+  }
+
+  bool isSymmetric(TreeNode* root) {
+    if (!root) {
+      return true;
+    }
+
+    return traversal(root-&gt;left, root-&gt;right);
+  }
+};
+</code></pre>
+<h2 id="104-maximum-depth-of-binary-tree">[104] Maximum Depth of Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/maximum-depth-of-binary-tree/description/">题目描述</a>。<br>
+比较闲就顺手写了非递归层序和递归前序的两种写法。事实上这道题写法应该很多，要做的就只是在遍历的同时记录一下深度即可。在这里的话，我选择在非递归层序遍历时用空指针记录一层的结束，然后直接<code>++max_depth</code>；在递归前序遍历中我选择记录<code>cur_level</code>并看条件更新<code>max_level</code>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int maxDepthLevel(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+
+    int max_depth = 0;
+    queue&lt;TreeNode*&gt; q;
+    q.push(root);
+    q.push(nullptr);
+    while (!q.empty()) {
+      TreeNode* cur = q.front();
+      q.pop();
+      if (!cur) {
+        ++max_depth;
+        if (!q.empty()) {
+          // Not the last level
+          q.push(nullptr);
+        }
+      } else {
+        if (cur-&gt;left) {
+          q.push(cur-&gt;left);
+        }
+        if (cur-&gt;right) {
+          q.push(cur-&gt;right);
+        }
+      }
+    }
+    return max_depth;
+  }
+
+  void traversal(TreeNode* cur, int cur_level, int&amp; max_level) {
+    if (!cur) {
+      return;
+    }
+    cur_level += 1;
+    max_level = cur_level &gt; max_level ? cur_level : max_level;
+    traversal(cur-&gt;left, cur_level, max_level);
+    traversal(cur-&gt;right, cur_level, max_level);
+  }
+
+  int maxDepth(TreeNode* root) {
+    int max_level = 0;
+    traversal(root, 0, max_level);
+    return max_level;
+  }
+};
+</code></pre>
+<h2 id="111-minimum-depth-of-binary-tree">[111] Minimum Depth of Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-depth-of-binary-tree/description/">题目描述</a>。<br>
+在<a href="#104-maximum-depth-of-binary-tree">104</a>的基础上稍加改动即可。在遍历的时候，遇到当前节点的左右儿子都是空指针，说明遇到叶子节点，就可以尝试更新<code>min_level</code>了。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traversal(TreeNode* cur, int cur_level, int&amp; min_level) {
+    if (!cur) {
+      return;
+    }
+    if (!cur-&gt;left &amp;&amp; !cur-&gt;right) {
+      min_level = cur_level &lt; min_level ? cur_level : min_level;
+    }
+    traversal(cur-&gt;left, cur_level + 1, min_level);
+    traversal(cur-&gt;right, cur_level + 1, min_level);
+  }
+
+  int minDepth(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+
+    int min_level = __INT_MAX__;
+    traversal(root, 1, min_level);
+    return min_level;
+  }
+};
+</code></pre>
+<h2 id="222-count-complete-tree-nodes">[222] Count Complete Tree Nodes</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/balanced-binary-tree/description/">题目描述</a>。<br>
+往下遍历的过程中一定会遇到满二叉树，对于满二叉树可以用<span class="katex"><span class="katex-mathml"><math><semantics><mrow><msup><mn>2</mn><mi>h</mi></msup><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">2^h - 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.932438em;vertical-align:-0.08333em;"></span><span class="mord"><span class="mord">2</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.849108em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">h</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>的公式快速计算数量。可以用向左遍历和向右遍历的深度是否一致来判断当前子树是否为满二叉树，如不是，则往左右子树继续递归（后序遍历）即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int countNodes(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+
+    TreeNode* left = root-&gt;left;
+    TreeNode* right = root-&gt;right;
+    int left_depth = 0;
+    int right_depth = 0;
+    while (left) {
+      left = left-&gt;left;
+      left_depth += 1;
+    }
+    while (right) {
+      right = right-&gt;right;
+      right_depth += 1;
+    }
+    if (left_depth == right_depth) {
+      return (2 &lt;&lt; left_depth) - 1;
+    }
+
+    return countNodes(root-&gt;left) + countNodes(root-&gt;right) + 1;
+  }
+};
+</code></pre>
+<h2 id="110-balanced-binary-tree">[110] Balanced Binary Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/balanced-binary-tree/description/">题目描述</a>。<br>
+使用后序遍历获取节点高度，同时使用-1来表示子树不平衡。在遍历的同时比较左右子树的高度，如果高度差值绝对值大于1则返回-1即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int getHeight(TreeNode* cur) {
+    if (!cur) {
+      return 0;
+    }
+
+    int left_height = getHeight(cur-&gt;left);
+    if (left_height &lt; 0) {
+      return -1;
+    }
+    int right_height = getHeight(cur-&gt;right);
+    if (right_height &lt; 0) {
+      return -1;
+    }
+
+    if (abs(left_height - right_height) &gt; 1) {
+      return -1;
+    }
+
+    return max(left_height, right_height) + 1;
+  }
+
+  bool isBalanced(TreeNode* root) { return getHeight(root) &gt;= 0; }
+};
+</code></pre>
+<h2 id="257-binary-tree-paths">[257] Binary Tree Paths</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p>前序遍历的同时，记录当前走过的路径（<code>cur_path</code>），在遇到叶子节点时再存入<code>all_path</code>即可。由于题目要求字符串格式的路径，所以增加了<code>pathToString</code>用来把<code>vector&lt;TreeNode*&gt;</code>转为<code>string</code>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  string pathToString(vector&lt;TreeNode*&gt; path) {
+    string s;
+    for (TreeNode* node : path) {
+      s.append(to_string(node-&gt;val));
+      s.append(&quot;-&gt;&quot;);
+    }
+    s.erase(s.end() - 2, s.end());
+    return s;
+  }
+
+  void traverse(TreeNode* cur, vector&lt;string&gt;&amp; all_paths,
+                vector&lt;TreeNode*&gt; cur_path) {
+    cur_path.push_back(cur);
+    if (!cur-&gt;left &amp;&amp; !cur-&gt;right) {
+      all_paths.push_back(pathToString(cur_path));
+      return;
+    }
+    if (cur-&gt;left) {
+      traverse(cur-&gt;left, all_paths, cur_path);
+    }
+    if (cur-&gt;right) {
+      traverse(cur-&gt;right, all_paths, cur_path);
+    }
+  }
+
+  vector&lt;string&gt; binaryTreePaths(TreeNode* root) {
+    vector&lt;string&gt; result;
+    if (!root) {
+      return result;
+    }
+    vector&lt;TreeNode*&gt; cur_path;
+    traverse(root, result, cur_path);
+    return result;
+  }
+};
+</code></pre>
+<h2 id="404-sum-of-left-leaves">[404] Sum of Left Leaves</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/sum-of-left-leaves/description/">题目描述</a>。<br>
+无什么难度的题目。遍历的同时使用一个参数<code>left_falg</code>来记录当前节点是否是其父节点的左儿子即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int traverse(TreeNode* cur, bool left_flag) {
+    if (!cur-&gt;left &amp;&amp; !cur-&gt;right) {
+      return left_flag ? cur-&gt;val : 0;
+    }
+
+    int sum = 0;
+    if (cur-&gt;left) {
+      sum += traverse(cur-&gt;left, true);
+    }
+    if (cur-&gt;right) {
+      sum += traverse(cur-&gt;right, false);
+    }
+    return sum;
+  }
+
+  int sumOfLeftLeaves(TreeNode* root) {
+    if (!root) {
+      return 0;
+    }
+    return traverse(root, false);
+  }
+};
+</code></pre>
+<h2 id="513-find-bottom-left-tree-value">[513] Find Bottom Left Tree Value</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-bottom-left-tree-value/description/">题目描述</a>。<br>
+很容易想到使用层序遍历，记录最后一层最左边的节点即可。这里也写了一个递归的写法，在遍历的同时记录当前深度，由于是前序遍历（先左后右），所以在第一次到达新的深度时记录节点即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void traversal(TreeNode* cur, int cur_level, int&amp; left_most_val,
+                 int&amp; most_level) {
+    if (cur_level &gt; most_level) {
+      left_most_val = cur-&gt;val;
+      most_level = cur_level;
+    }
+    if (cur-&gt;left) {
+      traversal(cur-&gt;left, cur_level + 1, left_most_val, most_level);
+    }
+    if (cur-&gt;right) {
+      traversal(cur-&gt;right, cur_level + 1, left_most_val, most_level);
+    }
+  }
+
+  int findBottomLeftValueRecursive(TreeNode* root) {
+    int left_most_val = 0;
+    int most_level = 0;
+    if (!root) {
+      return left_most_val;
+    }
+
+    traversal(root, 1, left_most_val, most_level);
+
+    return left_most_val;
+  }
+
+  int findBottomLeftValue(TreeNode* root) {
+    int left_most_val = 0;
+    if (!root) {
+      return left_most_val;
+    }
+    queue&lt;TreeNode*&gt; q;
+    q.push(root);
+    while (!q.empty()) {
+      int width = q.size();
+      for (int i = 0; i &lt; width; ++i) {
+        TreeNode* cur = q.front();
+        q.pop();
+        if (i == 0) {
+          left_most_val = cur-&gt;val;
+        }
+        if (cur-&gt;left) {
+          q.push(cur-&gt;left);
+        }
+        if (cur-&gt;right) {
+          q.push(cur-&gt;right);
+        }
+      }
+    }
+    return left_most_val;
+  }
+};
+</code></pre>
+<h2 id="112-path-sum">[112] Path Sum</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/path-sum/description/">题目描述</a>。<br>
+在遍历的同时记录一下当前<code>cur_sum</code>，在遇到叶子节点时再判断一下是否等于<code>target</code>即可。<br>
+也可以换成把一个参数递减一直减到0而不是求和然后判断是否相等，这样代码可以更简洁，可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0112.%E8%B7%AF%E5%BE%84%E6%80%BB%E5%92%8C.md">这篇</a>。<br>
+也可以用迭代的方式，使用<code>pair&lt;TreeNode*, int&gt;</code>来存储节点指针和对应的路径数值即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool traversal(TreeNode* cur, int cur_sum, int target) {
+    cur_sum += cur-&gt;val;
+    bool result = false;
+    if (!cur-&gt;left &amp;&amp; !cur-&gt;right &amp;&amp; cur_sum == target) {
+      return true;
+    }
+    if (cur-&gt;left) {
+      result |= traversal(cur-&gt;left, cur_sum, target);
+    }
+    if (!result &amp;&amp; cur-&gt;right) {
+      result |= traversal(cur-&gt;right, cur_sum, target);
+    }
+    return result;
+  }
+  bool hasPathSum(TreeNode* root, int targetSum) {
+    if (!root) {
+      return false;
+    }
+    return traversal(root, 0, targetSum);
+  }
+};
+</code></pre>
+<h2 id="106-construct-binary-tree-from-inorder-and-postorder-traversal">[106] Construct Binary Tree from Inorder and Postorder Traversal</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/construct-binary-tree-from-inorder-and-postorder-traversal/description/">题目描述</a>。<br>
+后序遍历的最后一个一定是根节点。利用这个特性，我们使用该节点在中序遍历中划分左右子树，然后再依次在左右子树中递归即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* traversal(vector&lt;int&gt;&amp; inorder, vector&lt;int&gt;&amp; postorder,
+                      int inorder_begin, int inorder_end, int postorder_begin,
+                      int postorder_end) {
+    if (postorder_begin == postorder_end) {
+      return nullptr;
+    }
+    int cur_val = postorder[postorder_end - 1];
+    TreeNode* cur = new TreeNode(cur_val);
+    if (postorder_begin + 1 &lt; postorder_end) {  // early stop
+      for (int i = inorder_begin; i &lt; inorder_end; ++i) {
+        if (inorder[i] == cur_val) {
+          cur-&gt;left =
+              traversal(inorder, postorder, inorder_begin, i, postorder_begin,
+                        postorder_begin + i - inorder_begin);
+          cur-&gt;right =
+              traversal(inorder, postorder, i + 1, inorder_end,
+                        postorder_begin + i - inorder_begin, postorder_end - 1);
+
+          break;
+        }
+      }
+    }
+
+    return cur;
+  }
+
+  TreeNode* buildTree(vector&lt;int&gt;&amp; inorder, vector&lt;int&gt;&amp; postorder) {
+    int size = inorder.size();
+    TreeNode* root = traversal(inorder, postorder, 0, size, 0, size);
+    return root;
+  }
+};
+</code></pre>
+<h2 id="654-maximum-binary-tree">[654] Maximum Binary Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/maximum-binary-tree/description/">题目描述</a>。<br>
+递归的同时找一下当前<code>index</code>范围内的最大值作为当前<code>TreeNode</code>，然后递归找<code>[left_index, max_index)</code>和<code>[max_index + 1, right_index)</code>即可，没什么难度。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* traversal(vector&lt;int&gt;&amp; nums, int left_index, int right_index) {
+    if (right_index - left_index == 1) {
+      return new TreeNode(nums[left_index]);
+    }
+
+    int max_index = left_index;
+    int max_val = -1;
+    for (int i = left_index; i &lt; right_index; ++i) {
+      if (nums[i] &gt; max_val) {
+        max_val = nums[i];
+        max_index = i;
+      }
+    }
+    TreeNode* cur = new TreeNode(max_val);
+    if (max_index &gt; left_index) {
+      cur-&gt;left = traversal(nums, left_index, max_index);
+    }
+    if (right_index &gt; max_index + 1) {
+      cur-&gt;right = traversal(nums, max_index + 1, right_index);
+    }
+    return cur;
+  }
+  TreeNode* constructMaximumBinaryTree(vector&lt;int&gt;&amp; nums) {
+    return traversal(nums, 0, nums.size());
+  }
+};
+</code></pre>
+<h2 id="617-merge-two-binary-trees">[617] Merge Two Binary Trees</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/merge-two-binary-trees/description/">题目描述</a>。<br>
+同时遍历两棵树即可，没什么难度。<br>
+这里复用了两棵树的节点。如果不想复用也可一路创建新节点即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* mergeTrees(TreeNode* root1, TreeNode* root2) {
+    if (!root1) return root2;
+    if (!root2) return root1;
+
+    TreeNode* cur = new TreeNode(root1-&gt;val + root2-&gt;val);
+    cur-&gt;left = mergeTrees(root1-&gt;left, root2-&gt;left);
+    cur-&gt;right = mergeTrees(root1-&gt;right, root2-&gt;right);
+    return cur;
+  }
+};
+</code></pre>
+<h2 id="700-search-in-a-binary-search-tree">[700] Search in a Binary Search Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/search-in-a-binary-search-tree/description/">题目描述</a>。<br>
+二叉搜索树的最基本操作，无难度。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* searchBST(TreeNode* root, int val) {
+    TreeNode* cur = root;
+    while (cur) {
+      if (cur-&gt;val == val) {
+        return cur;
+      }
+      if (cur-&gt;val &lt; val) {
+        cur = cur-&gt;right;
+      } else {
+        cur = cur-&gt;left;
+      }
+    }
+    return cur;
+  }
+};
+</code></pre>
+<h2 id="98-validate-binary-search-tree">[98] Validate Binary Search Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/validate-binary-search-tree/description/">题目描述</a>。<br>
+写了两种解法。一种是自己写的前序遍历，遍历过程传入<code>left_bound</code>和<code>right_bound</code>，把当前节点的左右儿子与当前节点和对应bound做比较，然后递归遍历其左右子树。<br>
+另一种解法是写完后看到的网上的解法，使用的是<strong>中序遍历</strong>，其核心是使用了<strong>二叉搜索树中序遍历输出的节点数值是有序序列</strong>的性质。通过中序遍历的这个性质，我们只需要记录一个<code>pre</code>即当前节点左边的节点（也可以只记录数值，但是要注意如果题目出现<code>long long</code>类型的最小值就没法初始化成更小了，所以记录节点更好），然后只比较当前节点的数值和这个<code>pre</code>的数值大小即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool traversal(TreeNode* cur, long long left_bound, long long right_bound) {
+    if (!cur) {
+      return true;
+    }
+    if (cur-&gt;left &amp;&amp;
+        (cur-&gt;left-&gt;val &gt;= cur-&gt;val || cur-&gt;left-&gt;val &lt;= left_bound)) {
+      return false;
+    }
+    if (cur-&gt;right &amp;&amp;
+        (cur-&gt;right-&gt;val &lt;= cur-&gt;val || cur-&gt;right-&gt;val &gt;= right_bound)) {
+      return false;
+    }
+    return traversal(cur-&gt;left, left_bound, cur-&gt;val) &amp;&amp;
+           traversal(cur-&gt;right, cur-&gt;val, right_bound);
+  }
+
+  TreeNode* pre = nullptr;
+
+  bool isValidBST(TreeNode* root) {
+    // return traversal(root, -__LONG_LONG_MAX__ - 1, __LONG_LONG_MAX__);
+    if (!root) {
+      return true;
+    }
+    bool result = isValidBST(root-&gt;left);
+    if (pre &amp;&amp; root-&gt;val &lt;= pre-&gt;val) {
+      return false;
+    } else {
+      pre = root;
+    }
+    result &amp;= isValidBST(root-&gt;right);
+    return result;
+  }
+};
+</code></pre>
+<h2 id="530-minimum-absolute-difference-in-bst">[530] Minimum Absolute Difference in BST</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-absolute-difference-in-bst/description/">题目描述</a>。<br>
+参照上一题，我们已经知道了<strong>二叉搜索树中序遍历输出的节点数值是有序序列</strong>。通过这个性质，我们只需在这个有序序列中计算当前节点和上一个节点的差值，然后记录最小值即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* pre = nullptr;
+  int min_abs_diff = __INT_MAX__;
+  int getMinimumDifference(TreeNode* root) {
+    if (!root) {
+      return false;
+    }
+    getMinimumDifference(root-&gt;left);
+    if (pre &amp;&amp; root-&gt;val - pre-&gt;val &lt; min_abs_diff) {
+      min_abs_diff = root-&gt;val - pre-&gt;val;
+    }
+    pre = root;
+    getMinimumDifference(root-&gt;right);
+    return min_abs_diff;
+  }
+};
+</code></pre>
+<h2 id="501-find-mode-in-binary-search-tree">[501] Find Mode in Binary Search Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-mode-in-binary-search-tree/description/">题目描述</a>。<br>
+和之前一样的思路，采用中序遍历。使用<code>pre &amp;&amp; cur-&gt;val != pre-&gt;val</code>来判断是应该把<code>cut_count</code>置1还是加1。然后，对比<code>cur_count</code>与<code>max_count</code>，来对结果<code>result</code>进行更新。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; result;
+  TreeNode* pre = nullptr;
+  int max_count = 0;
+  int cur_count = 0;
+
+  void traversal(TreeNode* cur) {
+    if (!cur) {
+      return;
+    }
+
+    traversal(cur-&gt;left);
+    if (pre &amp;&amp; cur-&gt;val != pre-&gt;val) {
+      cur_count = 1;
+    } else {
+      cur_count += 1;
+    }
+    if (cur_count == max_count) {
+      result.push_back(cur-&gt;val);
+    } else if (cur_count &gt; max_count) {
+      result.clear();
+      result.push_back(cur-&gt;val);
+      max_count = cur_count;
+    }
+    pre = cur;
+    traversal(cur-&gt;right);
+  }
+
+  vector&lt;int&gt; findMode(TreeNode* root) {
+    if (!root) {
+      return result;
+    }
+    traversal(root);
+    return result;
+  }
+};
+</code></pre>
+<h2 id="236-lowest-common-ancestor-of-a-binary-tree">[236] Lowest Common Ancestor of a Binary Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-tree/description/">题目描述</a>。<br>
+一开始写了一个naive的写法：遍历树，在遍历的同时记录路径，以此分别找到到达<code>p</code>和<code>q</code>的路径，然后再把两个路径进行对比，找到路径出现不一致的地方，其最后一个一致的节点就是最近公共祖先了。但写完发现这种解法效率较低。<br>
+实际上我们没有必要记录路径。我们只需要在遍历的同时，遇到<code>p</code>和<code>q</code>就返回（否则遍历到底然后返回空指针）。使用后序遍历，我们可查看其左右子树是否遍历到了<code>p</code>或<code>q</code>，若是则当前节点就是最近公共祖先。若<code>left</code>和<code>right</code>有一个为空，则返回另一个即可（一是传递结果，二是<code>p</code>或<code>q</code>可能本身是公共祖先）。通过这种方式我们避免了路径的记录，大大提高了效率。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+    if (!root) {
+      return nullptr;
+    }
+    if (root == p || root == q) {
+      return root;
+    }
+    TreeNode* left = lowestCommonAncestor(root-&gt;left, p, q);
+    TreeNode* right = lowestCommonAncestor(root-&gt;right, p, q);
+    if (left &amp;&amp; right) {
+      return root;
+    }
+    if (!left) {
+      return right;
+    }
+    return left;
+  }
+};
+</code></pre>
+<h2 id="235-lowest-common-ancestor-of-a-binary-search-tree">[235] Lowest Common Ancestor of a Binary Search Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-search-tree/description/">题目描述</a>。<br>
+利用二叉搜索树有序的性质，直接遍历，找到值处于<code>[p, q]</code>（或<code>[q, p]</code>）区间的节点即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+    if (!root) {
+      return nullptr;
+    }
+    if ((p-&gt;val &lt;= root-&gt;val &amp;&amp; q-&gt;val &gt;= root-&gt;val) ||
+        p-&gt;val &gt;= root-&gt;val &amp;&amp; q-&gt;val &lt;= root-&gt;val) {
+      return root;
+    }
+    if (p-&gt;val &lt; root-&gt;val) {
+      return lowestCommonAncestor(root-&gt;left, p, q);
+    } else {
+      return lowestCommonAncestor(root-&gt;right, p, q);
+    }
+  }
+};
+</code></pre>
+<h2 id="701-insert-into-a-binary-search-tree">[701] Insert into a Binary Search Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/insert-into-a-binary-search-tree/description/">题目描述</a>。<br>
+一路查找，找到对应空指针的位置插入即可。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* insertIntoBST(TreeNode* root, int val) {
+    if (!root) {
+      return new TreeNode(val);
+    }
+    TreeNode* cur = root;
+    while (true) {
+      if (val &gt; cur-&gt;val) {
+        if (cur-&gt;right) {
+          cur = cur-&gt;right;
+        } else {
+          cur-&gt;right = new TreeNode(val);
+          break;
+        }
+      } else {
+        if (cur-&gt;left) {
+          cur = cur-&gt;left;
+        } else {
+          cur-&gt;left = new TreeNode(val);
+          break;
+        }
+      }
+    }
+    return root;
+  }
+};
+</code></pre>
+<h2 id="450-delete-node-in-a-bst">[450] Delete Node in a BST</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/delete-node-in-a-bst/description/">题目描述</a>。<br>
+二叉搜索树的基本操作之一，但是有一定难度。要删除一个节点，我们肯定要先找到这个节点。这里分成了几种情况。</p>
+<ul>
+<li>该节点不存在。什么都不用干。</li>
+<li>该节点只有左子树或右子树。把其左子树或右子树接到其父节点上即可（还要判断一下父节点是否存在以及该节点是其父节点的左孩子还是右孩子）。</li>
+<li>该节点同时有左子树和右子树。可以找到其右子树的最左节点（也就是树里面值最接近该节点的比该节点大的节点）替换到该节点上。可以直接替换节点，但我这里写的是赋值的写法（<code>cur-&gt;val = right-&gt;val;</code>），然后再把这个原先的右子树最左（位置的）节点删掉。</li>
+</ul>
+<p>把右子树最左节点挪过来的方法只是解法之一，也可以把<code>cur-&gt;left</code>直接接到其右子树最左节点的左边，可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0450.%E5%88%A0%E9%99%A4%E4%BA%8C%E5%8F%89%E6%90%9C%E7%B4%A2%E6%A0%91%E4%B8%AD%E7%9A%84%E8%8A%82%E7%82%B9.md">这篇solution</a>。但是个人感觉这样会使树的深度加深，太不优雅，所以不喜欢这种方式。总之二叉搜索树不是唯一的，解法也不是只有一种。<br>
+此外，代码除了迭代还可使用递归的实现方式，同样可参考上面的solution，但递归显然没有迭代的方式性能高效。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* deleteNode(TreeNode* root, int key) {
+    TreeNode* cur = root;
+    TreeNode* pre = nullptr;
+
+    // find
+    while (cur &amp;&amp; key != cur-&gt;val) {
+      pre = cur;
+      if (key &lt; cur-&gt;val) {
+        cur = cur-&gt;left;
+      } else {
+        cur = cur-&gt;right;
+      }
+    }
+    if (!cur) {
+      return root;
+    }
+
+    // simple cases
+    if (!cur-&gt;left || !cur-&gt;right) {
+      if (!pre) {
+        // The root node is the target node
+        root = cur-&gt;left ? cur-&gt;left : cur-&gt;right;
+      } else {
+        (pre-&gt;val &gt; cur-&gt;val ? pre-&gt;left : pre-&gt;right) =
+            (cur-&gt;left ? cur-&gt;left : cur-&gt;right);
+      }
+      delete cur;
+      return root;
+    }
+
+    // the target node has two children
+    // find the left most node in the right subtree
+    TreeNode* right = cur-&gt;right;
+    pre = cur;
+    while (right-&gt;left) {
+      pre = right;
+      right = right-&gt;left;
+    }
+
+    // get the value
+    cur-&gt;val = right-&gt;val;
+
+    // move the left most node found
+    (pre-&gt;val &gt; right-&gt;val ? pre-&gt;left : pre-&gt;right) = right-&gt;right;
+    delete right;
+
+    return root;
+  }
+};
+</code></pre>
+<h2 id="669-trim-a-binary-search-tree">[669] Trim a Binary Search Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/trim-a-binary-search-tree/description/">题目描述</a>。<br>
+Medium但是写起来意外的很简单。如果当前节点在范围外就对对应方向子树进行递归，如果在范围内就直接两端递归一下即可，没什么难度。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* trimBST(TreeNode* root, int low, int high) {
+    if (!root) {
+      return nullptr;
+    }
+    if (root-&gt;val &lt; low) {
+      return trimBST(root-&gt;right, low, high);
+    }
+    if (root-&gt;val &gt; high) {
+      return trimBST(root-&gt;left, low, high);
+    }
+    root-&gt;left = trimBST(root-&gt;left, low, high);
+    root-&gt;right = trimBST(root-&gt;right, low, high);
+    return root;
+  }
+};
+</code></pre>
+<h2 id="108-convert-sorted-array-to-binary-search-tree">[108] Convert Sorted Array to Binary Search Tree</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/convert-sorted-array-to-binary-search-tree/description/">题目描述</a>。<br>
+数组已经是有序了，所以直接递归找区间中值二分即可，没什么难度。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  TreeNode* buildTree(vector&lt;int&gt;&amp; nums, int left, int right) {
+    if (left &gt;= right) {
+      return nullptr;
+    }
+    // we can use `int mid = left + ((right - left) / 2);` instead to avoid
+    // int overflow.
+    int mid = (left + right) / 2;
+    TreeNode* cur = new TreeNode(nums[mid]);
+    cur-&gt;left = buildTree(nums, left, mid);
+    cur-&gt;right = buildTree(nums, mid + 1, right);
+    return cur;
+  }
+
+  TreeNode* sortedArrayToBST(vector&lt;int&gt;&amp; nums) {
+    return buildTree(nums, 0, nums.size());
+  }
+};
+</code></pre>
+<h2 id="538-convert-bst-to-greater-tree">[538] Convert BST to Greater Tree</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/convert-bst-to-greater-tree/description/">题目描述</a>。<br>
+写出来代码异常简洁的Medium题。根据题目要求，使用反中序遍历（右中左）。在遍历过程中记录当前累加值<code>sum</code>，先算右边，右子树返回值累加到当前节点，再传到左子树去累加，最后把整个子树的累加值再传回父节点即可。<br>
+注意遍历到空节点的时候直接返回<code>sum</code>，即可从累加过的值继续累加。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int traversal(TreeNode* cur, int sum) {
+    if (!cur) {
+      return sum;
+    }
+    cur-&gt;val += traversal(cur-&gt;right, sum);
+    return traversal(cur-&gt;left, cur-&gt;val);
+  }
+
+  TreeNode* convertBST(TreeNode* root) {
+    traversal(root, 0);
+    return root;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>这一部分刷的题比较多。概括起来的话就是</p>
+<ul>
+<li>首先掌握二叉树的基本遍历方式，例如前中后序遍历和层序遍历，实现方式又分为递归法和迭代法，为了统一前中后序的迭代法实现方式又有统一迭代法。</li>
+<li>大部分的题都只是对二叉树做遍历，然后在遍历的过程中记录和传递一些需要的中间数据即可。遍历的方式可根据题目要求来，迭代还是递归也可根据怎么实现方便怎么来。</li>
+<li><a href="#106-construct-binary-tree-from-inorder-and-postorder-traversal">[106] Construct Binary Tree from Inorder and Postorder Traversal</a>要求通过中序和后序遍历的结果来还原构造出二叉树。这里我们要利用后序遍历的最后一个节点一定是根节点的性质，然后对应到中序遍历的位置来分割左右子树，再回到后序遍历的部分找子树的根节点，两个遍历结果来回分割和查询。注意前序遍历和中序遍历的结果也可以用来唯一确定一颗二叉树，但是前序和后序一起却不行，因为没有中序遍历无法确定左右部分，也就是无法分割。</li>
+<li>后面的题是关于二叉搜索树（BST）的。BST的查找和插入都很简单，但删除有一定难度，这里使用了其右子树的最左节点来替换要删除的节点（其同时有左右儿子的情况）。此外就是可以注意一下BST的中序遍历的结果是有序序列的性质，在某些题目中会很有用。</li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#144-145-94">[144]、[145]、[94]</a>
+<ul>
+<li><a href="#%E9%80%92%E5%BD%92%E9%81%8D%E5%8E%86">递归遍历</a></li>
+<li><a href="#%E8%BF%AD%E4%BB%A3%E9%81%8D%E5%8E%86">迭代遍历</a></li>
+<li><a href="#%E7%BB%9F%E4%B8%80%E8%BF%AD%E4%BB%A3%E6%B3%95">统一迭代法</a></li>
+</ul>
+</li>
+<li><a href="#102-binary-tree-level-order-traversal">[102] Binary Tree Level Order Traversal</a></li>
+<li><a href="#226-invert-binary-tree">[226] Invert Binary Tree</a></li>
+<li><a href="#101-symmetric-tree">[101] Symmetric Tree</a></li>
+<li><a href="#104-maximum-depth-of-binary-tree">[104] Maximum Depth of Binary Tree</a></li>
+<li><a href="#111-minimum-depth-of-binary-tree">[111] Minimum Depth of Binary Tree</a></li>
+<li><a href="#222-count-complete-tree-nodes">[222] Count Complete Tree Nodes</a></li>
+<li><a href="#110-balanced-binary-tree">[110] Balanced Binary Tree</a></li>
+<li><a href="#257-binary-tree-paths">[257] Binary Tree Paths</a></li>
+<li><a href="#404-sum-of-left-leaves">[404] Sum of Left Leaves</a></li>
+<li><a href="#513-find-bottom-left-tree-value">[513] Find Bottom Left Tree Value</a></li>
+<li><a href="#112-path-sum">[112] Path Sum</a></li>
+<li><a href="#106-construct-binary-tree-from-inorder-and-postorder-traversal">[106] Construct Binary Tree from Inorder and Postorder Traversal</a></li>
+<li><a href="#654-maximum-binary-tree">[654] Maximum Binary Tree</a></li>
+<li><a href="#617-merge-two-binary-trees">[617] Merge Two Binary Trees</a></li>
+<li><a href="#700-search-in-a-binary-search-tree">[700] Search in a Binary Search Tree</a></li>
+<li><a href="#98-validate-binary-search-tree">[98] Validate Binary Search Tree</a></li>
+<li><a href="#530-minimum-absolute-difference-in-bst">[530] Minimum Absolute Difference in BST</a></li>
+<li><a href="#501-find-mode-in-binary-search-tree">[501] Find Mode in Binary Search Tree</a></li>
+<li><a href="#236-lowest-common-ancestor-of-a-binary-tree">[236] Lowest Common Ancestor of a Binary Tree</a></li>
+<li><a href="#235-lowest-common-ancestor-of-a-binary-search-tree">[235] Lowest Common Ancestor of a Binary Search Tree</a></li>
+<li><a href="#701-insert-into-a-binary-search-tree">[701] Insert into a Binary Search Tree</a></li>
+<li><a href="#450-delete-node-in-a-bst">[450] Delete Node in a BST</a></li>
+<li><a href="#669-trim-a-binary-search-tree">[669] Trim a Binary Search Tree</a></li>
+<li><a href="#108-convert-sorted-array-to-binary-search-tree">[108] Convert Sorted Array to Binary Search Tree</a></li>
+<li><a href="#538-convert-bst-to-greater-tree">[538] Convert BST to Greater Tree</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/powerinfer-source-analysis-1/">
+              <h3 class="post-title">
+                PowerInfer源码解析（一）：模型加载
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
