@@ -1,0 +1,524 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（哈希表篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1734599664464">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（哈希表篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（哈希表篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[242] Valid Anagram
+
+难度：Easy
+语言：C++
+
+题目描述。
+题目限定了字符串里字符只能是小写英文字符，因此可以使..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1734599664464" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（哈希表篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-04-15
+              </span>
+              <span>
+                12 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（哈希表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="242-valid-anagram">[242] Valid Anagram</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-anagram/description/">题目描述</a>。<br>
+题目限定了字符串里字符只能是小写英文字符，因此可以使用长度为26的数组直接当哈希表。若字符串可能包含Unicode字符，则把数组替换成<code>unordered_map</code>使用即可。<br>
+若大多数是短字符串，则<code>s</code>一个循环，<code>t</code>一个循环同时检查<code>table[t[i]]</code>是否小于0应该开销更小（两个次数为<code>size</code>的循环）。若大多数是长字符串，那么如下所示的一个循环写<code>table</code>，一个循环检查<code>table</code>应该开销更小（一个次数为<code>size</code>的循环和一个次数为26的循环）。虽然实际上长度超过26的单词应该非常稀有，但作为LeetCode题目，反而应该长字符串的测试用例比较多。</p>
+<pre><code class="language-c++">  bool isAnagram(string s, string t) {
+    int table[26] = {0};
+    int size = s.size();
+    if (t.size() != size) {
+      return false;
+    }
+    for (int i = 0; i &lt; size; ++i) {
+      table[s[i] - 'a']++;
+      table[t[i] - 'a']--;
+    }
+    for (int i = 0; i &lt; 26; ++i) {
+      if (table[i] != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+</code></pre>
+<h2 id="1002-find-common-characters">[1002] Find Common Characters</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-common-characters/description/">题目描述</a>。<br>
+“Easy”题并不Easy。<br>
+这道题的特殊点在于字符在结果中是可以重复的。一开始想到的是用一个<code>multimap</code>来做，但是感觉代码会比较麻烦，而且寻思Python也没有<code>multimap</code>的方便替代，于是好奇网上是怎么写的。关键点是为每个word都统计一个hash table，然后再取这些hash table之间的最小值。<br>
+用多个hash table取交集（取最小值）的想法确实不容易想到，如果思维被局限于只使用一个hash table，估计会被困扰很久。</p>
+<pre><code class="language-python">    def commonChars(self, words: List[str]) -&gt; List[str]:
+        min_count = [0] * 26
+        for c in words[0]:
+            min_count[ord(c) - ord(&quot;a&quot;)] += 1
+
+        for word in words[1:]:
+            count = [0] * 26
+            for c in word:
+                count[ord(c) - ord(&quot;a&quot;)] += 1
+            for i, cur in enumerate(min_count):
+                min_count[i] = min(cur, count[i])
+
+        ret = []
+        for i, num in enumerate(min_count):
+            for _ in range(num):
+                ret.append(chr(ord(&quot;a&quot;) + i))
+        return ret
+</code></pre>
+<h2 id="349-intersection-of-two-arrays">[349] Intersection of Two Arrays</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-arrays/description/">题目描述</a>。<br>
+把第一个array先做成hash set，再把第二个array对着第一个array做成的hash set来查，查完插入返回结果的hash set即可。基本没有难度。</p>
+<pre><code class="language-rust">use std::collections::HashSet;
+
+impl Solution {
+    pub fn intersection(nums1: Vec&lt;i32&gt;, nums2: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut ret_set: HashSet&lt;i32&gt; = HashSet::with_capacity(1000);
+        let mut set1: HashSet&lt;i32&gt; = nums1.into_iter().collect();
+
+        nums2
+            .iter()
+            .filter(|num| set1.contains(num))
+            .for_each(|&amp;num| {
+                ret_set.insert(num);
+            });
+
+        ret_set.into_iter().collect()
+    }
+}
+</code></pre>
+<h2 id="202-happy-number">[202] Happy Number</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/happy-number/description/">题目描述</a>。<br>
+没有难度。就是判断一个数字有没有出现过，用<code>unordered_set</code>即可（<code>set</code>用的是红黑树，<code>unordered_set</code>才是哈希），在此之上又套了一个数学计算的壳子。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool isHappy(int n) {
+    unordered_set&lt;int&gt; visited;
+    int cur = n;
+    while (visited.find(cur) == visited.end()) {
+      visited.insert(cur);
+      int sum = 0;
+      while (cur &gt; 0) {
+        sum += (cur % 10) * (cur % 10);
+        cur = cur / 10;
+      }
+      if (sum == 1) {
+        return true;
+      }
+      cur = sum;
+    }
+    return false;
+  }
+};
+</code></pre>
+<h2 id="1-two-sum">[1] Two Sum</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/two-sum/description/">题目描述</a>。<br>
+这道题的核心是只算两个数字的和而不是多个数字，所以一旦扫描到一个数字就能通过差值知道另一个需要的数字是多少。当我们扫描到一个数字，发现对应的另一个数字也已经遇到过了，就说明找到解了。<br>
+把<code>num1</code>需要的另一个数字<code>num2</code>作为key，自身<code>num1</code>的<code>index</code>作为value即可使用hash表存储需要的信息。对于遍历到的数字<code>num</code>，先查看当前数字是否在hash表中存在（被遍历过的另一个数字需要），若是则返回hash表对应的value（另一个数字的index）和当前index，否则将<code>target-num</code>与当前index插入hash表。<br>
+也可以选择插入的时候用<code>num</code>作为key，然后查找的时候查找<code>target-num</code>，没有什么本质区别。</p>
+<pre><code class="language-python">class Solution:
+    def twoSum(self, nums: List[int], target: int) -&gt; List[int]:
+        hash_table = {}
+        for i, num in enumerate(nums):
+            if num in hash_table:
+                return [hash_table[num], i]
+            hash_table[target - num] = i
+</code></pre>
+<h2 id="454-4sum-ii">[454] 4Sum II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum-ii/description/">题目描述</a>。<br>
+相比之前的两个数字，这里变为了四个数字，但是分布在四个array里。最坏的情况是暴力遍历一遍，复杂度为<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。这里我们可以把计算内容拆为两半，前两个array的数字两两相加的和放在<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>里，然后后两个array的数字两两相加的和被零减去，再去<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>H</mi><mi>a</mi><mi>s</mi><mi>h</mi><mi>M</mi><mi>a</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">HashMap</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">h</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">p</span></span></span></span>中查找即可。这样一来，要算的就变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><msup><mi>n</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">n^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141079999999999em;vertical-align:0em;"></span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>，复杂度变为了<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum_count(
+        nums1: Vec&lt;i32&gt;,
+        nums2: Vec&lt;i32&gt;,
+        nums3: Vec&lt;i32&gt;,
+        nums4: Vec&lt;i32&gt;,
+    ) -&gt; i32 {
+        let mut map: HashMap&lt;i32, i32&gt; = HashMap::new();
+        let mut count = 0;
+
+        for a in &amp;nums1 {
+            for b in &amp;nums2 {
+                let value = map.entry(a + b).or_insert(0);
+                *value += 1;
+            }
+        }
+
+        for c in &amp;nums3 {
+            for d in &amp;nums4 {
+                if let Some(value) = map.get(&amp;(0 - (c + d))) {
+                    count += value;
+                }
+            }
+        }
+
+        count
+    }
+}
+</code></pre>
+<h2 id="383-ransom-note">[383] Ransom Note</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/ransom-note/description/">题目描述</a>。<br>
+没有难度的题。用第二个字符串做一个哈希表，再拿第一个字符串去查一遍即可。<br>
+题目限制了只有英文小写字符。如果是任意字符，把<code>int</code>数组换成使用<code>unordered_map</code>即可。</p>
+<pre><code class="language-c++">  bool canConstruct(string ransomNote, string magazine) {
+    int umap[26] = {0};
+    for (char c : magazine) {
+      umap[c - 'a']++;
+    }
+
+    for (char c : ransomNote) {
+      umap[c - 'a']--;
+      if (umap[c - 'a'] &lt; 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+</code></pre>
+<h2 id="15-3sum">[15] 3Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/3sum/description/">题目描述</a>。<br>
+不太好做的一道题。咋一看只要把两个数字的和算出来，再拿第三个数字查哈希就可以，但实际上这道题要求要去重，而这个去重就是难度的来源。<br>
+可以把题目要求的去重理解成两个维度：</p>
+<ol>
+<li>同一个index位置的数字不能在一个3 sum中使用两次（但是输入是可能有重复的数字的，也就是说某数字在输入中有几个重复的，该数字在一次求和中就最多只能用几次）</li>
+<li>结果中的顺序是无所谓的，也就是说[0, 1, -1]和[0, -1, 1]是一样的，因此顺序不同导致的结果重复也要去掉。</li>
+</ol>
+<p>由此，可得到如下代码。<br>
+解法的关键在于对list做了排序，这样一来同样的数字就会被排列到一起，方便做去重。<br>
+首先，<code>j</code>从<code>i+1</code>开始，<code>n3</code>的index又要求大于<code>j</code>，防止了选择同一index位置的元素，避免出现第一种重复。<code>n1==nums[i-1]</code>和<code>n2=nums[j-1]</code>时的跳过避免了出现同样的解（通过n1不选重复选过的数字，n2也不选重复选过的数字），最后<code>n1</code>，<code>n2</code>和<code>n3</code>的index严格有序保证了不出现顺序打乱出现的重复。<br>
+另外，最后的early stop是源于，数组是排过序的，而<code>n3</code>又是从<code>0 - n1 - n2</code>得到。在第二个循环中，<code>n2</code>不断递增，因此<code>n3</code>严格减小。如果某一时刻<code>n3</code>的index小于<code>n2</code>，那么后面<code>n3</code>的index也都会一直小于<code>n2</code>，也就没必要再算了，可以提前退出。<br>
+实际上，这道题网上更广泛的解法是使用双指针，可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0015.%E4%B8%89%E6%95%B0%E4%B9%8B%E5%92%8C.md">这篇solution</a>。其如果用哈希表来做会比较麻烦。但是在本人所看的刷题攻略中，这道题被放在了哈希表部分，所以就当用来锻炼了。</p>
+<pre><code class="language-python">class Solution:
+    def threeSum(self, nums: List[int]) -&gt; List[List[int]]:
+        num_table = {}
+        res = []
+        nums.sort()
+        for i, n in enumerate(nums):
+            num_table[n] = i
+
+        for i, n1 in enumerate(nums):
+            if i &gt; 0 and n1 == nums[i - 1]:
+                continue
+            for j, n2 in enumerate(nums[i + 1 :], i + 1):
+                if j &gt; i + 1 and n2 == nums[j - 1]:
+                    continue
+                n3 = 0 - n1 - n2
+                if n3 in num_table:
+                    if num_table[n3] &gt; j:
+                        res.append([n1, n2, n3])
+                    else:
+                        # Early stop
+                        break
+
+        return res
+</code></pre>
+<h2 id="18-4sum">[18] 4Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言： Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/4sum/description/">题目描述</a>。<br>
+相比<a href="#15-3sum">3Sum</a>只是多了一层循环，其他没有太大区别。中间转成64位是为了防止溢出。<br>
+此外，这道题同样可以（并更推荐）使用双指针法来做。</p>
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl Solution {
+    pub fn four_sum(nums: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;Vec&lt;i32&gt;&gt; {
+        let mut nums = nums;
+        let mut num_table: HashMap&lt;i32, usize&gt; = HashMap::new();
+        let mut res: Vec&lt;Vec&lt;i32&gt;&gt; = Vec::new();
+        let len = nums.len();
+        nums.sort();
+        for (i, n) in nums.iter().enumerate() {
+            num_table.insert(*n, i);
+        }
+
+        for i in 0..len {
+            if i &gt; 0 &amp;&amp; nums[i] == nums[i - 1] {
+                continue;
+            }
+            for j in i + 1..len {
+                if j &gt; i + 1 &amp;&amp; nums[j] == nums[j - 1] {
+                    continue;
+                }
+                for k in j + 1..len {
+                    if k &gt; j + 1 &amp;&amp; nums[k] == nums[k - 1] {
+                        continue;
+                    }
+                    let n = target as i64 - nums[i] as i64 - nums[j] as i64 - nums[k] as i64;
+                    if n &lt; i32::MIN as i64 || n &gt; i32::MAX as i64 {
+                        continue;
+                    }
+                    let n = n as i32;
+                    if num_table.contains_key(&amp;n) {
+                        if *num_table.get(&amp;n).unwrap() &gt; k {
+                            res.push(vec![nums[i], nums[j], nums[k], n]);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+}
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>只需要key，可以使用set；同时需要key和value，可使用map。<br>
+其中C++只有<code>std::unordered_map</code>和<code>std::unordered_set</code>底层是哈希实现，其他的例如<code>std::map</code>是红黑树实现，key是有序的，且查询、增删效率是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>l</mi><mi>o</mi><mi>g</mi><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(log n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>而不是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>。<br>
+如果key的范围很小，数量也不多且固定，可以考虑使用数组作为哈希表，例如用长度为26的数组表示所有的英文小写字母，以节省开销。更复杂的场景则使用标准库中的类型即可。<br>
+部分题目比较简单，也有些题目有不好想到的内容，例如：</p>
+<ol>
+<li><a href="#1002-find-common-characters">[1002] Find Common Characters</a>使用了多个哈希表而不是一个哈希表。</li>
+<li>有一些“NSum”类的题，比较相似又各有区别。<a href="#1-two-sum">[1] Two Sum</a>因为只会有一个答案，所以只要查一遍即可。<a href="#454-4sum-ii">[454] 4Sum II</a>需要前两个数组做一个哈希表，后两个数组再去查，把<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>4</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>变成了两个<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n^2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.064108em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault">n</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>，又因为四个数组来自四个不同的数组，所以不用考虑去重的问题。而<a href="#15-3sum">[15] 3Sum</a>的数组来自同一个数组，所以需要考虑到同样的value，但是打乱顺序的重复问题。<a href="#18-4sum">[18] 4Sum</a>则只是在3Sum上面多包了一层，无本质区别。</li>
+</ol>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#242-valid-anagram">[242] Valid Anagram</a></li>
+<li><a href="#1002-find-common-characters">[1002] Find Common Characters</a></li>
+<li><a href="#349-intersection-of-two-arrays">[349] Intersection of Two Arrays</a></li>
+<li><a href="#202-happy-number">[202] Happy Number</a></li>
+<li><a href="#1-two-sum">[1] Two Sum</a></li>
+<li><a href="#454-4sum-ii">[454] 4Sum II</a></li>
+<li><a href="#383-ransom-note">[383] Ransom Note</a></li>
+<li><a href="#15-3sum">[15] 3Sum</a></li>
+<li><a href="#18-4sum">[18] 4Sum</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/selinux/">
+              <h3 class="post-title">
+                Linux 内核中的 SELinux 机制
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

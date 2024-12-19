@@ -1,0 +1,1134 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PowerInfer源码解析（三）：算子实现 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1734599664464">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="PowerInfer源码解析（三）：算子实现 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="这次我们来解析一下PowerInfer主要所使用到的算子是如何实现的。
+
+相关
+
+PowerInfer源码解析（一）：模型加载。
+PowerInfer源码解析（二）：计算图构建与算子调用 。
+
+ggml_compute_forward_m..." />
+    <meta name="keywords" content="System for AI,Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1734599664464" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              PowerInfer源码解析（三）：算子实现
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-09-29
+              </span>
+              <span>
+                32 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/system-for-ai/" class="post-tag">
+                  # System for AI
+                </a>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/powerinfer-source-analysis-3.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>这次我们来解析一下PowerInfer主要所使用到的算子是如何实现的。</p>
+<!-- more -->
+<h2 id="相关">相关</h2>
+<ul>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-1/">PowerInfer源码解析（一）：模型加载</a>。</li>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-2/">PowerInfer源码解析（二）：计算图构建与算子调用 </a>。</li>
+</ul>
+<h2 id="ggml_compute_forward_mul_mat">ggml_compute_forward_mul_mat</h2>
+<p>我们先来看原本矩阵乘所默认使用算子（CPU版本）<code>ggml_compute_forward_mul_mat</code>。</p>
+<pre><code class="language-c++">static void ggml_compute_forward_mul_mat(
+        const struct ggml_compute_params * params,
+        const struct ggml_tensor * src0,
+        const struct ggml_tensor * src1,
+              struct ggml_tensor * dst) {
+    int64_t t0 = ggml_perf_time_us();
+    UNUSED(t0);
+
+    GGML_TENSOR_BINARY_OP_LOCALS
+
+    const int ith = params-&gt;ith;
+    const int nth = params-&gt;nth;
+
+    const enum ggml_type type = src0-&gt;type;
+
+    const bool src1_cont = ggml_is_contiguous(src1);
+
+    ggml_vec_dot_t    const vec_dot               = type_traits[type].vec_dot;
+    enum ggml_type    const vec_dot_type          = type_traits[type].vec_dot_type;
+    ggml_from_float_t const from_float_to_vec_dot = type_traits[vec_dot_type].from_float;
+
+    GGML_ASSERT(ne0 == ne01);
+    GGML_ASSERT(ne1 == ne11);
+    GGML_ASSERT(ne2 == ne12);
+    GGML_ASSERT(ne3 == ne13);
+
+    // we don't support permuted src0 or src1
+    GGML_ASSERT(nb00 == ggml_type_size(type));
+    GGML_ASSERT(nb10 == ggml_type_size(src1-&gt;type));
+
+    // dst cannot be transposed or permuted
+    GGML_ASSERT(nb0 == sizeof(float));
+    GGML_ASSERT(nb0 &lt;= nb1);
+    GGML_ASSERT(nb1 &lt;= nb2);
+    GGML_ASSERT(nb2 &lt;= nb3);
+
+    // broadcast factors
+    const int64_t r2 = ne12/ne02;
+    const int64_t r3 = ne13/ne03;
+
+    // nb01 &gt;= nb00 - src0 is not transposed
+    //   compute by src0 rows
+
+#if defined(GGML_USE_CLBLAST)
+    if (ggml_cl_can_mul_mat(src0, src1, dst)) {
+        if (params-&gt;ith == 0 &amp;&amp; params-&gt;type == GGML_TASK_COMPUTE) {
+            ggml_cl_mul_mat(src0, src1, dst, params-&gt;wdata, params-&gt;wsize);
+        }
+        return;
+    }
+#endif
+
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+    if (ggml_compute_forward_mul_mat_use_blas(src0, src1, dst)) {
+        if (params-&gt;ith != 0) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_INIT) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_FINALIZE) {
+            return;
+        }
+
+        for (int64_t i13 = 0; i13 &lt; ne13; i13++) {
+            for (int64_t i12 = 0; i12 &lt; ne12; i12++) {
+                // broadcast src0 into src1 across 2nd,3rd dimension
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const void  * x = (char *)            src0-&gt;data + i02*nb02 + i03*nb03;
+                const float * y = (float *) ((char *) src1-&gt;data + i12*nb12 + i13*nb13);
+
+                float * d = (float *) ((char *) dst-&gt;data + i12*nb2 + i13*nb3);
+
+                if (type != GGML_TYPE_F32) {
+                            float * const wdata    = params-&gt;wdata;
+                    ggml_to_float_t const to_float = type_traits[type].to_float;
+
+                    size_t id = 0;
+                    for (int64_t i01 = 0; i01 &lt; ne01; ++i01) {
+                        to_float((const char *) x + i01*nb01, wdata + id, ne00);
+                        id += ne00;
+                    }
+
+                    assert(id*sizeof(float) &lt;= params-&gt;wsize);
+                    x = wdata;
+                }
+
+                cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                        ne11, ne01, ne10,
+                        1.0f,    y, ne10,
+                                 x, ne00,
+                        0.0f,    d, ne01);
+            }
+        }
+
+        //printf(&quot;CBLAS = %f ms, %d x %d x %d x %d\n&quot;, (ggml_perf_time_us() - t0)/1000.0, ne0, ne1, ne2, ne3);
+
+        return;
+    }
+#endif
+
+    if (params-&gt;type == GGML_TASK_INIT) {
+        if (src1-&gt;type != vec_dot_type) {
+            char * wdata = params-&gt;wdata;
+            const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+            for (int64_t i13 = 0; i13 &lt; ne13; ++i13) {
+                for (int64_t i12 = 0; i12 &lt; ne12; ++i12) {
+                    for (int64_t i11 = 0; i11 &lt; ne11; ++i11) {
+                        from_float_to_vec_dot((float *)((char *) src1-&gt;data + i13*nb13 + i12*nb12 + i11*nb11), (void *) wdata, ne10);
+                        wdata += row_size;
+                    }
+                }
+            }
+        }
+
+        return;
+    }
+
+    if (params-&gt;type == GGML_TASK_FINALIZE) {
+        return;
+    }
+
+    const void * wdata    = (src1-&gt;type == vec_dot_type) ? src1-&gt;data : params-&gt;wdata;
+    const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+    const int64_t nr0 = ne01;           // src0 rows
+    const int64_t nr1 = ne11*ne12*ne13; // src1 rows
+
+    //printf(&quot;nr0 = %lld, nr1 = %lld\n&quot;, nr0, nr1);
+
+    // distribute the thread work across the inner or outer loop based on which one is larger
+
+    const int64_t nth0 = nr0 &gt; nr1 ? nth : 1; // parallelize by src0 rows
+    const int64_t nth1 = nr0 &gt; nr1 ? 1 : nth; // parallelize by src1 rows
+
+    const int64_t ith0 = ith % nth0;
+    const int64_t ith1 = ith / nth0;
+
+    const int64_t dr0 = (nr0 + nth0 - 1)/nth0;
+    const int64_t dr1 = (nr1 + nth1 - 1)/nth1;
+
+    const int64_t ir010 = dr0*ith0;
+    const int64_t ir011 = MIN(ir010 + dr0, nr0);
+
+    const int64_t ir110 = dr1*ith1;
+    const int64_t ir111 = MIN(ir110 + dr1, nr1);
+
+    //printf(&quot;ir010 = %6lld, ir011 = %6lld, ir110 = %6lld, ir111 = %6lld\n&quot;, ir010, ir011, ir110, ir111);
+
+    // threads with no work simply yield (not sure if it helps)
+    if (ir010 &gt;= ir011 || ir110 &gt;= ir111) {
+        sched_yield();
+        return;
+    }
+
+    assert(ne12 % ne02 == 0);
+    assert(ne13 % ne03 == 0);
+
+    // block-tiling attempt
+    const int64_t blck_0 = 16;
+    const int64_t blck_1 = 16;
+
+    // attempt to reduce false-sharing (does not seem to make a difference)
+    float tmp[16];
+
+    for (int64_t iir1 = ir110; iir1 &lt; ir111; iir1 += blck_1) {
+        for (int64_t iir0 = ir010; iir0 &lt; ir011; iir0 += blck_0) {
+            for (int64_t ir1 = iir1; ir1 &lt; iir1 + blck_1 &amp;&amp; ir1 &lt; ir111; ++ir1) {
+                const int64_t i13 = (ir1/(ne12*ne11));
+                const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
+                const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
+
+                // broadcast src0 into src1
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const int64_t i1 = i11;
+                const int64_t i2 = i12;
+                const int64_t i3 = i13;
+
+                const char * src0_row = (const char *) src0-&gt;data + (0 + i02*nb02 + i03*nb03);
+
+                // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
+                //       if it is, then we have either copied the data to params-&gt;wdata and made it contiguous or we are using
+                //       the original src1 data pointer, so we should index using the indices directly
+                // TODO: this is a bit of a hack, we should probably have a better way to handle this
+                const char * src1_col = (const char *) wdata +
+                    (src1_cont || src1-&gt;type != vec_dot_type
+                     ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
+                     : (i11*nb11 + i12*nb12 + i13*nb13));
+
+                float * dst_col = (float *) ((char *) dst-&gt;data + (i1*nb1 + i2*nb2 + i3*nb3));
+
+                //for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                //    vec_dot(ne00, &amp;dst_col[ir0], src0_row + ir0*nb01, src1_col);
+                //}
+
+                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+            }
+        }
+    }
+}
+</code></pre>
+<p>这一开头就来个<code>GGML_TENSOR_BINARY_OP_LOCALS</code>是什么东西？<code>ne0</code>，<code>ne01</code>等等这些变量又是哪里来的？一开始看到这里一定一头雾水。<br>
+我们追根溯源，看看宏定义到底做了什么。</p>
+<pre><code class="language-c++">// in ggml.h
+#define GGML_TENSOR_LOCALS_1(type, prefix, pointer, array) \
+    const type prefix##0 = (pointer)-&gt;array[0]; \
+    GGML_UNUSED(prefix##0);
+#define GGML_TENSOR_LOCALS_2(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_1    (type, prefix, pointer, array) \
+    const type prefix##1 = (pointer)-&gt;array[1]; \
+    GGML_UNUSED(prefix##1);
+#define GGML_TENSOR_LOCALS_3(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_2    (type, prefix, pointer, array) \
+    const type prefix##2 = (pointer)-&gt;array[2]; \
+    GGML_UNUSED(prefix##2);
+#define GGML_TENSOR_LOCALS(type, prefix, pointer, array) \
+    GGML_TENSOR_LOCALS_3  (type, prefix, pointer, array) \
+    const type prefix##3 = (pointer)-&gt;array[3]; \
+    GGML_UNUSED(prefix##3);
+</code></pre>
+<pre><code class="language-c++">// in ggml.c
+#define GGML_TENSOR_BINARY_OP_LOCALS \
+    GGML_TENSOR_LOCALS(int64_t, ne0, src0, ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb0, src0, nb) \
+    GGML_TENSOR_LOCALS(int64_t, ne1, src1, ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb1, src1, nb) \
+    GGML_TENSOR_LOCALS(int64_t, ne,  dst,  ne) \
+    GGML_TENSOR_LOCALS(size_t,  nb,  dst,  nb)
+</code></pre>
+<p>原来，这里是负责定义了一堆局部变量。<br>
+<code>GGML_TENSOR_LOCALS_1(type, prefix, pointer, array)</code>负责定义<code>prefix##0</code>局部变量来存储<code>(pointer)-&gt;array[0]</code>的值。<br>
+注意这里的<code>##</code>的作用是将两个标记拼接成一个新的标记。在宏定义中，这个特性可以用来动态生成标识符，以简化代码和提高代码的灵活性。<code>prefix##0</code> 使用了<code>##</code>，其目的是将 <code>prefix</code> 和 <code>0</code> 拼接成一个新的标记。假设<code>prefix</code>是<code>ne</code>，那么<code>prefix##0</code>就会变成<code>ne0</code>，这是一个合法的标识符。函数里面所使用的那些新的局部变量（的变量名）就是这么来的。<br>
+从<code>GGML_TENSOR_LOCALS</code>调用到<code>GGML_TENSOR_LOCALS_3</code>再到<code>GGML_TENSOR_LOCALS_2</code>再到<code>GGML_TENSOR_LOCALS_1</code>，<code>prefix##0</code>到<code>prefix##3</code>依次被<code>(pointer)-&gt;array[0]</code>到<code>(pointer)-&gt;array[3]</code>赋值初始化。<br>
+<code>GGML_TENSOR_BINARY_OP_LOCALS</code>则针对<code>src0</code>，<code>src1</code>和<code>dst</code>的<code>ne</code>和<code>nb</code>分别使用了<code>GGML_TENSOR_LOCALS</code>，就有了我们在函数中看到的那一堆局部变量了。<br>
+之后，检查是否可以使用 OpenCL 加速（CLBLAST）或 BLAS 库（OpenBLAS/Accelerate）。如果可以，则调用相应的矩阵乘法函数加速计算。</p>
+<pre><code class="language-c++">#if defined(GGML_USE_CLBLAST)
+    if (ggml_cl_can_mul_mat(src0, src1, dst)) {
+        if (params-&gt;ith == 0 &amp;&amp; params-&gt;type == GGML_TASK_COMPUTE) {
+            ggml_cl_mul_mat(src0, src1, dst, params-&gt;wdata, params-&gt;wsize);
+        }
+        return;
+    }
+#endif
+
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+    if (ggml_compute_forward_mul_mat_use_blas(src0, src1, dst)) {
+        if (params-&gt;ith != 0) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_INIT) {
+            return;
+        }
+
+        if (params-&gt;type == GGML_TASK_FINALIZE) {
+            return;
+        }
+
+        for (int64_t i13 = 0; i13 &lt; ne13; i13++) {
+            for (int64_t i12 = 0; i12 &lt; ne12; i12++) {
+                // broadcast src0 into src1 across 2nd,3rd dimension
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+
+                const void  * x = (char *)            src0-&gt;data + i02*nb02 + i03*nb03;
+                const float * y = (float *) ((char *) src1-&gt;data + i12*nb12 + i13*nb13);
+
+                float * d = (float *) ((char *) dst-&gt;data + i12*nb2 + i13*nb3);
+
+                if (type != GGML_TYPE_F32) {
+                            float * const wdata    = params-&gt;wdata;
+                    ggml_to_float_t const to_float = type_traits[type].to_float;
+
+                    size_t id = 0;
+                    for (int64_t i01 = 0; i01 &lt; ne01; ++i01) {
+                        to_float((const char *) x + i01*nb01, wdata + id, ne00);
+                        id += ne00;
+                    }
+
+                    assert(id*sizeof(float) &lt;= params-&gt;wsize);
+                    x = wdata;
+                }
+
+                cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                        ne11, ne01, ne10,
+                        1.0f,    y, ne10,
+                                 x, ne00,
+                        0.0f,    d, ne01);
+            }
+        }
+
+        //printf(&quot;CBLAS = %f ms, %d x %d x %d x %d\n&quot;, (ggml_perf_time_us() - t0)/1000.0, ne0, ne1, ne2, ne3);
+
+        return;
+    }
+#endif
+</code></pre>
+<ul>
+<li>GGML_TASK_INIT：初始化阶段，用来将 src1 中的 float 类型数据转换为适合进行矩阵乘法的类型（vec_dot_type），并将其存储在一个临时缓冲区 wdata 中，以便之后的计算使用。</li>
+<li>GGML_TASK_FINALIZE：结束阶段，什么也不做，只是标记计算结束。</li>
+</ul>
+<pre><code class="language-c++">    if (params-&gt;type == GGML_TASK_INIT) {
+        if (src1-&gt;type != vec_dot_type) {
+            char * wdata = params-&gt;wdata;
+            const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+            for (int64_t i13 = 0; i13 &lt; ne13; ++i13) {
+                for (int64_t i12 = 0; i12 &lt; ne12; ++i12) {
+                    for (int64_t i11 = 0; i11 &lt; ne11; ++i11) {
+                        from_float_to_vec_dot((float *)((char *) src1-&gt;data + i13*nb13 + i12*nb12 + i11*nb11), (void *) wdata, ne10);
+                        wdata += row_size;
+                    }
+                }
+            }
+        }
+
+        return;
+    }
+</code></pre>
+<p>后面这部分代码主要是任务的分配。<br>
+（<code>nth0</code>和<code>nth1</code>）先是看一下<code>src0</code>和<code>src1</code>谁的行数多（<code>nr0</code>和<code>nr1</code>），谁多就按谁来并行。<br>
+（<code>ith0</code>和<code>ith1</code>）然后，计算当前线程应该处理<code>src0</code>和<code>src</code>的哪部分。<br>
+我们可以这样理解这个公式：假设<code>nth</code>是4，</p>
+<ul>
+<li>如果<code>nth0</code>是4，那么<code>ith0</code>就是<code>[0, 3]</code>也就是处理四个不同的部分，<code>ith1</code>则只能是0</li>
+<li>如果<code>nth0</code>是1，那么<code>ith0</code>只能是0，而<code>ith1</code>可以是<code>[0, 3]</code>。</li>
+</ul>
+<p>（<code>dr0</code>和<code>dr1</code>）然后，计算每个线程应该分别处理多少行<code>src0</code>和<code>src1</code>。这里就是用总行数对<code>nth0</code>和<code>nth1</code>做商的向上取整。<br>
+（<code>ir010</code>和<code>ir011</code>）有了负责的部分（<code>ith0</code>）以及每个部分的行数<code>dr0</code>，我们就可以计算线程对<code>src0</code>的处理范围了，即处理<code>src0</code>的起始行（<code>dr0*ith0</code>）和终止行（<code>MIN(ir010 + dr0, nr0)</code>）。<br>
+（<code>ir110</code>和<code>ir111</code>）同上，线程处理 <code>src1</code> 的起始行和结束行。</p>
+<pre><code class="language-c++">    const void * wdata    = (src1-&gt;type == vec_dot_type) ? src1-&gt;data : params-&gt;wdata;
+    const size_t row_size = ne10*ggml_type_size(vec_dot_type)/ggml_blck_size(vec_dot_type);
+
+    const int64_t nr0 = ne01;           // src0 rows
+    const int64_t nr1 = ne11*ne12*ne13; // src1 rows
+
+    //printf(&quot;nr0 = %lld, nr1 = %lld\n&quot;, nr0, nr1);
+
+    // distribute the thread work across the inner or outer loop based on which one is larger
+
+    const int64_t nth0 = nr0 &gt; nr1 ? nth : 1; // parallelize by src0 rows
+    const int64_t nth1 = nr0 &gt; nr1 ? 1 : nth; // parallelize by src1 rows
+
+    const int64_t ith0 = ith % nth0;
+    const int64_t ith1 = ith / nth0;
+
+    const int64_t dr0 = (nr0 + nth0 - 1)/nth0;
+    const int64_t dr1 = (nr1 + nth1 - 1)/nth1;
+
+    const int64_t ir010 = dr0*ith0;
+    const int64_t ir011 = MIN(ir010 + dr0, nr0);
+
+    const int64_t ir110 = dr1*ith1;
+    const int64_t ir111 = MIN(ir110 + dr1, nr1);
+</code></pre>
+<p>接下来是计算。首先是一个矩阵的分块。外两层循环每次加<code>blck_0</code>和<code>blck_1</code>，然后内两层循环处理该block内的数据。其中第三层循环增加<code>src1</code>的一列，第四层循环增加<code>src0</code>的一行。第四层循环算完会得到结果的一列（通过<code>src1</code>的一列和block内<code>src0</code>的所有行），再把结果<code>memcpy</code>到<code>dst_col</code>。</p>
+<pre><code class="language-c++">    // block-tiling attempt
+    const int64_t blck_0 = 16;
+    const int64_t blck_1 = 16;
+
+    // attempt to reduce false-sharing (does not seem to make a difference)
+    float tmp[16];
+
+    for (int64_t iir1 = ir110; iir1 &lt; ir111; iir1 += blck_1) {
+        for (int64_t iir0 = ir010; iir0 &lt; ir011; iir0 += blck_0) {
+            for (int64_t ir1 = iir1; ir1 &lt; iir1 + blck_1 &amp;&amp; ir1 &lt; ir111; ++ir1) {
+                // -- snip --
+                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+            }
+        }
+    }
+</code></pre>
+<p>第三层循环内的开头是一个一维索引到三维索引的重新计算。我们可以这样理解这个公式：</p>
+<ul>
+<li>ir1在三维张量中首先跨过了多少“深度”（<code>ne12 * ne11</code>表示一个完整的平面大小）。所以这步是在第 2 维度上跨过多少个完整的<code>ne11 x ne12</code>大小的平面。</li>
+<li>在确定<code>i13</code>之后，减去i13对应的展平索引所跨过的部分，剩下的就是在<code>ne11 * ne12</code>这个平面中的位置。接下来，用这个剩余部分除以<code>ne11</code>，得到<code>i12</code>，即在第 1 维度上的索引。</li>
+<li>最后，减去<code>i13</code>和<code>i12</code>跨过的部分，剩下的就是在第 0 维度上的索引<code>i11</code>。它表示当前<code>ir1</code>在这个平面中，具体的第 0 维度上的位置。</li>
+</ul>
+<pre><code class="language-c++">                const int64_t i13 = (ir1/(ne12*ne11));
+                const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
+                const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
+</code></pre>
+<p>通过 r2 和 r3 将 src0 的较小维度广播到 src1，以适应后者较大的维度。具体地说，i03 和 i02 通过除以广播因子将 src1 的索引转换为 src0 的索引，以正确地在较大的张量上应用较小张量的值。<br>
+例如，如果 i13 = 4，r3 = 3，则 i03 = 4 / 3 = 1，表示 src0 的第 3 维的第 1 个元素会被应用于 src1 的第 4 个位置。</p>
+<pre><code class="language-c++">                // broadcast src0 into src1
+                const int64_t i03 = i13/r3;
+                const int64_t i02 = i12/r2;
+</code></pre>
+<p>针对 src1 的多维索引（例如 i11, i12, i13）直接映射到 dst 中的对应维度位置。这表明在 dst 中的元素将与 src1 的这些维度一一对应。</p>
+<pre><code class="language-c++">                const int64_t i1 = i11;
+                const int64_t i2 = i12;
+                const int64_t i3 = i13;
+</code></pre>
+<p>计算<code>src0</code>的行起始位置（block中的第一行）。</p>
+<pre><code class="language-c++">                const char * src0_row = (const char *) src0-&gt;data + (0 + i02*nb02 + i03*nb03);
+</code></pre>
+<p>计算<code>src1_col</code>和<code>dst_col</code>的位置。这里如果<code>src1</code>是连续的则使用<code>ne</code>和<code>row_size</code>来计算，否则使用<code>nb</code>来计算（<strong>为什么？</strong>）。</p>
+<pre><code class="language-c++">                const char * src1_col = (const char *) wdata +
+                    (src1_cont || src1-&gt;type != vec_dot_type
+                     ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
+                     : (i11*nb11 + i12*nb12 + i13*nb13));
+
+                float * dst_col = (float *) ((char *) dst-&gt;data + (i1*nb1 + i2*nb2 + i3*nb3));
+</code></pre>
+<p>最后，算出结果中的一列。这里依次把block里面<code>src0</code>的各行与<code>src1</code>的对应列做向量点乘，把结果放到<code>tmp</code>中，再把<code>tmp</code>的结果放到<code>dst_col</code>即对应列中。</p>
+<pre><code class="language-c++">                for (int64_t ir0 = iir0; ir0 &lt; iir0 + blck_0 &amp;&amp; ir0 &lt; ir011; ++ir0) {
+                    vec_dot(ne00, &amp;tmp[ir0 - iir0], src0_row + ir0*nb01, src1_col);
+                }
+                memcpy(&amp;dst_col[iir0], tmp, (MIN(iir0 + blck_0, ir011) - iir0)*sizeof(float));
+</code></pre>
+<p>这样一来，<code>ggml.c</code>中的<code>ggml_compute_forward_mul_mat</code>就结束了。</p>
+<h2 id="ggml_cuda_mul_mat">ggml_cuda_mul_mat</h2>
+<p>对于<code>GGML_USE_CUBLAS</code>为<code>True</code>的情况，<code>GGML_OP_MUL_MAT</code>会调用到<code>ggml_cuda_mul_mat</code>。<br>
+<code>ggml_cuda_mul_mat</code>会通过检查输入张量的类型、内存布局、计算能力等条件，来选择最适合的矩阵乘法计算方法。</p>
+<pre><code class="language-c++">static void ggml_cuda_mul_mat(const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst) {
+    const bool all_on_device =
+        (src0-&gt;backend == GGML_BACKEND_GPU || src0-&gt;backend == GGML_BACKEND_GPU_SPLIT) &amp;&amp;
+        (src1-&gt;backend == GGML_BACKEND_GPU) &amp;&amp;
+        ( dst-&gt;backend == GGML_BACKEND_GPU);
+
+    const bool split = src0-&gt;backend == GGML_BACKEND_GPU_SPLIT;
+
+    int64_t min_compute_capability = INT_MAX;
+    for (int64_t id = 0; id &lt; g_device_count; ++id) {
+        if (min_compute_capability &gt; g_compute_capabilities[id] &amp;&amp; g_tensor_split[id] &lt; (id + 1 &lt; g_device_count ? g_tensor_split[id + 1] : 1.0f)) {
+            min_compute_capability = g_compute_capabilities[id];
+        }
+    }
+
+#ifdef CUDA_USE_TENSOR_CORES
+    const bool use_tensor_cores = true;
+#else
+    const bool use_tensor_cores = false;
+#endif
+
+    // debug helpers
+    //printf(&quot;src0: %8d %8d %8d %8d\n&quot;, src0-&gt;ne[0], src0-&gt;ne[1], src0-&gt;ne[2], src0-&gt;ne[3]);
+    //printf(&quot;      %8d %8d %8d %8d\n&quot;, src0-&gt;nb[0], src0-&gt;nb[1], src0-&gt;nb[2], src0-&gt;nb[3]);
+    //printf(&quot;src1: %8d %8d %8d %8d\n&quot;, src1-&gt;ne[0], src1-&gt;ne[1], src1-&gt;ne[2], src1-&gt;ne[3]);
+    //printf(&quot;      %8d %8d %8d %8d\n&quot;, src1-&gt;nb[0], src1-&gt;nb[1], src1-&gt;nb[2], src1-&gt;nb[3]);
+    //printf(&quot;src0 is contiguous %d, transposed %d, type = %s, name = %s\n&quot;, ggml_is_contiguous(src0), ggml_is_transposed(src0), ggml_type_name(src0-&gt;type), src0-&gt;name);
+    //printf(&quot;src1 is contiguous %d, transposed %d, type = %s, name = %s\n&quot;, ggml_is_contiguous(src1), ggml_is_transposed(src1), ggml_type_name(src1-&gt;type), src1-&gt;name);
+
+    if (!split &amp;&amp; all_on_device &amp;&amp; !use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; ggml_is_permuted(src0) &amp;&amp; ggml_is_permuted(src1) &amp;&amp; src1-&gt;ne[1] == 1) {
+        // KQ single-batch
+        ggml_cuda_mul_mat_vec_p021(src0, src1, dst);
+    } else if (!split &amp;&amp; all_on_device &amp;&amp; !use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; !ggml_is_contiguous(src0) &amp;&amp; !ggml_is_transposed(src1) &amp;&amp; src1-&gt;ne[1] == 1) {
+        // KQV single-batch
+        ggml_cuda_mul_mat_vec_nc(src0, src1, dst);
+    } else if (!split &amp;&amp; all_on_device &amp;&amp; use_tensor_cores &amp;&amp; src0-&gt;type == GGML_TYPE_F16 &amp;&amp; src1-&gt;type == GGML_TYPE_F32 &amp;&amp; !ggml_is_transposed(src0) &amp;&amp; !ggml_is_transposed(src1)) {
+        // KQ + KQV multi-batch
+        ggml_cuda_mul_mat_mat_batched_cublas(src0, src1, dst);
+    } else if (src0-&gt;type == GGML_TYPE_F32) {
+        ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_cublas, false);
+    } else if (ggml_is_quantized(src0-&gt;type) || src0-&gt;type == GGML_TYPE_F16) {
+        if (src1-&gt;ne[1] == 1 &amp;&amp; src0-&gt;ne[0] % GGML_CUDA_DMMV_X == 0) {
+#ifdef GGML_CUDA_FORCE_DMMV
+            const bool use_mul_mat_vec_q = false;
+#else
+            const bool use_mul_mat_vec_q = min_compute_capability &gt;= MIN_CC_DP4A &amp;&amp; ggml_is_quantized(src0-&gt;type);
+#endif // GGML_CUDA_FORCE_DMMV
+
+            if (use_mul_mat_vec_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_dequantize_mul_mat_vec, false);
+            }
+        } else {
+            bool use_mul_mat_q = min_compute_capability &gt;= MIN_CC_DP4A &amp;&amp; ggml_is_quantized(src0-&gt;type);
+
+            // when tensor cores are available, use them for large batch size
+            // ref: https://github.com/ggerganov/llama.cpp/pull/3776
+            if (use_tensor_cores &amp;&amp; min_compute_capability &gt;= CC_VOLTA &amp;&amp; src1-&gt;ne[1] &gt; MMQ_MAX_BATCH_SIZE) {
+                use_mul_mat_q = false;
+            }
+
+            if (use_mul_mat_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_cublas, false);
+            }
+        }
+    } else {
+        GGML_ASSERT(false);
+    }
+}
+</code></pre>
+<p>对于<code>src0</code>是量化类型，且<code>src1</code>是列向量的情况，代码会根据<a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities">GPU计算能力</a>选择是直接使用量化的矩阵乘法（<code>ggml_cuda_op_mul_mat_vec_q</code>），还是先进行反量化（<code>ggml_cuda_op_dequantize_mul_mat_vec</code>）。</p>
+<pre><code class="language-c++">            if (use_mul_mat_vec_q) {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_q, true);
+            } else {
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_dequantize_mul_mat_vec, false);
+            }
+</code></pre>
+<p><code>ggml_cuda_op_mul_mat</code>的函数签名如下。注意这里最后一个参数<code>covert_src1_to_q8_1</code>如果为<code>true</code>，则会尝试调用<code>quantize_q8_1</code>对输入<code>src1</code>进行量化。</p>
+<pre><code class="language-c++">static void ggml_cuda_op_mul_mat(
+    const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, ggml_cuda_op_mul_mat_t op,
+    const bool convert_src1_to_q8_1) 
+</code></pre>
+<h3 id="ggml_cuda_op_dequantize_mul_mat_vec">ggml_cuda_op_dequantize_mul_mat_vec</h3>
+<p><code>ggml_cuda_op_dequantize_mul_mat_vec</code>基于量化类型选择合适的函数。</p>
+<pre><code class="language-c++">inline void ggml_cuda_op_dequantize_mul_mat_vec(
+    const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, const char * src0_dd_i, const float * src1_ddf_i,
+    const char * src1_ddq_i, float * dst_dd_i, const int64_t row_low, const int64_t row_high, const int64_t src1_ncols,
+    const int64_t src1_padded_row_size, const cudaStream_t &amp; stream) {
+
+    const int64_t ne00 = src0-&gt;ne[0];
+    const int64_t row_diff = row_high - row_low;
+
+    // on some GPUs it is faster to convert src1 to half and to use half precision intrinsics
+#ifdef GGML_CUDA_F16
+    size_t ash;
+    dfloat * src1_dfloat = nullptr; // dfloat == half
+
+    bool src1_convert_f16 = src0-&gt;type == GGML_TYPE_Q4_0 || src0-&gt;type == GGML_TYPE_Q4_1 ||
+        src0-&gt;type == GGML_TYPE_Q5_0 || src0-&gt;type == GGML_TYPE_Q5_1 ||
+        src0-&gt;type == GGML_TYPE_Q8_0 || src0-&gt;type == GGML_TYPE_F16;
+
+    if (src1_convert_f16) {
+        src1_dfloat = (half *) ggml_cuda_pool_malloc(ne00*sizeof(half), &amp;ash);
+        ggml_cpy_f32_f16_cuda((const char *) src1_ddf_i, (char *) src1_dfloat, ne00,
+                                ne00, 1, sizeof(float), 0, 0,
+                                ne00, 1, sizeof(half),  0, 0, stream);
+    }
+#else
+    const dfloat * src1_dfloat = (const dfloat *) src1_ddf_i; // dfloat == float, no conversion
+#endif // GGML_CUDA_F16
+
+    switch (src0-&gt;type) {
+        case GGML_TYPE_Q4_0:
+            dequantize_mul_mat_vec_q4_0_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q4_1:
+            dequantize_mul_mat_vec_q4_1_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_0:
+            dequantize_mul_mat_vec_q5_0_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_1:
+            dequantize_mul_mat_vec_q5_1_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q8_0:
+            dequantize_mul_mat_vec_q8_0_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q2_K:
+            dequantize_mul_mat_vec_q2_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q3_K:
+            dequantize_mul_mat_vec_q3_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q4_K:
+            dequantize_mul_mat_vec_q4_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q5_K:
+            dequantize_mul_mat_vec_q5_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_Q6_K:
+            dequantize_mul_mat_vec_q6_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
+            break;
+        case GGML_TYPE_F16:
+            convert_mul_mat_vec_f16_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            break;
+        default:
+            GGML_ASSERT(false);
+            break;
+    }
+
+#ifdef GGML_CUDA_F16
+    if (src1_convert_f16) {
+        ggml_cuda_pool_free(src1_dfloat, ash);
+    }
+#endif // GGML_CUDA_F16
+
+    (void) src1;
+    (void) dst;
+    (void) src1_ddq_i;
+    (void) src1_ncols;
+    (void) src1_padded_row_size;
+}
+</code></pre>
+<p>事实上，这些函数都会调用到<code>dequantize_mul_mat_vec</code>，只是选择了不同的函数模版。<br>
+以<code>GGML_TYPE_Q4_0</code>为例，调用的是<code>dequantize_mul_mat_vec&lt;QK4_0, QR4_0, dequantize_q4_0&gt;</code>。</p>
+<pre><code class="language-c++">static void dequantize_mul_mat_vec_q4_0_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    GGML_ASSERT(ncols % GGML_CUDA_DMMV_X == 0);
+    const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
+    // the number of rows may exceed maximum grid size in the y or z dimensions, use the x dimension instead
+    const dim3 block_nums(block_num_y, 1, 1);
+    const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
+    dequantize_mul_mat_vec&lt;QK4_0, QR4_0, dequantize_q4_0&gt;
+        &lt;&lt;&lt;block_nums, block_dims, 0, stream&gt;&gt;&gt;(vx, y, dst, ncols, nrows);
+}
+</code></pre>
+<p>其中的<code>dequantize_q4_0</code>是<code>GGML_TYPE_Q4_0</code>类型的反量化函数。</p>
+<pre><code class="language-c++">static __device__ __forceinline__ void dequantize_q4_0(const void * vx, const int ib, const int iqs, dfloat2 &amp; v){
+    const block_q4_0 * x = (const block_q4_0 *) vx;
+
+    const dfloat d = x[ib].d;
+
+    const int vui = x[ib].qs[iqs];
+
+    v.x = vui &amp; 0xF;
+    v.y = vui &gt;&gt; 4;
+
+#ifdef GGML_CUDA_F16
+    v = __hsub2(v, {8.0f, 8.0f});
+    v = __hmul2(v, {d, d});
+#else
+    v.x = (v.x - 8.0f) * d;
+    v.y = (v.y - 8.0f) * d;
+#endif // GGML_CUDA_F16
+}
+</code></pre>
+<p>在最终调用到的<code>dequantize_mul_mat_vec</code>中，<code>blockIdx.x*blockDim.y + threadIdx.y</code>用于指定负责的<code>row</code>，<code>threadIdx.x</code>作为<code>tid</code>用于计算所负责的<code>col</code>。以<code>iter_stride</code>为步长，每次迭代处理<code>vals_per_iter</code>个数据，同时单个迭代中又每次处理两个数据（<code>j += 2</code>）。<br>
+处理时，先对<code>vx</code>做反量化，结果放置到<code>v</code>，然后再用<code>v</code>和<code>y</code>做相乘，结果累加到<code>tmp</code>中。<br>
+接着，根据划分<code>const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);</code>，我们知道<code>threadIdx.x</code>的范围其实就是0~31，因此可以做一个warp shuffle（<code>tmp += __shfl_xor_sync(0xffffffff, tmp, mask, 32);</code>）把结果累加，最后<code>tid == 0</code>的线程负责把结果放置到<code>dst[row]</code>中。</p>
+<pre><code class="language-c++">template &lt;int qk, int qr, dequantize_kernel_t dequantize_kernel&gt;
+static __global__ void dequantize_mul_mat_vec(const void * __restrict__ vx, const dfloat * __restrict__ y, float * __restrict__ dst, const int ncols, const int nrows) {
+    // qk = quantized weights per x block
+    // qr = number of quantized weights per data value in x block
+    const int row = blockIdx.x*blockDim.y + threadIdx.y;
+
+    if (row &gt;= nrows) {
+        return;
+    }
+
+    const int tid = threadIdx.x;
+
+    const int iter_stride = 2*GGML_CUDA_DMMV_X;
+    const int vals_per_iter = iter_stride / WARP_SIZE; // num quantized vals per thread and i iter
+    const int y_offset = qr == 1 ? 1 : qk/2;
+
+// partial sum for each thread
+#ifdef GGML_CUDA_F16
+    half2 tmp = {0.0f, 0.0f}; // two sums for f16 to take advantage of half2 intrinsics
+#else
+    float tmp = 0.0f;
+#endif // GGML_CUDA_F16
+
+    for (int i = 0; i &lt; ncols; i += iter_stride) {
+        const int col = i + vals_per_iter*tid;
+        const int ib = (row*ncols + col)/qk; // x block index
+        const int iqs = (col%qk)/qr; // x quant index
+        const int iybs = col - col%qk; // y block start index
+
+// processing &gt;2 values per i iter is faster for fast GPUs
+#pragma unroll
+        for (int j = 0; j &lt; vals_per_iter; j += 2) {
+            // process 2 vals per j iter
+
+            // dequantize
+            // for qr = 2 the iqs needs to increase by 1 per j iter because 2 weights per data val
+            dfloat2 v;
+            dequantize_kernel(vx, ib, iqs + j/qr, v);
+
+            // matrix multiplication
+            // for qr = 2 the y index needs to increase by 1 per j iter because of y_offset = qk/2
+#ifdef GGML_CUDA_F16
+            tmp += __hmul2(v, {
+                y[iybs + iqs + j/qr + 0],
+                y[iybs + iqs + j/qr + y_offset]
+            });
+#else
+            tmp += v.x * y[iybs + iqs + j/qr + 0];
+            tmp += v.y * y[iybs + iqs + j/qr + y_offset];
+#endif // GGML_CUDA_F16
+        }
+    }
+
+    // sum up partial sums and write back result
+#pragma unroll
+    for (int mask = 16; mask &gt; 0; mask &gt;&gt;= 1) {
+        tmp += __shfl_xor_sync(0xffffffff, tmp, mask, 32);
+    }
+
+    if (tid == 0) {
+#ifdef GGML_CUDA_F16
+        dst[row] = tmp.x + tmp.y;
+#else
+        dst[row] = tmp;
+#endif // GGML_CUDA_F16
+    }
+}
+</code></pre>
+<h2 id="ggml_cuda_mul_mat_sparse-有什么不同">ggml_cuda_mul_mat_sparse 有什么不同</h2>
+<p>sparse这边，反量化版本调用的是<code>ggml_cuda_op_mul_mat_vec_sparse_dequantized</code>。</p>
+<pre><code class="language-c++">static void ggml_cuda_mul_mat_sparse(const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst) {
+    GGML_ASSERT(dst-&gt;src[2] != NULL &amp;&amp; &quot;dst-&gt;src[2] must be present for sparse matrix multiplication&quot;);
+    if (src1-&gt;ne[1] == 1 &amp;&amp; src0-&gt;ne[0] % GGML_CUDA_DMMV_X == 0) {
+        switch(src0-&gt;type) {
+            case GGML_TYPE_F16:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_dequantized, false);
+                break;
+            case GGML_TYPE_Q4_0:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_q, true);
+                break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported type for sparse matrix multiplication&quot;);
+        }
+    } else {
+        ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_batch_sparse, false);
+    }
+}
+</code></pre>
+<p><code>ggml_cuda_op_mul_mat_vec_sparse_dequantized</code>里面，我们注意到这里从<code>dst-&gt;src</code>里取了<code>sparse_idx</code>和<code>row_lookup</code>这么两个东西。</p>
+<pre><code class="language-c++">inline void ggml_cuda_op_mul_mat_vec_sparse_dequantized(
+    const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, const char * src0_dd_i, const float * src1_ddf_i,
+    const char * src1_ddq_i, float * dst_dd_i, const int64_t row_low, const int64_t row_high, const int64_t src1_ncols,
+    const int64_t src1_padded_row_size, const cudaStream_t &amp; stream) {
+
+    const int64_t ne00 = src0-&gt;ne[0];
+    const int64_t ne10 = src1-&gt;ne[1];
+    const int64_t row_diff = row_high - row_low;
+
+    float * sparse_idx = static_cast&lt;float *&gt;(ggml_cuda_get_tensor_data(dst-&gt;src[2]));
+    int32_t * row_lookup = dst-&gt;src[3] != NULL ? static_cast&lt;int32_t *&gt;(ggml_cuda_get_tensor_data(dst-&gt;src[3])) : NULL;
+
+    // on some GPUs it is faster to convert src1 to half and to use half precision intrinsics
+#ifdef GGML_CUDA_F16
+    size_t ash;
+    dfloat * src1_dfloat = nullptr; // dfloat == half
+
+    bool src1_convert_f16 = src0-&gt;type == GGML_TYPE_Q4_0 || src0-&gt;type == GGML_TYPE_Q4_1 ||
+        src0-&gt;type == GGML_TYPE_Q5_0 || src0-&gt;type == GGML_TYPE_Q5_1 ||
+        src0-&gt;type == GGML_TYPE_Q8_0 || src0-&gt;type == GGML_TYPE_F16;
+
+    if (src1_convert_f16) {
+        src1_dfloat = (half *) ggml_cuda_pool_malloc(ne00*sizeof(half), &amp;ash);
+        ggml_cpy_f32_f16_cuda((const char *) src1_ddf_i, (char *) src1_dfloat, ne00,
+                                ne00, 1, sizeof(float), 0, 0,
+                                ne00, 1, sizeof(half),  0, 0, stream);
+    }
+#else
+    const dfloat * src1_dfloat = (const dfloat *) src1_ddf_i; // dfloat == float, no conversion
+#endif // GGML_CUDA_F16
+
+    cudaMemsetAsync((void *)dst_dd_i, 0, ggml_nbytes(dst), stream);
+    switch (src0-&gt;type) {
+        case GGML_TYPE_F16:
+            convert_mul_mat_vec_f16_cuda_sparse(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream, row_lookup, sparse_idx);
+            break;
+        default:
+            GGML_ASSERT(false &amp;&amp; &quot;Unsupported type&quot;);
+            break;
+    }
+
+    (void) src1;
+    (void) dst;
+    (void) src1_ddf_i;
+    (void) src1_ncols;
+    (void) src1_padded_row_size;
+}
+</code></pre>
+<p>而实际上，这里的<code>row_lookup</code>就是<code>gpu_bucket</code>，记录的是有哪些neurons在GPU上，即这些neurons在原矩阵中的index。而<code>sparse_idx</code>则是运行时通过predictor预测会被激活的neurons的index。</p>
+<pre><code class="language-c++">struct ggml_tensor * ggml_mul_mat_idx_upscale(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * b,
+        struct ggml_tensor  * sparse_idx,
+        struct ggml_tensor  * gpu_bucket,
+                      int64_t result_ne0) {
+    bool is_node = false;
+
+    if (a-&gt;grad || b-&gt;grad) {
+        is_node = true;
+    }
+
+    const int64_t ne[4] = { result_ne0, b-&gt;ne[1], b-&gt;ne[2], b-&gt;ne[3] };
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_F32, MAX(a-&gt;n_dims, b-&gt;n_dims), ne);
+
+    result-&gt;op   = GGML_OP_MUL_MAT_SPARSE;
+    result-&gt;grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
+    result-&gt;src[0] = a;
+    result-&gt;src[1] = b;
+    result-&gt;src[2] = sparse_idx;
+    result-&gt;src[3] = gpu_bucket;
+
+    return result;
+}
+</code></pre>
+<p>然后，<code>row_lookup</code>和<code>sparse_idx</code>会被作为多出来的两个参数<code>lst</code>和<code>idx</code>传递到<code>dequantize_mul_mat_vec_sparse</code>。</p>
+<pre><code class="language-c++">static void convert_mul_mat_vec_f16_cuda_sparse(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, int *lst, float *idx) {
+    GGML_ASSERT(ncols % GGML_CUDA_DMMV_X == 0);
+    const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
+    const dim3 block_nums(1, block_num_y, 1);
+    const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
+
+    dequantize_mul_mat_vec_sparse&lt;1, 1, convert_f16&gt;
+        &lt;&lt;&lt;block_nums, block_dims, 0, stream&gt;&gt;&gt;(vx, y, dst, ncols, nrows, lst, idx);
+ 
+}
+</code></pre>
+<p>到了kernel这边，其实改动就很简单了。<br>
+先使用<code>gpu_row</code>去<code>lst</code>（也就是<code>row_lookup</code>或者说<code>gpu_bucket</code>）查询一下其对应的是原矩阵的哪个<code>neuron</code>也就是哪一行<code>row</code>，然后再去<code>idx</code>（也就是通过predictor得到的<code>sparse_idx</code>）看一下其预测值有没有达到<code>dex_sparse_threshold</code>阈值。若没有，则直接<code>return</code>也就是跳过其计算。<br>
+就是这么简单，其他部分没有多大修改。</p>
+<pre><code class="language-c++">template &lt;int qk, int qr, dequantize_kernel_t dequantize_kernel&gt;
+static __global__ void dequantize_mul_mat_vec_sparse(const void * __restrict__ vx, const dfloat * __restrict__ y, float * __restrict__ dst, const int ncols, const int nrows, int * lst, float * idx) {
+    // qk = quantized weights per x block
+    // qr = number of quantized weights per data value in x block
+    const int gpu_row = blockIdx.y*blockDim.y + threadIdx.y;
+
+    if (gpu_row &gt;= nrows) {
+        return;
+    }
+
+    int row = lst ? lst[gpu_row] : gpu_row;
+    if (idx[row] &lt; dev_sparse_threshold) {
+        return;
+    }
+
+    const int tid = threadIdx.x;
+
+    const int iter_stride = 2*GGML_CUDA_DMMV_X;
+    const int vals_per_iter = iter_stride / WARP_SIZE; // num quantized vals per thread and i iter
+    const int y_offset = qr == 1 ? 1 : qk/2;
+
+// partial sum for each thread
+#ifdef GGML_CUDA_F16
+    half2 tmp = {0.0f, 0.0f}; // two sums for f16 to take advantage of half2 intrinsics
+#else
+    float tmp = 0.0f;
+#endif // GGML_CUDA_F16
+
+    for (int i = 0; i &lt; ncols; i += iter_stride) {
+        const int col = i + vals_per_iter*tid;
+        const int ib = (gpu_row*ncols + col)/qk; // x block index
+        const int iqs = (col%qk)/qr; // x quant index
+        const int iybs = col - col%qk; // y block start index
+
+// processing &gt;2 values per i iter is faster for fast GPUs
+#pragma unroll
+        for (int j = 0; j &lt; vals_per_iter; j += 2) {
+            // process 2 vals per j iter
+
+            // dequantize
+            // for qr = 2 the iqs needs to increase by 1 per j iter because 2 weights per data val
+            dfloat2 v;
+            dequantize_kernel(vx, ib, iqs + j/qr, v);
+
+            // matrix multiplication
+            // for qr = 2 the y index needs to increase by 1 per j iter because of y_offset = qk/2
+#ifdef GGML_CUDA_F16
+            tmp += __hmul2(v, {
+                y[iybs + iqs + j/qr + 0],
+                y[iybs + iqs + j/qr + y_offset]
+            });
+#else
+            tmp += v.x * y[iybs + iqs + j/qr + 0];
+            tmp += v.y * y[iybs + iqs + j/qr + y_offset];
+#endif // GGML_CUDA_F16
+        }
+    }
+
+    // sum up partial sums and write back result
+#pragma unroll
+    for (int mask = 16; mask &gt; 0; mask &gt;&gt;= 1) {
+        tmp += __shfl_xor_sync(0xffffffff, tmp, mask, 32);
+    }
+
+    if (tid == 0) {
+#ifdef GGML_CUDA_F16
+        dst[row] = tmp.x + tmp.y;
+#else
+        dst[row] = tmp;
+#endif // GGML_CUDA_F16
+    }
+}
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>对于原版的算子，这里介绍的比较简单。我们主要关注PowerInfer在这里做了什么修改。<br>
+其实相比原先的实现，PowerInfer这边的<code>sparse</code>版本所做的修改就很简单。就是检查一下其predictor的预测值有没有达到指定的阈值，若没有则直接<code>return</code>跳过计算即可。<br>
+到这里，从上到下的一个简单运行流程就被走通了，对PowerInfer的源码解析也初步结束了。<br>
+可能还有下一篇解析，也可能没有了。</p>
+<h2 id="支持-️">支持 ☕️</h2>
+<p>如果发现内容有纰漏或错误，可以通过邮箱hangyu.yuan@qq.com联系我或直接在下方评论告诉我，谢谢。<br>
+我的<a href="https://github.com/Yuan-Allen">GitHub主页</a>。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%9B%B8%E5%85%B3">相关</a></li>
+<li><a href="#ggml_compute_forward_mul_mat">ggml_compute_forward_mul_mat</a></li>
+<li><a href="#ggml_cuda_mul_mat">ggml_cuda_mul_mat</a>
+<ul>
+<li><a href="#ggml_cuda_op_dequantize_mul_mat_vec">ggml_cuda_op_dequantize_mul_mat_vec</a></li>
+</ul>
+</li>
+<li><a href="#ggml_cuda_mul_mat_sparse-%E6%9C%89%E4%BB%80%E4%B9%88%E4%B8%8D%E5%90%8C">ggml_cuda_mul_mat_sparse 有什么不同</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E6%94%AF%E6%8C%81-%EF%B8%8F">支持 ☕️</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/powerinfer-source-analysis-2/">
+              <h3 class="post-title">
+                PowerInfer源码解析（二）：计算图构建与算子调用
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
