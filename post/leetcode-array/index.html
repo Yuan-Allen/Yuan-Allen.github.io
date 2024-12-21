@@ -1,0 +1,390 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（数组篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1734761319006">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（数组篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（数组篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[704] Binary Search
+
+难度：Easy
+语言：C++
+
+题目描述。
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1734761319006" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（数组篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-03-25
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（数组篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="704-binary-search">[704] Binary Search</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-search/description/">题目描述</a>。<br>
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不变量贯彻到底即可。</p>
+<pre><code class="language-c++">  int search(vector&lt;int&gt;&amp; nums, int target) {
+    int size = nums.size();
+    int lower = 0;
+    int upper = size - 1;
+    int index = 0;
+    while (true) {
+      if (upper &lt; lower) {
+        return -1;
+      }
+      index = (lower + upper) / 2;
+      int now = nums[index];
+      if (now == target) {
+        return index;
+      }
+      if (target &lt; now) {
+        upper = index - 1;
+      } else {
+        lower = index + 1;
+      }
+    }
+  }
+</code></pre>
+<h2 id="27-remove-element">[27] Remove Element</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-element/description/">题目描述</a>。<br>
+利用元素顺序可以改变的特性，左右指针往中间靠拢即可。</p>
+<pre><code class="language-python">    def removeElement(self, nums, val):
+        &quot;&quot;&quot;
+        :type nums: List[int]
+        :type val: int
+        :rtype: int
+        &quot;&quot;&quot;
+        head_index = 0
+        tail_index = len(nums) - 1
+        while tail_index &gt;= 0 and nums[tail_index] == val:
+            tail_index -= 1
+        while head_index &lt; tail_index:
+            if nums[head_index] == val:
+                nums[head_index] = nums[tail_index]
+                tail_index -= 1
+
+            head_index += 1
+            while head_index &lt;= tail_index and nums[tail_index] == val:
+                tail_index -= 1
+        return tail_index + 1
+</code></pre>
+<h2 id="977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/squares-of-a-sorted-array/description/">题目描述</a>。<br>
+原数组是有序的，因此平方后最大值一定在两端。利用双指针往中间靠拢即可。</p>
+<pre><code class="language-rust">    pub fn sorted_squares(nums: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let (mut left, mut right) = (0, nums.len() - 1);
+        let mut cur_index = right;
+        let mut res: Vec&lt;i32&gt; = vec![0; right + 1];
+        while left &lt;= right {
+            let (left_squares, right_squares) =
+                (nums[left] * nums[left], nums[right] * nums[right]);
+
+            if left_squares &lt; right_squares {
+                right -= 1;
+                res[cur_index] = right_squares;
+            } else {
+                left += 1;
+                res[cur_index] = left_squares
+            };
+
+            cur_index -= 1;
+        }
+        res
+    }
+</code></pre>
+<h2 id="209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-size-subarray-sum/description/">题目描述</a>。<br>
+使用滑动窗口（其实也相当于快慢指针）即可。每次<code>sum &gt;= target</code>了就开始注意更新<code>left</code>指针，最后返回<code>min_len</code>即可。复杂度O(n)。说是Medium但是是做起来最快的一道。</p>
+<pre><code class="language-c++">  int minSubArrayLen(int target, vector&lt;int&gt;&amp; nums) {
+    int sum = 0;
+    int left = 0;
+    int right = 0;
+    int n = nums.size();
+    int min_len = n + 1;
+    while (right &lt; n) {
+      sum += nums[right];
+
+      if (sum &gt;= target) {
+        while (sum - nums[left] &gt;=
+               target) {  // if target can be zero, the condition should be
+                          // (left &lt;= right &amp;&amp; sum - nums[left] &gt;= target
+          sum -= nums[left];
+          left++;
+        }
+        if (right - left + 1 &lt; min_len) {
+          min_len = right - left + 1;
+        }
+      }
+      right++;
+    }
+
+    return min_len &gt; n ? 0 : min_len;
+  }
+</code></pre>
+<h2 id="59-spiral-matrix-ii">[59] Spiral Matrix II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/spiral-matrix-ii/description/">题目描述</a>。<br>
+没什么算法可言，就是锻炼代码能力，难点在于边界条件的判断。<br>
+一般来说坚持循环不变量即可，例如每次循环坚持左闭右开。但是有特殊情况，那就是n如果是奇数就会有一个中心点，如果都坚持左闭右开的话就会导致中心点永远填不到。网上一些解法是特殊处理，单独最后填中心点的值。<br>
+本人的解法则是牺牲了一定的循环不变量，即每个round第一个循环（矩阵上方从左到右）采用了左闭右闭，第二、三个循环采用左开右闭，第四个循环（矩阵左边从下到上）采用左开右开（右开与第一个循环的左闭相对应），避免了中心点的单独处理（第一个循环是左闭右闭，所以能够处理中心点）。这种解法与前面那种各有利弊，见仁见智。</p>
+<pre><code class="language-python">    def generateMatrix(self, n):
+        &quot;&quot;&quot;
+        :type n: int
+        :rtype: List[List[int]]
+        &quot;&quot;&quot;
+        ret = [[0] * n for _ in range(n)]
+        round_index = 0
+        cur_num = 1
+        while cur_num &lt;= n * n:
+            for i in range(0 + round_index, n - round_index):
+                ret[0 + round_index][i] = cur_num
+                cur_num += 1
+            for i in range(0 + round_index + 1, n - round_index):
+                ret[i][n - round_index - 1] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index - 1, -1):
+                ret[n - round_index - 1][i] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index, -1):
+                ret[i][0 + round_index] = cur_num
+                cur_num += 1
+            round_index += 1
+        return ret
+</code></pre>
+<h2 id="个人总结">个人总结</h2>
+<p>数组作为最基础的数据结构之一，内容也很简单。就做的几道经典题而言，要掌握的就是两个内容：</p>
+<ul>
+<li>循环不变量<br>
+无论是二分法还是最后的螺旋矩阵模拟，防止边界条件出错的方法都是保持循环不变量，即按照区间的定义来操作。</li>
+<li>双指针<br>
+两个指针可以是同向的（快慢指针、滑动窗口），也可以是相向的。不少题目都是用该套路来解（例如<a href="#27-remove-element">27</a>，<a href="#977-squares-of-a-sorted-array">977</a>，<a href="#209-minimum-size-subarray-sum">209</a>）。</li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#704-binary-search">[704] Binary Search</a></li>
+<li><a href="#27-remove-element">[27] Remove Element</a></li>
+<li><a href="#977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</a></li>
+<li><a href="#209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</a></li>
+<li><a href="#59-spiral-matrix-ii">[59] Spiral Matrix II</a></li>
+<li><a href="#%E4%B8%AA%E4%BA%BA%E6%80%BB%E7%BB%93">个人总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/openharmony-share-app-file/">
+              <h3 class="post-title">
+                OpenHarmony中的应用文件分享机制
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
