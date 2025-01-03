@@ -1,0 +1,852 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Linux 内核中的 SELinux 机制 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1735876547625">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Linux 内核中的 SELinux 机制 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。
+
+能力
+S..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1735876547625" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Linux 内核中的 SELinux 机制
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-04-15
+              </span>
+              <span>
+                27 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/selinux.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>安全增强式Linux（SELinux，Security-Enhanced Linux）是一个Linux内核的安全模块，其提供了访问控制安全策略机制，包括了强制访问控制（Mandatory Access Control，MAC）。</p>
+<!-- more -->
+<h2 id="能力">能力</h2>
+<h3 id="selinux-是什么">SELinux 是什么</h3>
+<p>SELinux 是一个灵活的强制访问控制（MAC）系统，内置于 Linux 内核中。SELinux 为管理员提供了一种全面的访问控制机制，使其能够比现有的 Linux 自主访问控制（DAC）更精细地管理权限，并存在于许多主要的 Linux 发行版中。</p>
+<blockquote>
+<p>它最初是作为 Linux 内核的一系列补丁，由美国国家安全局（NSA）利用 Linux 安全模块（LSM）开发而成。<br>
+SELinux 于 2000 年发布到开源社区，并于 2003 年集成到上游 Linux 内核中。</p>
+</blockquote>
+<h4 id="dacdiscretionary-access-control自主访问控制">DAC（Discretionary Access Control，自主访问控制）</h4>
+<p>对于 DAC 而言，文件和进程都有相应的所有者。您可以让用户拥有某个文件，让群组拥有某个文件，或让其他人（可以是其他任何人）拥有某个文件。用户可以更改自己文件的权限。在没有使用 SELinux 的操作系统中，决定一个资源是否能被访问的因素是：某个资源是否拥有对应用户的权限（读、写、执行）。只要访问这个资源的进程符合以上的条件就可以被访问。</p>
+<p>根用户对 DAC 系统拥有完全访问控制权。如果拥有根访问权限，则可以访问其他任何用户的文件，或在系统上执行任何操作，这也是最致命的问题。</p>
+<h4 id="macmandatory-access-control强制访问控制">MAC（Mandatory Access Control，强制访问控制）</h4>
+<p>传统上， Linux 和 UNIX 系统都采用 DAC，而 <strong>SELinux 是 Linux 采用 MAC 系统的示例</strong>。</p>
+<p>强制访问控制模型 (MAC, Mandatory Access Control), 是为了弥补 DAC 权限控制过于分散的问题而诞生的。在计算机安全领域指一种由操作系统约束的访问控制，目标是限制主体或发起者访问或对对象或目标执行某种操作的能力。任何主体对任何对象的任何操作都将根据一组**授权规则（也称策略）**进行测试，决定操作是否允许。</p>
+<p>即使是以 root 身份运行的服务进程，一般也只能访问到它所需要的资源。即使程序出了漏洞，影响范围也只有在其允许访问的资源范围内。安全性大大增加。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1713149204595.png" alt="" loading="lazy"></figure>
+<p>MAC 的目的是弥补 DAC 的不足，而不是用來取代 DAC。</p>
+<h3 id="使用-selinux-的好处">使用 SELinux 的好处</h3>
+<ul>
+<li>所有进程和文件都被标记。SELinux 策略规则定义了进程如何与文件交互，以及进程如何相互交互。只有存在明确允许的 SELinux 策略规则时，才能允许访问。</li>
+<li>精细访问控制。传统的 UNIX 通过用户的授权、基于 Linux 的用户和组进行控制。而 SELinux 的访问控制基于所有可用信息，如 SELinux 用户、角色、类型以及可选的安全级别。</li>
+<li>SELinux 策略由系统管理员进行定义，并在系统范围内强制执行。</li>
+<li>改进了权限升级攻击的缓解方案。进程在域中运行，因此是相互分离的。SELinux 策略规则定义了如何处理访问文件和其它进程。如果某个进程被破坏，攻击者只能访问该进程的正常功能，而且只能访问已被配置为可以被该进程访问的文件。例如：如果 Apache HTTP 服务器被破坏，攻击者无法使用该进程读取用户主目录中的文件，除非添加或者配置了特定的 SELinux 策略规则允许这类访问。</li>
+<li>SELinux 可以用来强制实施数据机密性和完整性，同时保护进程不受不可信输入的影响。</li>
+</ul>
+<h2 id="接口和使用方法">接口和使用方法</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>SELinux 通过 MAC 方式来管控进程，进程是主体，而目标则是该进程想要读取的资源。</p>
+<ul>
+<li>
+<p><strong>主体 Subject</strong>：可以看成就是进程。</p>
+</li>
+<li>
+<p><strong>目标 Object</strong>：目标资源，被主体访问的资源。可以是文件、目录、端口等。</p>
+</li>
+<li>
+<p><strong>政策 Policy</strong>：<br>
+系统中通常有大量的文件和进程，为了节省时间和开销，通常我们只是选择性地对某些进程进行管制。<br>
+而哪些进程需要管制、要怎么管制是由政策决定的。<br>
+一套政策里面有多个规则。部分规则可以按照需求启用或禁用（以下把该类型的规则称为布尔型规则）。<br>
+在 CentOS 7 系统中，有三套政策，分别为：</p>
+<ul>
+<li><code>targeted</code>：对大部分网络服务进程进行管制。这是系统<strong>默认使用</strong>的政策（下文均使用此政策）。</li>
+<li><code>minimum</code>：以 <code>targeted</code> 为基础，仅对选定的网络服务进程进行管制。一般不用。</li>
+<li><code>mls</code>：多级安全保护。对所有的进程进行管制。这是最严格的政策，配置难度非常大。一般不用，除非对安全性有极高的要求。</li>
+</ul>
+</li>
+<li>
+<p><strong>安全上下文 security context：</strong><br>
+只有两者的安全上下文对应上了，主题才能访问目标。它们的对应关系由政策中的规则决定。</p>
+</li>
+</ul>
+<h3 id="selinux-状态和模式">SELinux 状态和模式</h3>
+<p>SELinux 可使用三种模式之一运行： enforcing（强制）、permissive（宽容）或 disabled（禁用）。</p>
+<ul>
+<li>Enforcing 模式是默认操作模式，在 enforcing 模式下 SELinux 可正常运行，并在整个系统中强制实施载入的安全策略。</li>
+<li>在 permissive 模式中，系统会象 enforcing 模式一样加载安全策略，包括标记对象并在日志中记录访问拒绝条目，但它并不会拒绝任何操作。不建议在生产环境系统中使用 permissive 模式，但 permissive 模式对 SELinux 策略开发和调试很有帮助。</li>
+<li>强烈建议不要使用禁用（disabled）模式。它不仅会使系统避免强制使用 SELinux 策略，还会避免为任何持久对象（如文件）添加标签，这使得在以后启用 SELinux 非常困难。</li>
+</ul>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1713149237443.png" alt="" loading="lazy"></figure>
+<h4 id="检查-selinux-的运行模式">检查 SELinux 的运行模式</h4>
+<p>使用 <code>getenforce</code> 或 <code>sestatus</code> 命令检查 SELinux 的运行模式。</p>
+<p><code>getenforce</code> 命令返回 <code>Enforcing</code>、<code>Permissive</code> 或 <code>Disabled</code>。</p>
+<p><code>sestatus</code> 命令返回 SELinux 状态以及正在使用的 SELinux 策略：</p>
+<pre><code>$ sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      31
+</code></pre>
+<h4 id="更改-selinux-状态和模式">更改 SELinux 状态和模式</h4>
+<p>使用 <code>setenforce</code> 实用程序在 enforcing 模式和 permissive 模式之间切换。使用 <code>setenforce</code> 所做的更改在重新引导后不会保留。要更改为 enforcing 模式，以 Linux root 用户身份输入 <code>setenforce 1</code> 命令。要更改为 permissive 模式，输入 <code>setenforce 0</code> 命令。</p>
+<pre><code># setenforce 0
+# getenforce
+Permissive
+</code></pre>
+<pre><code># setenforce 1
+# getenforce
+Enforcing
+</code></pre>
+<p>也可以通过更改配置文件来永久更改 SELinux 模式。</p>
+<pre><code># vi /etc/selinux/config
+</code></pre>
+<pre><code># This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#       enforcing - SELinux security policy is enforced.
+#       permissive - SELinux prints warnings instead of enforcing.
+#       disabled - No SELinux policy is loaded.
+SELINUX=permissive
+# SELINUXTYPE= can take one of these two values:
+#       targeted - Targeted processes are protected,
+#       mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+</code></pre>
+<pre><code># reboot
+</code></pre>
+<p>需要注意的是，如果系统已经在关闭 SELinux 的状态下运行了一段时间，再打开 SELinux 之后的第一次重启速度可能会比较慢。因为系统必须为磁盘中的文件创建安全上下文。</p>
+<h3 id="安全上下文">安全上下文</h3>
+<h4 id="格式">格式</h4>
+<p>每个进程和系统资源都有一个特殊的安全性标签,称为 <em>SELinux 上下文（context）</em>。SELinux 上下文有时被称为 <em>SELinux 标签</em>，它是一个提取系统级别细节并专注于实体的安全属性的<strong>标识符</strong>。这不仅提供了在 SELinux 策略中引用对象的一个一致方法，而且消除了在其他身份识别系统中可能存在的模糊性。例如，某个文件可以在使用绑定挂载的系统中有多个有效的路径名称。</p>
+<p><strong>SELinux 策略在一系列规则中使用这些上下文</strong>，它们定义进程如何相互交互以及与各种系统资源进行交互。默认情况下,策略不允许任何交互,除非规则明确授予了相应的权限。</p>
+<p>Linux 用户的安全上下文由 SELinux 用户、SELinux 角色和 SELinux 类型组成。例如：</p>
+<pre><code>User:Role:Type:Level
+</code></pre>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1713149279655.png" alt="" loading="lazy"></figure>
+<p>需要注意的是，第三个域即类型域在进程和文件上又有不同的称呼</p>
+<ul>
+<li>type：在文件资源（object）上面称为类型（type）</li>
+<li>domain：在主体进程（subject）则称为域（domain）</li>
+</ul>
+<h4 id="查询安全上下文">查询安全上下文</h4>
+<pre><code># 查询进程的安全上下文
+[root@localhost ~]# ps -auxZ | egrep 'bash|chronyd|LABEL'
+LABEL                                                 USER   ...  COMMAND
+system_u:system_r:chronyd_t:s0                        chrony ...  /usr/sbin/chronyd -F 2
+unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 root   ...  -bash
+
+# 查询文件的安全上下文
+[root@localhost ~]# ll -Z /usr/sbin/chronyd /etc/chrony.keys
+-rw-r-----. 1 root chrony system_u:object_r:chronyd_keys_t:s0    540 Aug 29  2022 /etc/chrony.keys
+-rwxr-xr-x. 1 root root   system_u:object_r:chronyd_exec_t:s0 353408 Apr 17 07:40 /usr/sbin/chronyd
+
+[root@localhost ~]# ll -Zd /root/anaconda-ks.cfg /home/vbird
+drwx------. 2 vbird vbird unconfined_u:object_r:user_home_dir_t:s0  113 Aug  4 13:43 /home/vbird
+-rw-------. 1 root  root  system_u:object_r:admin_home_t:s0        1204 Aug  4 13:05 /root/anaconda-ks.cfg
+</code></pre>
+<h4 id="安全上下文的修改">安全上下文的修改</h4>
+<h5 id="手动修改">手动修改</h5>
+<p>使用 <code>chcon</code> 手动修改安全上下文类型。</p>
+<pre><code>[root@localhost ~]# chcon [OPTION]... [-t TYPE] FILE...
+[root@localhost ~]# chcon [OPTION]... --reference=RFILE FILE...
+选项与参数：
+-t  ：后面接安全上下文的类型，例如 httpd_sys_content_t
+--reference=RFILE：用文件名为 RFILE 当范例來修改后续接的文件的类型
+
+# 将 /etc/hosts 复制到 /dev/shm/hosts，并修改类型为 etc_t
+[root@localhost ~]# cd /dev/shm
+[root@localhost shm]# cp -a /etc/hosts .
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:net_conf_t:s0 158 Jun 23  2020 hosts
+
+[root@localhost shm]# chcon -t etc_t hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:etc_t:s0 158 Jun 23  2020 hosts
+
+# 将类型改成与 /var/spool/mail 相同
+[root@localhost shm]# ll -Zd /var/spool/mail/
+drwxrwxr-x. 2 root mail system_u:object_r:mail_spool_t:s0 19 Jul 21 15:01 /var/spool/mail/
+
+[root@localhost shm]# chcon --reference=/var/spool/mail hosts
+[root@localhost shm]# ll -Z hosts
+-rw-r--r--. 1 root root system_u:object_r:mail_spool_t:s0 158 Jun 23  2020 hosts
+</code></pre>
+<h5 id="使用目录的默认安全上下文来修改">使用目录的默认安全上下文来修改</h5>
+<p>目录是有默认的安全上下文的。可以使用 <code>semanage</code> 来查询和修改目录的默认安全上下文。</p>
+<pre><code class="language-bash">semanage {login|user|port|interface|fcontext|translation} -l
+semanage fcontext -{a|d|m} [-frst] file_spec
+
+选项与参数：
+        fcontext：主要用在安全上下文方面的用途， -l 为查询
+        -a：增加；可以增加一些目录的默认安全上下文类型设置
+        -m：修改
+        -d：删除
+</code></pre>
+<p>例如查询 <code>/etc/sysconfig</code> 相关的默认 SELinux 安全上下文类型：</p>
+<pre><code>[root@localhost ~]# semanage fcontext --list | grep /etc/sysconfig
+SELinux fcontext              type           Context
+/etc/sysconfig/.*l2tpd        regular file   system_u:object_r:l2tp_conf_t:s0
+/etc/sysconfig/MailScanner    regular file   system_u:object_r:mscan_etc_t:s0
+</code></pre>
+<p>假设我们想要创建一个名为 <code>/www</code> 的目录，我们想要指定其安全上下文默认值与 <code>/var/www</code> 目录相同：</p>
+<pre><code># 1. 先找到 /var/www 的类型是什么
+[root@localhost ~]# semanage fcontext -l | grep '/var/www('
+/var/www(/.*)?              all files   system_u:object_r:httpd_sys_content_t:s0
+/var/www(/.*)?/logs(/.*)?   all files   system_u:object_r:httpd_log_t:s0
+
+# 2. 建立所需目录，并且查看其预设的安全上下文的值
+[root@localhost ~]# mkdir /www
+[root@localhost ~]# echo check &gt; /www/index.html
+[root@localhost ~]# ll -Zd /www /www/index.html
+drwxr-xr-x. 2 root root unconfined_u:object_r:default_t:s0 24 Jul 22 14:40 /www
+-rw-r--r--. 1 root root unconfined_u:object_r:default_t:s0  6 Jul 22 14:40 /www/index.html
+# 值为 default_t
+
+# 3. 增加 /www 默认为 httpd_sys_content_t 的类型
+[root@localhost ~]# semanage fcontext -a -t httpd_sys_content_t &quot;/www(/.*)?&quot;
+[root@localhost ~]# semanage fcontext -l | grep '^/www'
+/www(/.*)?    all files     system_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<p>现在，我们已经设置好了 <code>/www</code> 的默认类型，可以使用 <code>restorecon</code> 直接把文件或目录的安全上下文恢复到默认值。</p>
+<pre><code>[root@localhost ~]# restorecon -Rv /www
+Relabeled /www from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+Relabeled /www/index.html from unconfined_u:object_r:default_t:s0 
+  to unconfined_u:object_r:httpd_sys_content_t:s0
+</code></pre>
+<h4 id="端口安全上下文查询与修改-使用-semanage-port">端口安全上下文查询与修改 -- 使用 <code>semanage port</code></h4>
+<p>一个端口的 SELinux 安全上下文通常只包括类型信息。</p>
+<p><code>semanage port -l</code> 用于查看所有端口的安全上下文，例如：</p>
+<pre><code class="language-cpp">[root@localhost ~]# semanage port --list | grep http
+http_cache_port_t  tcp  8080, 8118, 8123, 10001-10010
+http_cache_port_t  udp  3130
+http_port_t        tcp  80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<p>也可以添加某类进程允许访问的端口，例如：</p>
+<pre><code>[root@localhost ~]# semanage port -a -t TYPE -p [tcp|udp] port_range
+-a   新增一个记录
+-t   修改的端口类型，例如 httpd_port_t
+-p   使用 tcp 或 udp 协议
+port_range 使用的端口号
+
+# 加入 port 98 的使用到 http 中
+[root@localhost ~]# semanage port -a -t http_port_t -p tcp 98
+[root@localhost ~]# semanage port --list | grep http
+http_port_t    tcp     98, 80, 81, 443, 488, 8008, 8009, 8443, 9000
+</code></pre>
+<h3 id="selinux-政策内的规则管理"><strong>SELinux 政策内的规则管理</strong></h3>
+<p><code>getsebool -a</code> 命令列出规则布尔值（规则是打开还是关闭状态）。</p>
+<pre><code>~]$ getsebool -a
+cvs_read_shadow --&gt; off
+daemons_dump_core --&gt; on
+</code></pre>
+<p><code>setsebool</code> 修改 SELinux 规则的布尔值。</p>
+<pre><code>setsebool [-p] [规则名称][0|1]
+
+-P：直接将设置值写入配置文件，该设置数据未来会生效
+</code></pre>
+<pre><code># 范例：查询 httpd_enable_homedirs 这个规则的状态，并且修改这个规则为不同的布尔值
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; off                        # 关闭状态
+[root@study ~]# setsebool -P httpd_enable_homedirs 1                # 开启它
+[root@study ~]# getsebool httpd_enable_homedirs
+httpd_enable_homedirs --&gt; on
+</code></pre>
+<p><code>seinfo</code> 可用于描述策略的细分，如类、类型、布尔值、允许规则等。</p>
+<pre><code class="language-sql">seinfo [-Atrub]
+
+选项与参数：
+        -A：列出 SELinux 的状态、规则布尔值、身份识别、角色、类型等所有信息
+        -u：列出 SELinux 的所有身份识别 user 种类
+        -r：列出 SELinux 的所有角色 role 种类
+        -t：列出 SELinux 的所有类型 type 种类
+        -b：列出所有规则的种类（布尔值）
+</code></pre>
+<pre><code class="language-sql">~]# seinfo
+
+Statistics for policy file: /sys/fs/selinux/policy
+Policy Version &amp; Type: v.28 (binary, mls)
+
+   Classes:            77    Permissions:       229
+   Sensitivities:       1    Categories:       1024
+   Types:            3001    Attributes:        244
+   Users:               9    Roles:              13
+   Booleans:          158    Cond. Expr.:       193
+   Allow:          262796    Neverallow:          0
+   Auditallow:         44    Dontaudit:      156710
+   Type_trans:      10760    Type_change:        38
+   Type_member:        44    Role allow:         20
+   Role_trans:        237    Range_trans:      2546
+   Constraints:        62    Validatetrans:       0
+   Initial SIDs:       27    Fs_use:             22
+   Genfscon:           82    Portcon:           373
+   Netifcon:            0    Nodecon:             0
+   Permissives:        22    Polcap:              2
+</code></pre>
+<p><code>sesearch</code> 搜索策略中的特定规则。</p>
+<pre><code class="language-sql">sesearch [-A] [-s 主体类别] [-t 目标类别] [-b 布尔值]
+
+选项与参数：
+        -A：列出后面数据中，允许「读取或放行」的相关数据
+        -t：后面还要接 type、例如 -t httpd_t
+        -b：后面接 SELinux 的规则，例如 -b httpd_enable_ftp_server
+</code></pre>
+<pre><code># 范例：找出 crond_t 主体进程能够读取的文件 SELinux type
+[root@study ~]# sesearch -A -s crond_t | grep spool
+   allow crond_t var_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t system_cron_spool_t : dir { ioctl read getattr lock search open } ; 
+   allow crond_t user_cron_spool_t : lnk_file { read getattr } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t var_spool_t : file { ioctl read getattr lock open } ; 
+   allow crond_t cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow daemon user_cron_spool_t : file { ioctl read write getattr lock append } ; 
+   allow crond_t cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : dir { ioctl read write getattr lock add_name remove_name search open } ; 
+   allow crond_t user_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ; 
+   allow crond_t system_cron_spool_t : file { ioctl read write create getattr setattr lock append unlink link rename open } ;
+</code></pre>
+<h3 id="案例当-port-出问题时让-httpd-开放在非正规端口">案例：当 port 出问题时：让 httpd 开放在非正规端口</h3>
+<p>如果 <code>auditd</code> 守护进程正在运行，则 SELinux 拒绝信息会默认写入 <code>/var/log/audit/audit.log</code> ：</p>
+<pre><code>type=AVC msg=audit(1223024155.684:49): avc:  denied  { getattr } for  pid=2000 comm=&quot;httpd&quot; path=&quot;/var/www/html/file1&quot; dev=dm-0 ino=399185 scontext=unconfined_u:system_r:httpd_t:s0 tcontext=system_u:object_r:samba_share_t:s0 tclass=file
+</code></pre>
+<p>另外，类似以下的消息被写入 <code>/var/log/message</code> 文件中：</p>
+<pre><code>May 7 18:55:56 localhost setroubleshoot: SELinux is preventing httpd (httpd_t) &quot;getattr&quot; to /var/www/html/file1 (samba_share_t). For complete SELinux messages. run sealert -l de7e30d6-5488-466d-a606-92c9f40d316d
+</code></pre>
+<p>接下来我们模拟一个场景，让 <code>httpd</code> 使用非正规的 377 端口：</p>
+<pre><code># 1. 修改端口号码
+[root@localhost ~]# vim /etc/httpd/conf/httpd.conf
+Listen 377
+
+# 2. 尝试启动 httpd 服务
+[root@localhost ~]# systemctl start httpd
+Job for httpd.service failed because the control process exited with error code.
+See &quot;systemctl status httpd.service&quot; and &quot;journalctl -xeu httpd.service&quot; for details.
+_# 如上所示，提示出现错误_
+
+# 3. 确认 /var/log/messages 是否记录错误解决方案
+[root@localhost ~]# grep setrouble /var/log/messages | grep sealert
+Aug  4 22:13:38 localhost setroubleshoot[3553]: SELinux is preventing /usr/sbin/httpd
+  from name_bind access on the tcp_socket port 377. For complete SELinux messages
+  run: sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+# 找到 sealert 关键字
+
+# 4. 运行找到的 sealert 指令，并依据提示处理问题
+[root@localhost ~]# sealert -l 525fe157-a16b-47c4-ad8d-11bad86c9e9a
+SELinux is preventing /usr/sbin/httpd from name_bind access on the tcp_socket port 377.
+
+*****  Plugin bind_ports (99.5 confidence) suggests   ************************
+
+If you want to allow /usr/sbin/httpd to bind to network port 377
+Then you need to modify the port type.
+Do
+# semanage port -a -t PORT_TYPE -p tcp 377
+    where PORT_TYPE is one of the following: http_cache_port_t, http_port_t, ...
+
+***  Plugin catchall (1.49 confidence) suggests   **************************
+....
+</code></pre>
+<p><code>sealert</code> 是 <code>setroubleshoot</code> 包提供的工具。<code>sealert</code> 可能会提供好几个解决方案，选择置信度最高的即可。</p>
+<pre><code>[root@localhost ~]# semanage port -a -t http_port_t -p tcp 377
+[root@localhost ~]# systemctl restart httpd
+</code></pre>
+<h2 id="原理">原理</h2>
+<h3 id="lsm">LSM</h3>
+<h4 id="overview">Overview</h4>
+<p>Linux 安全模块（英语：Linux Security Modules，简称 LSM）是 Linux 内核中用于支持各种计算机安全模型的框架，它与任何单独的安全实现无关。这个框架使用 GNU 通用公共许可证授权，并且从 Linux 2.6 开始成为官方 Linux 内核的一部分。目前，AppArmor、SELinux、Smack、TOMOYO Linux 和 Yama 是官方 Linux 内核中支持的安全模块。</p>
+<blockquote>
+<p>简单来说，LSM 是目前 linux 的安全框架，而 SELinux 是其中的一个 modules。</p>
+</blockquote>
+<p>LSM 在 linux 安全体系中所处位置可以用下图表述：</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1713149321948.png" alt="" loading="lazy"></figure>
+<p>LSM 在内核系统调用逻辑中提供了一套钩子（hooks）。LSM hook 会插入到访问 kernel 对象前面，DAC 检查之后，然后 LSM 调用系统中启用的访问控制模块，检查是否可以访问。若有多个访问控制模块，会根据初始化的优先顺序执行，都允许访问才能进一步访问 kernel 对象。</p>
+<h4 id="lsm-中的接口管理"><strong>LSM 中的接口管理</strong></h4>
+<p>LSM 中使用 <code>security_hook_heads</code> 将各访问控制模块的接口管理起来。</p>
+<pre><code>struct security_hook_heads {
+        #define LSM_HOOK(RET, DEFAULT, NAME, ...) struct hlist_head NAME; // 此处定义 LSM_HOOK 为只取接口名字
+        #include &quot;lsm_hook_defs.h&quot; // 包含接口文件
+        #undef LSM_HOOK
+} __randomize_layout;
+</code></pre>
+<p>接口文件 <code>lsm_hook_defs.h</code> 中的内容是这样的：</p>
+<pre><code class="language-cpp">... ...
+LSM_HOOK(int, 0, file_permission, struct file *file, int mask)
+LSM_HOOK(int, 0, file_alloc_security, struct file *file)
+LSM_HOOK(int, 0, file_ioctl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_mprotect, struct vm_area_struct *vma, unsigned long reqprot, unsigned long prot)
+LSM_HOOK(int, 0, file_lock, struct file *file, unsigned int cmd)
+LSM_HOOK(int, 0, file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
+LSM_HOOK(int, 0, file_receive, struct file *file)
+LSM_HOOK(int, 0, file_open, struct file *file)
+... ...
+</code></pre>
+<p>因此实际 <code>security_hook_heads</code> 是这样的：</p>
+<pre><code class="language-cpp">struct security_hook_heads {
+        ... ...
+    struct hlist_head file_permission;
+    struct hlist_head file_alloc_security;
+    struct hlist_head file_ioctl;
+    struct hlist_head file_mprotect;
+    struct hlist_head file_lock;
+    struct hlist_head file_fcntl;
+    struct hlist_head file_receive;
+    struct hlist_head file_open;
+    ... ...
+} __randomize_layout;
+</code></pre>
+<p>每个访问控制模块需要定义 <code>security_hook_list</code> 数组，<code>security_hook_list</code> 记录单个接口的信息，然后模块初始化函数中会调用 <code>security_add_hooks</code> 将 <code>security_hook_list</code> 数组链接到上面的 <code>security_hook_heads</code> 上。</p>
+<pre><code>struct security_hook_list {
+        struct hlist_node                list; // 会将该 hlist_node 链接到 security_hook_heads.接口 上
+        struct hlist_head                *head; // 指向 security_hook_heads.接口
+        union security_list_options        hook; // 接口函数实现
+        char                                *lsm; // 该模块名字
+} __randomize_layout;
+</code></pre>
+<p><code>security_hook_list</code> 是通过 LSM_HOOK_INIT 宏赋值的，调用方法为 <code>LSM_HOOK_INIT(接口, 接口实现)</code>，会赋值 <code>head</code> 和 <code>hook</code> 成员变量。</p>
+<pre><code class="language-cpp">#define LSM_HOOK_INIT(HEAD, HOOK) \
+        { .head = &amp;security_hook_heads.HEAD, .hook = { .HEAD = HOOK } }
+</code></pre>
+<p><code>security_add_hooks</code> 将每个接口的 <code>security_hook_list.list</code> 实际添加到 <code>security_hook_heads.接口</code> 的末尾。</p>
+<pre><code class="language-cpp">void __init security_add_hooks(struct security_hook_list *hooks, int count,
+                                char *lsm)
+{
+        int i;
+
+        for (i = 0; i &lt; count; i++) {
+                hooks[i].lsm = lsm;
+                hlist_add_tail_rcu(&amp;hooks[i].list, hooks[i].head);
+        }
+
+... ...
+}
+</code></pre>
+<h4 id="从-lsm-到-selinux">从 LSM 到 SELinux</h4>
+<p>当我们想要调用 <code>open</code> 打开一个文件，其简化版的调用路径如下所示：</p>
+<pre><code>open
+-------
+    sys_open
+        do_filp_open
+            path_openat
+                do_open
+                    vfs_open
+                        do_dentry_open
+                            security_file_open
+    error = security_file_open(f);
+    if (error)
+        goto cleanup_all;
+</code></pre>
+<p>其中 <code>security_file_open</code> 就是 open 系统调用的一个 LSM Hook 点，当执行到此处的时候，它会执行所有挂在此 hook 点上的安全检查函数。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1713149344001.png" alt="" loading="lazy"></figure>
+<p>以 SELinux 为例，最终会调用到 <code>selinux_file_open</code> 函数。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1713149360497.png" alt="" loading="lazy"></figure>
+<h3 id="selinux-内部结构">SELinux 内部结构</h3>
+<p>在看 <code>selinux_file_open</code> 的代码之前，我们先看一下 SELinux 的内部结构。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1713149373507.png" alt="" loading="lazy"></figure>
+<p>根据上图，我们可以把操作分为以下几个步骤。</p>
+<ol>
+<li>操作系统主体尝试访问特定对象（文件、套接字）上的某个操作，这在 Linux 标准自主安全系统（DAC）中是允许的。这将向对象发起一个请求流。</li>
+<li>每个要求对对象执行操作的请求都由 Linux Security Modules 截获并传递给 SELinux Abstraction &amp; Hook Logic 子系统，同时还包括主体和对象的安全上下文，SELinux Abstraction &amp; Hook Logic 子系统负责与 LSM 交互。</li>
+<li>从 SELinux Abstraction and Hook Logic 子系统接收到的信息将转发给基本的 Policy Enforcement Server 模块，后者负责确定是否允许主体访问该对象。</li>
+<li>要接收是否允许或禁止该操作的决定，策略实施服务器将与 Access Vector Cache 子系统通信，后者通常会缓存要使用的规则。</li>
+<li>如果 AVC 没有包含相关策略的缓存规则，对所需的安全策略的请求将再次转发给安全策略数据库。</li>
+<li>在找到安全策略后，该策略将被传递给接收决策的策略服务器。</li>
+<li>如果所请求的操作符合找到的策略，那么将允许执行该操作。反之，将禁止执行该操作，并且所有决策制定信息将被写入到 SELinux 日志文件中。</li>
+</ol>
+<p>除了判断是否允许或禁止某些操作外，Policy Enforcement Server 模块还负责执行一些辅助任务，例如安全标签管理（分配和移除）。</p>
+<blockquote>
+<p>一句话总结：请求来了去 AVC（以及后面的 database）查一下，比对是否有权限即可。</p>
+</blockquote>
+<figure data-type="image" tabindex="8"><img src="https://alleny.xyz/post-images/1713149392656.png" alt="" loading="lazy"></figure>
+<p>现在我们再来看 <code>selinux_file_open</code> 的代码，其实就是一个去 AVC 查找，然后比对权限，返回结果的过程。</p>
+<pre><code class="language-cpp">static int selinux_file_open(struct file *file)
+{
+        struct file_security_struct *fsec;
+        struct inode_security_struct *isec;
+
+        fsec = selinux_file(file);
+        isec = inode_security(file_inode(file));
+        /*
+         * Save inode label and policy sequence number
+         * at open-time so that selinux_file_permission
+         * can determine whether revalidation is necessary.
+         * Task label is already saved in the file security
+         * struct as its SID.
+         */
+        fsec-&gt;isid = isec-&gt;sid;
+        fsec-&gt;pseqno = avc_policy_seqno();
+        /*
+         * Since the inode label or policy seqno may have changed
+         * between the selinux_inode_permission check and the saving
+         * of state above, recheck that access is still permitted.
+         * Otherwise, access might never be revalidated against the
+         * new inode label or new policy.
+         * This check is not redundant - do not remove.
+         */
+        return file_path_has_perm(file-&gt;f_cred, file, open_file_to_av(file));
+}
+</code></pre>
+<p><code>selinux_file_open</code> 会调用到 <code>file_path_has_perm</code></p>
+<pre><code class="language-cpp">/* Same as path_has_perm, but uses the inode from the file struct. */
+static inline int file_path_has_perm(const struct cred *cred,
+                                     struct file *file,
+                                     u32 av)
+{
+        struct common_audit_data ad;
+
+        ad.type = LSM_AUDIT_DATA_FILE;
+        ad.u.file = file;
+        return inode_has_perm(cred, file_inode(file), av, &amp;ad);
+}
+</code></pre>
+<p>再调用到 <code>inode_has_perm</code></p>
+<pre><code class="language-cpp">/* Check whether a task has a particular permission to an inode.
+   The 'adp' parameter is optional and allows other audit
+   data to be passed (e.g. the dentry). */
+static int inode_has_perm(const struct cred *cred,
+                          struct inode *inode,
+                          u32 perms,
+                          struct common_audit_data *adp)
+{
+        struct inode_security_struct *isec;
+        u32 sid;
+
+        if (unlikely(IS_PRIVATE(inode)))
+                return 0;
+
+        sid = cred_sid(cred);
+        isec = selinux_inode(inode);
+
+        return avc_has_perm(sid, isec-&gt;sid, isec-&gt;sclass, perms, adp);
+}
+</code></pre>
+<p>再调用到 <code>avc_has_perm</code></p>
+<pre><code class="language-cpp">int avc_has_perm(u32 ssid, u32 tsid, u16 tclass,
+                 u32 requested, struct common_audit_data *auditdata)
+{
+        struct av_decision avd;
+        int rc, rc2;
+
+        rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, 0,
+                                  &amp;avd);
+
+        rc2 = avc_audit(ssid, tsid, tclass, requested, &amp;avd, rc,
+                        auditdata);
+        if (rc2)
+                return rc2;
+        return rc;
+}
+</code></pre>
+<p>再到 <code>avc_has_perm_noaudit</code></p>
+<pre><code class="language-cpp">inline int avc_has_perm_noaudit(u32 ssid, u32 tsid,
+                                u16 tclass, u32 requested,
+                                unsigned int flags,
+                                struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_node *node;
+
+        if (WARN_ON(!requested))
+                return -EACCES;
+
+        rcu_read_lock();
+        node = avc_lookup(ssid, tsid, tclass);
+        if (unlikely(!node)) {
+                rcu_read_unlock();
+                return avc_perm_nonode(ssid, tsid, tclass, requested,
+                                       flags, avd);
+        }
+        denied = requested &amp; ~node-&gt;ae.avd.allowed;
+        memcpy(avd, &amp;node-&gt;ae.avd, sizeof(*avd));
+        rcu_read_unlock();
+
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>如果 AVC 没查找到，还会调用到 <code>avc_perm_nonode</code></p>
+<pre><code class="language-cpp">static noinline int avc_perm_nonode(u32 ssid, u32 tsid, u16 tclass,
+                                    u32 requested, unsigned int flags,
+                                    struct av_decision *avd)
+{
+        u32 denied;
+        struct avc_xperms_node xp_node;
+
+        avc_compute_av(ssid, tsid, tclass, avd, &amp;xp_node);
+        denied = requested &amp; ~(avd-&gt;allowed);
+        if (unlikely(denied))
+                return avc_denied(ssid, tsid, tclass, requested, 0, 0,
+                                  flags, avd);
+        return 0;
+}
+</code></pre>
+<p>注意上面两个函数中的 <code>denied = requested &amp; ~node-&gt;ae.avd.allowed;</code> 和 <code>denied = requested &amp; ~(avd-&gt;allowed);</code> 就是在检查权限了。如果权限不满足，就会返回 <code>avc_denied(ssid, tsid, tclass, requested, 0, 0, flags, avd)</code>。</p>
+<p>最后放一张更全面的图，上面是用户态，下面是内核态。</p>
+<figure data-type="image" tabindex="9"><img src="https://alleny.xyz/post-images/1713149411256.png" alt="" loading="lazy"></figure>
+<h2 id="参考文献">参考文献</h2>
+<ul>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/8/html/using_selinux/index">使用 SELinux - Red Hat</a></li>
+<li><a href="https://wizardforcel.gitbooks.io/vbird-linux-basic-4e/content/143.html">SELinux 初探</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html-single/selinux_users_and_administrators_guide/index">SELinux 用户和管理员指南 -  Red Hat</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/352103792">Linux Security Modules 框架源码分析 - 知乎</a></li>
+<li><a href="https://saucer-man.com/operation_and_maintenance/84.html#cl-13">SELinux 的工作模式和架构</a></li>
+<li><a href="https://liwugang.github.io/2020/10/18/introduce_lsm.html">Linux Security Module 框架介绍</a></li>
+<li><a href="https://github.com/torvalds/linux/blob/20cb38a7af88dc40095da7c2c9094da3873fea23/security/selinux/hooks.c#L3962"><code>selinux_file_open</code>源码</a></li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E8%83%BD%E5%8A%9B">能力</a>
+<ul>
+<li><a href="#selinux-%E6%98%AF%E4%BB%80%E4%B9%88">SELinux 是什么</a>
+<ul>
+<li><a href="#dacdiscretionary-access-control%E8%87%AA%E4%B8%BB%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6">DAC（Discretionary Access Control，自主访问控制）</a></li>
+<li><a href="#macmandatory-access-control%E5%BC%BA%E5%88%B6%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6">MAC（Mandatory Access Control，强制访问控制）</a></li>
+</ul>
+</li>
+<li><a href="#%E4%BD%BF%E7%94%A8-selinux-%E7%9A%84%E5%A5%BD%E5%A4%84">使用 SELinux 的好处</a></li>
+</ul>
+</li>
+<li><a href="#%E6%8E%A5%E5%8F%A3%E5%92%8C%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95">接口和使用方法</a>
+<ul>
+<li><a href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5">基本概念</a></li>
+<li><a href="#selinux-%E7%8A%B6%E6%80%81%E5%92%8C%E6%A8%A1%E5%BC%8F">SELinux 状态和模式</a>
+<ul>
+<li><a href="#%E6%A3%80%E6%9F%A5-selinux-%E7%9A%84%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F">检查 SELinux 的运行模式</a></li>
+<li><a href="#%E6%9B%B4%E6%94%B9-selinux-%E7%8A%B6%E6%80%81%E5%92%8C%E6%A8%A1%E5%BC%8F">更改 SELinux 状态和模式</a></li>
+</ul>
+</li>
+<li><a href="#%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87">安全上下文</a>
+<ul>
+<li><a href="#%E6%A0%BC%E5%BC%8F">格式</a></li>
+<li><a href="#%E6%9F%A5%E8%AF%A2%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87">查询安全上下文</a></li>
+<li><a href="#%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E7%9A%84%E4%BF%AE%E6%94%B9">安全上下文的修改</a>
+<ul>
+<li><a href="#%E6%89%8B%E5%8A%A8%E4%BF%AE%E6%94%B9">手动修改</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E7%9B%AE%E5%BD%95%E7%9A%84%E9%BB%98%E8%AE%A4%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E6%9D%A5%E4%BF%AE%E6%94%B9">使用目录的默认安全上下文来修改</a></li>
+</ul>
+</li>
+<li><a href="#%E7%AB%AF%E5%8F%A3%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E6%9F%A5%E8%AF%A2%E4%B8%8E%E4%BF%AE%E6%94%B9-%E4%BD%BF%E7%94%A8-semanage-port">端口安全上下文查询与修改 -- 使用 <code>semanage port</code></a></li>
+</ul>
+</li>
+<li><a href="#selinux-%E6%94%BF%E7%AD%96%E5%86%85%E7%9A%84%E8%A7%84%E5%88%99%E7%AE%A1%E7%90%86"><strong>SELinux 政策内的规则管理</strong></a></li>
+<li><a href="#%E6%A1%88%E4%BE%8B%E5%BD%93-port-%E5%87%BA%E9%97%AE%E9%A2%98%E6%97%B6%E8%AE%A9-httpd-%E5%BC%80%E6%94%BE%E5%9C%A8%E9%9D%9E%E6%AD%A3%E8%A7%84%E7%AB%AF%E5%8F%A3">案例：当 port 出问题时：让 httpd 开放在非正规端口</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8E%9F%E7%90%86">原理</a>
+<ul>
+<li><a href="#lsm">LSM</a>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#lsm-%E4%B8%AD%E7%9A%84%E6%8E%A5%E5%8F%A3%E7%AE%A1%E7%90%86"><strong>LSM 中的接口管理</strong></a></li>
+<li><a href="#%E4%BB%8E-lsm-%E5%88%B0-selinux">从 LSM 到 SELinux</a></li>
+</ul>
+</li>
+<li><a href="#selinux-%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84">SELinux 内部结构</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83%E6%96%87%E7%8C%AE">参考文献</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-linked-list/">
+              <h3 class="post-title">
+                LeetCode刷题记录（链表篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
