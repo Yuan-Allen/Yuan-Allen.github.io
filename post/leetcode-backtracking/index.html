@@ -1,0 +1,615 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（回溯篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1736672595724">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（回溯篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（回溯篇），个人向。
+
+[46] Permutations
+
+难度：Medium
+语言：C++
+
+题目描述。
+使用used来记录当前已使用的元素，尝试增加used，递归调用，记录path，在path长度达到nums...." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1736672595724" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（回溯篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-10-31
+              </span>
+              <span>
+                12 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（回溯篇），个人向。</p>
+<!-- more -->
+<h2 id="46-permutations">[46] Permutations</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/permutations/description/">题目描述</a>。<br>
+使用<code>used</code>来记录当前已使用的元素，尝试增加<code>used</code>，递归调用，记录<code>path</code>，在<code>path</code>长度达到<code>nums.size()</code>时将结果记录到<code>result</code>即可。</p>
+<pre><code class="language-c++">class Solution {
+public:
+  void backtracking(vector&lt;int&gt; &amp;nums, vector&lt;bool&gt; &amp;used, vector&lt;int&gt; &amp;path,
+                    vector&lt;vector&lt;int&gt;&gt; &amp;result) {
+    int size = nums.size();
+
+    if (path.size() == size) {
+      result.push_back(path);
+      return;
+    }
+
+    for (int i = 0; i &lt; size; ++i) {
+      if (used[i]) {
+        continue;
+      }
+      used[i] = true;
+      path.push_back(nums[i]);
+      backtracking(nums, used, path, result);
+      path.pop_back();
+      used[i] = false;
+    }
+    return;
+  }
+  vector&lt;vector&lt;int&gt;&gt; permute(vector&lt;int&gt; &amp;nums) {
+    vector&lt;bool&gt; used(nums.size(), false);
+    vector&lt;int&gt; path;
+    vector&lt;vector&lt;int&gt;&gt; result;
+    backtracking(nums, used, path, result);
+    return result;
+  }
+};
+</code></pre>
+<h2 id="78-subsets">[78] Subsets</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/subsets/description/">题目描述</a>。<br>
+相比上一题求全排列，这一题的不同点有二：</p>
+<ul>
+<li>我们要求的是子集，单个集合不要求包含所有元素，因此在这棵递归树上，我们要求的不止是叶子节点，而是所有节点。因此不是在递归结束的时候记录结果，而是每次调用都记录一下结果。</li>
+<li>相比全排列，集合对元素的顺序不再做要求。因此相比之前使用<code>used</code>数组，这里可以只记录<code>startIndex</code>，然后每次递归从<code>startIndex</code>往后遍历，来做到包含不同的元素组合。</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    void backtracking(vector&lt;int&gt; &amp;nums, int startIndex, vector&lt;int&gt; &amp;path,
+                      vector&lt;vector&lt;int&gt;&gt; &amp;result) {
+        int size = nums.size();
+        result.push_back(path);
+        for (int i = startIndex; i &lt; size; ++i) {
+            path.push_back(nums[i]);
+            backtracking(nums, i + 1, path, result);
+            path.pop_back();
+        }
+    }
+
+    vector&lt;vector&lt;int&gt;&gt; subsets(vector&lt;int&gt; &amp;nums) {
+        vector&lt;int&gt; path;
+        vector&lt;vector&lt;int&gt;&gt; result;
+        backtracking(nums, 0, path, result);
+        return result;
+    }
+};
+</code></pre>
+<h2 id="17-letter-combinations-of-a-phone-number">[17] Letter Combinations of a Phone Number</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/letter-combinations-of-a-phone-number/description/">题目描述</a>。<br>
+构造一个<code>mapping</code>用来存数字到字母的映射，同时用<code>mapping[digits[startIndex] - '2']</code>来取这个映射。回溯部分和之前大同小异，更新一下startIndex，同时记录路径，最后加进<code>result</code>即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    const vector&lt;string&gt; mapping = {&quot;abc&quot;, &quot;def&quot;,  &quot;ghi&quot;, &quot;jkl&quot;,
+                                    &quot;mno&quot;, &quot;pqrs&quot;, &quot;tuv&quot;, &quot;wxyz&quot;};
+
+    void backtracking(string &amp;digits, int startIndex, string &amp;path,
+                      vector&lt;string&gt; &amp;result) {
+        int size = digits.size();
+        if (startIndex &gt;= size) {
+            if (size &gt; 0) {
+                result.push_back(path);
+            }
+            return;
+        }
+
+        string chars = mapping[digits[startIndex] - '2'];
+        int numChars = chars.size();
+
+        for (int i = 0; i &lt; numChars; ++i) {
+            path.push_back(chars[i]);
+            backtracking(digits, startIndex + 1, path, result);
+            path.pop_back();
+        }
+    }
+
+    vector&lt;string&gt; letterCombinations(string digits) {
+        vector&lt;string&gt; result;
+        string path;
+        backtracking(digits, 0, path, result);
+        return result;
+    }
+};
+</code></pre>
+<h2 id="39-combination-sum">[39] Combination Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/combination-sum/description/">题目描述</a>。<br>
+对回溯的代码逐渐熟练，同样是一次写出答案。<br>
+和之前的代码大同小异。这里因为<code>candidates[i]</code>是大于0的，所以出现<code>new_sum == target</code>就不用继续递归了。<br>
+当我们选择了某个数字，则以后的递归只会考虑该数字以及之后的数字，不再考虑之前的数字，这保证了结果的唯一性（不出现重复组合）。<br>
+这道题的关键在于数字是可以重复使用的，这里我们用递归参数所使用的<code>index</code>为<code>i</code>而不是<code>i+1</code>来体现。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void backtracking(const vector&lt;int&gt; &amp;candidates, const int target,
+                      int index, int cur_sum, vector&lt;int&gt; &amp;choosen,
+                      vector&lt;vector&lt;int&gt;&gt; &amp;result) {
+        int size = candidates.size();
+        if (index &gt;= size) {
+            return;
+        }
+
+        for (int i = index; i &lt; size; ++i) {
+            int new_sum = cur_sum + candidates[i];
+            if (new_sum &gt; target) {
+                continue;
+            }
+            choosen.push_back(candidates[i]);
+            if (new_sum == target) {
+                result.push_back(choosen);
+                // 0 will not appear in candidates, and 2 &lt;= candidates[i] &lt;= 40
+                // so no need to backtrack further
+            } else {
+                backtracking(candidates, target, i, new_sum, choosen, result);
+            }
+            choosen.pop_back();
+        }
+    }
+
+    vector&lt;vector&lt;int&gt;&gt; combinationSum(vector&lt;int&gt; &amp;candidates, int target) {
+        vector&lt;int&gt; choosen;
+        vector&lt;vector&lt;int&gt;&gt; result;
+        backtracking(candidates, target, 0, 0, choosen, result);
+        return result;
+    }
+};
+</code></pre>
+<h2 id="22-generate-parentheses">[22] Generate Parentheses</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/generate-parentheses/description/">题目描述</a>。<br>
+回溯时同时记录左括号和右括号的剩余数量。若左括号剩余数量大于0则可以添加左括号。若右括号剩余数量大于左括号（防止先右括号后左括号导致无法匹配）则可以添加右括号。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void backtracking(int left, int right, string &amp;s, vector&lt;string&gt; &amp;result) {
+        if (left == 0 &amp;&amp; right == 0) {
+            result.push_back(s);
+            return;
+        }
+
+        if (left &gt; 0) {
+            s.push_back('(');
+            backtracking(left - 1, right, s, result);
+            s.pop_back();
+        }
+        if (right &gt; left) {
+            s.push_back(')');
+            backtracking(left, right - 1, s, result);
+            s.pop_back();
+        }
+    }
+
+    vector&lt;string&gt; generateParenthesis(int n) {
+        string s;
+        vector&lt;string&gt; result;
+        backtracking(n, n, s, result);
+        return result;
+    }
+};
+</code></pre>
+<h2 id="79-word-search">[79] Word Search</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/word-search/description/">题目描述</a>。<br>
+代码有些类似DFS。记录当前坐标<code>x</code>和<code>y</code>以及要匹配的字符的index <code>k</code>。如果当前字符不对则递归终止，否则看<code>k</code>是否已经到<code>word</code>的最后一个了，如果没有就通过DFS的方式去搜索周围四个。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;pair&lt;int, int&gt;&gt; directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+
+    bool backtracking(const vector&lt;vector&lt;char&gt;&gt; &amp;board, const string &amp;word,
+                      int x, int y, int k, vector&lt;vector&lt;bool&gt;&gt; &amp;visited) {
+        if (board[x][y] != word[k]) {
+            return false;
+        } else if (k == word.size() - 1) {
+            return true;
+        }
+
+        int m = board.size();
+        int n = board[0].size();
+        visited[x][y] = true;
+        for (auto [dx, dy] : directions) {
+            int nx = x + dx, ny = y + dy;
+            if (nx &lt; 0 || ny &lt; 0 || nx &gt;= m || ny &gt;= n || visited[nx][ny]) {
+                continue;
+            }
+            if (backtracking(board, word, nx, ny, k + 1, visited)) {
+                return true;
+            }
+        }
+        visited[x][y] = false;
+        return false;
+    }
+
+    bool exist(vector&lt;vector&lt;char&gt;&gt; &amp;board, string word) {
+        int m = board.size();
+        int n = board[0].size();
+
+        vector&lt;vector&lt;bool&gt;&gt; visited(board.size(),
+                                     vector&lt;bool&gt;(board[0].size(), false));
+        for (int i = 0; i &lt; m; ++i) {
+            for (int j = 0; j &lt; n; ++j) {
+                if (backtracking(board, word, i, j, 0, visited)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+};
+</code></pre>
+<h2 id="131-palindrome-partitioning">[131] Palindrome Partitioning</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/palindrome-partitioning/description/">题目描述</a>。<br>
+还是回溯题的老套路。记录一下<code>startIndex</code>，然后<code>for</code>循环从<code>startIndex</code>开始找下一个回文子串。若<code>startIndex</code>到<code>i</code>是回文子串，则记录到<code>path</code>，然后从<code>i+1</code>递归即可。<br>
+至于判断是否是回文串，这里写了两个版本。一种是常规使用双指针来判断字符串是否是回文串（<code>isPalindrome</code>）；另一种是优化方法，使用了动态规划做预处理，提前算好所有子串是否是回文串（<code>palindromeTable</code>），判断的时候直接查表即可，避免了重复计算。</p>
+<pre><code class="language-c++">class Solution {
+    vector&lt;vector&lt;bool&gt;&gt; palindromeTable;
+
+    bool isPalindrome(const string &amp;s, int startIndex, int endIndex) {
+        while (startIndex &lt;= endIndex) {
+            if (s[startIndex] != s[endIndex]) {
+                return false;
+            }
+            ++startIndex;
+            --endIndex;
+        }
+        return true;
+    }
+
+    void backtracking(const string &amp;s, int startIndex, vector&lt;string&gt; &amp;path,
+                      vector&lt;vector&lt;string&gt;&gt; &amp;result) {
+        int size = s.size();
+        if (startIndex &gt;= size) {
+            result.push_back(path);
+            return;
+        }
+
+        for (int i = startIndex; i &lt; size; ++i) {
+            // if (isPalindrome(s, startIndex, i)) {
+            if (palindromeTable[startIndex][i]) {
+                path.push_back(s.substr(startIndex, i - startIndex + 1));
+                backtracking(s, i + 1, path, result);
+                path.pop_back();
+            }
+        }
+    }
+
+  public:
+    vector&lt;vector&lt;string&gt;&gt; partition(string s) {
+        vector&lt;string&gt; path;
+        vector&lt;vector&lt;string&gt;&gt; result;
+
+        int size = s.size();
+        palindromeTable.assign(size, vector&lt;bool&gt;(size, true));
+        for (int i = size - 1; i &gt;= 0; --i) {
+            for (int j = i + 1; j &lt; size; ++j) {
+                palindromeTable[i][j] =
+                    palindromeTable[i + 1][j - 1] &amp;&amp; s[i] == s[j];
+            }
+        }
+
+        backtracking(s, 0, path, result);
+
+        return result;
+    }
+};
+</code></pre>
+<h2 id="51-n-queens">[51] N-Queens</h2>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/n-queens/description/">题目描述</a>。<br>
+大名鼎鼎的N皇后问题。看似暴力穷举的背后又存在许多可剪枝优化的空间。</p>
+<ul>
+<li>每轮递归无需两个坐标轴双重循环遍历。我们可规定递归的顺序是从最上面一行到最下面一行，每次在一行里面找下一个N皇后的位置。这样一方面保证了顺序（防止出现重复结果），另一方面我们实际只需要一层循环，即遍历这一行的位置，看哪一列可作为N皇后的位置即可。如果找到位置，再递归进入下一行的遍历查找。</li>
+<li>检查位置是否合法时，由于我们填N皇后的位置是从上到下（按行）来填的，因此我们只需要检查行坐标小于当前坐标的那些位置即可，可减少检查判断的数量。（要注意皇后除了横着竖着还能斜着走，一开始不了解规则都没注意这个）</li>
+</ul>
+<p>当我们最后填完了最后一行（<code>n == row</code>），说明每一行我们都已经找到了一个合法的N皇后的位置，将此时的棋盘加入结果即可（<code>result.push_back(board);</code>）。</p>
+<pre><code class="language-c++">class Solution {
+    bool check(int n, int x, int y, const vector&lt;string&gt; &amp;board) {
+        for (int i = 0; i &lt; x; ++i) {
+            if (board[i][y] == 'Q') {
+                return false;
+            }
+        }
+
+        const vector&lt;pair&lt;int, int&gt;&gt; direction = {{-1, 1}, {-1, -1}};
+        for (int i = 1; i &lt; n; ++i) {
+            for (auto [dx, dy] : direction) {
+                int nx = x + i * dx;
+                int ny = y + i * dy;
+                if (nx &lt; 0 || ny &lt; 0 || ny &gt;= n) {
+                    continue;
+                }
+                if (board[nx][ny] == 'Q') {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    void backtracking(int n, int row, vector&lt;string&gt; &amp;board,
+                      vector&lt;vector&lt;string&gt;&gt; &amp;result) {
+        if (n == row) {
+            result.push_back(board);
+            return;
+        }
+
+        for (int j = 0; j &lt; n; ++j) {
+            if (check(n, row, j, board)) {
+                board[row][j] = 'Q';
+                backtracking(n, row + 1, board, result);
+                board[row][j] = '.';
+            }
+        }
+    }
+
+  public:
+    vector&lt;vector&lt;string&gt;&gt; solveNQueens(int n) {
+        vector&lt;string&gt; board(n, string(n, '.'));
+        vector&lt;vector&lt;string&gt;&gt; result;
+
+        backtracking(n, 0, board, result);
+
+        return result;
+    }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>回溯的题目基本都存在一套函数模版：</p>
+<pre><code class="language-c++">void backtracking(parameters) {
+    if (termination_condition) {
+        store_result;
+        return;
+    }
+
+    for (choice : elements in the current level's set (the number of children of a tree node is the size of the set)) {
+        process_node;
+        backtracking(path, choices); // recursive call
+        backtrack, undo processing result
+    }
+}
+</code></pre>
+<p>这里的几道题目的代码基本都是按着上面的模版来的，无非有一些小修改。除了<a href="#22-generate-parentheses">[22] Generate Parentheses</a>在递归上略为特殊，其记录了剩余左括号和右括号的数量，然后再根据该数量关系来决定如何递归。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#46-permutations">[46] Permutations</a></li>
+<li><a href="#78-subsets">[78] Subsets</a></li>
+<li><a href="#17-letter-combinations-of-a-phone-number">[17] Letter Combinations of a Phone Number</a></li>
+<li><a href="#39-combination-sum">[39] Combination Sum</a></li>
+<li><a href="#22-generate-parentheses">[22] Generate Parentheses</a></li>
+<li><a href="#79-word-search">[79] Word Search</a></li>
+<li><a href="#131-palindrome-partitioning">[131] Palindrome Partitioning</a></li>
+<li><a href="#51-n-queens">[51] N-Queens</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-graph/">
+              <h3 class="post-title">
+                LeetCode刷题记录（图论篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
