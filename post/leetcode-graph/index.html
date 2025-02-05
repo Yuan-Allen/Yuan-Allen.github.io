@@ -1,0 +1,452 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（图论篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1738772422847">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（图论篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（图论篇），个人向。
+之后为了提高效率，转而以Hot 100作为刷题蓝图。
+
+[200] Number of Islands
+
+难度：Medium
+语言：C++
+
+题目描述。
+把1看成节点，上下左右相邻的1之间看成有..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1738772422847" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（图论篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-10-28
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（图论篇），个人向。<br>
+之后为了提高效率，转而以<a href="https://leetcode.cn/studyplan/top-100-liked/">Hot 100</a>作为刷题蓝图。</p>
+<!-- more -->
+<h2 id="200-number-of-islands">[200] Number of Islands</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/number-of-islands/description/">题目描述</a>。<br>
+把<code>1</code>看成节点，上下左右相邻的<code>1</code>之间看成有边，相当于求图有几个连通分量。依次以不同的起点做遍历，查看有几个可开始遍历的起点即可。遍历使用DFS或BFS都可以，这里也同时给出了两种遍历的写法。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void dfs(vector&lt;vector&lt;char&gt;&gt;&amp; grid, vector&lt;vector&lt;bool&gt;&gt;&amp; visited, int x,
+           int y, const vector&lt;pair&lt;int, int&gt;&gt;&amp; directions) {
+    visited[x][y] = true;
+    int m = grid.size(), n = grid[0].size();
+
+    for (auto [dx, dy] : directions) {
+      int nx = x + dx, ny = y + dy;
+      if (nx &gt;= 0 &amp;&amp; ny &gt;= 0 &amp;&amp; nx &lt; m &amp;&amp; ny &lt; n &amp;&amp; !visited[nx][ny] &amp;&amp;
+          grid[nx][ny] == '1') {
+        dfs(grid, visited, nx, ny, directions);
+      }
+    }
+  }
+
+  // use DFS
+  int numIslands(vector&lt;vector&lt;char&gt;&gt;&amp; grid) {
+    int m = grid.size(), n = grid[0].size(), result = 0;
+    vector&lt;vector&lt;bool&gt;&gt; visited(m, vector&lt;bool&gt;(n, false));
+    vector&lt;pair&lt;int, int&gt;&gt; directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+
+    for (int i = 0; i &lt; m; ++i) {
+      for (int j = 0; j &lt; n; ++j) {
+        if (!visited[i][j] &amp;&amp; grid[i][j] == '1') {
+          ++result;
+          dfs(grid, visited, i, j, directions);
+        }
+      }
+    }
+    return result;
+  }
+
+  // use BFS
+  int numIslandsBFS(vector&lt;vector&lt;char&gt;&gt;&amp; grid) {
+    int m = grid.size(), n = grid[0].size(), result = 0;
+    vector&lt;vector&lt;bool&gt;&gt; visited(m, vector&lt;bool&gt;(n, false));
+    vector&lt;pair&lt;int, int&gt;&gt; directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+    queue&lt;pair&lt;int, int&gt;&gt; q;
+
+    for (int i = 0; i &lt; m; ++i) {
+      for (int j = 0; j &lt; n; ++j) {
+        if (!visited[i][j] &amp;&amp; grid[i][j] == '1') {
+          ++result;
+          q.push({i, j});
+          visited[i][j] = true;
+
+          while (!q.empty()) {
+            auto [x, y] = q.front();
+            q.pop();
+
+            for (auto [dx, dy] : directions) {
+              int nx = x + dx, ny = y + dy;
+              if (nx &gt;= 0 &amp;&amp; ny &gt;= 0 &amp;&amp; nx &lt; m &amp;&amp; ny &lt; n &amp;&amp; !visited[nx][ny] &amp;&amp;
+                  grid[nx][ny] == '1') {
+                q.push({nx, ny});
+                visited[nx][ny] = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h2 id="994-rotting-oranges">[994] Rotting Oranges</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/rotting-oranges/description/">题目描述</a>。<br>
+模拟广度优先搜索。需要注意的是，我们为了把每一轮新访问到的节点区分出来，需要先记录一下队列的大小，然后处理该指定数量的元素来作为BFS的一轮（类似于树的层序遍历，为了区分出每一层，队列大小就是该层的节点数量）。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  int orangesRotting(vector&lt;vector&lt;int&gt;&gt;&amp; grid) {
+    int nr = grid.size();
+    int nc = grid[0].size();
+    vector&lt;pair&lt;int, int&gt;&gt; directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+    int result = 0;
+    queue&lt;pair&lt;int, int&gt;&gt; q;
+    int count = 0;
+
+    for (int i = 0; i &lt; nr; ++i) {
+      for (int j = 0; j &lt; nc; ++j) {
+        if (grid[i][j] == 1) {
+          count += 1;
+        } else if (grid[i][j] == 2) {
+          q.push({i, j});
+        }
+      }
+    }
+
+    while (count &gt; 0 &amp;&amp; !q.empty()) {
+      ++result;
+      int size = q.size();
+      for (int i = 0; i &lt; size; ++i) {
+        auto [x, y] = q.front();
+        q.pop();
+        for (auto [dx, dy] : directions) {
+          int nx = x + dx, ny = y + dy;
+          if (nx &gt;= 0 &amp;&amp; ny &gt;= 0 &amp;&amp; nx &lt; nr &amp;&amp; ny &lt; nc &amp;&amp; grid[nx][ny] == 1) {
+            grid[nx][ny] = 2;
+            count -= 1;
+            q.push({nx, ny});
+          }
+        }
+      }
+    };
+
+    return count ? -1 : result;
+  }
+};
+</code></pre>
+<h2 id="207-course-schedule">[207] Course Schedule</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/course-schedule/description/">题目描述</a>。<br>
+基本的拓扑排序，只不过从算法变成具体实现的代码需要注意的细节还是比较多。<br>
+先把输入<code>prerequisites</code>转成邻接表以及同时统计节点度数，然后把入度为0的点放入队列进行BFS即可（遍历到的节点从图中去掉，取新的入度为0的节点入队）。最后查看是否每个节点都遍历到了（能从图中去掉）即可。<br>
+这道题也可使用DFS，可参考<a href="https://leetcode.cn/problems/course-schedule/solutions/359392/ke-cheng-biao-by-leetcode-solution/">这篇solution</a>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  bool canFinish(int numCourses, vector&lt;vector&lt;int&gt;&gt;&amp; prerequisites) {
+    unordered_map&lt;int, vector&lt;int&gt;&gt; map;
+    vector&lt;int&gt; degree(numCourses, 0);
+    for (auto edge : prerequisites) {
+      map[edge[1]].push_back(edge[0]);
+      degree[edge[0]] += 1;
+    }
+
+    queue&lt;int&gt; q;
+    for (int i = 0; i &lt; numCourses; ++i) {
+      if (degree[i] == 0) {
+        q.push(i);
+      }
+    }
+
+    int visited = 0;
+    while (!q.empty()) {
+      ++visited;
+      int cur = q.front();
+      q.pop();
+      for (auto course : map[cur]) {
+        if (--degree[course] == 0) {
+          q.push(course);
+        }
+      }
+    }
+
+    return visited == numCourses;
+  }
+};
+</code></pre>
+<h2 id="208-implement-trie-prefix-tree">[208] Implement Trie (Prefix Tree)</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/implement-trie-prefix-tree/description/">题目描述</a>。<br>
+题目限定了英文小写字符，因此直接指定26个children，以children的index来对应相应的小写字符。此外，使用<code>bool</code>变量<code>isEnd</code>来表示当前<code>node</code>是否可作为单词的结尾。<br>
+插入时类似链表，一层一层往下插入，在结尾<code>node</code>标记一下<code>isEnd</code>为<code>true</code>即可。查找时也类似链表查找，需要注意的是<code>search</code>需要最后找到的<code>node</code>刚好是可作为结尾的<code>node</code>（<code>isEnd</code>为<code>true</code>），而<code>startWith</code>只需要找到对应<code>node</code>（说明存在该前缀）即可。</p>
+<pre><code class="language-c++">class Trie {
+  vector&lt;Trie*&gt; children;
+  bool isEnd;
+
+ public:
+  Trie() {
+    isEnd = false;
+    children = vector&lt;Trie*&gt;(26);
+  }
+
+  void insert(string word) {
+    Trie* node = this;
+    for (auto c : word) {
+      if (node-&gt;children[c - 'a'] == nullptr) {
+        node-&gt;children[c - 'a'] = new Trie();
+      }
+      node = node-&gt;children[c - 'a'];
+    }
+    node-&gt;isEnd = true;
+  }
+
+  bool search(string word) {
+    Trie* node = this;
+    for (auto c : word) {
+      if (node-&gt;children[c - 'a'] == nullptr) {
+        return false;
+      }
+      node = node-&gt;children[c - 'a'];
+    }
+    return node-&gt;isEnd;
+  }
+
+  bool startsWith(string prefix) {
+    Trie* node = this;
+    for (auto c : prefix) {
+      if (node-&gt;children[c - 'a'] == nullptr) {
+        return false;
+      }
+      node = node-&gt;children[c - 'a'];
+    }
+    return true;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>由于现在暂时改成按照Hot 100来刷，所以相比之前长篇的二叉树，这里图论只刷了4道。<br>
+首先要注意的是图的表示形式，有邻接表和邻接矩阵，但一般来说邻接表用得多一些。（若稠密图，也可使用邻接矩阵）。<br>
+图的遍历方式主要是DFS与BFS，一些题目使用两种遍历方式都可（<a href="#200-number-of-islands">200</a>、<a href="#207-course-schedule">207</a>），一些题目则只适合其中一种（<a href="#994-rotting-oranges">994</a>）。<br>
+最后的实现前缀树（<a href="#208-implement-trie-prefix-tree">208</a>）则和链表的操作很类似，只不过一个节点同时对应了很多个后继而已。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#200-number-of-islands">[200] Number of Islands</a></li>
+<li><a href="#994-rotting-oranges">[994] Rotting Oranges</a></li>
+<li><a href="#207-course-schedule">[207] Course Schedule</a></li>
+<li><a href="#208-implement-trie-prefix-tree">[208] Implement Trie (Prefix Tree)</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/powerinfer-source-analysis-3/">
+              <h3 class="post-title">
+                PowerInfer源码解析（三）：算子实现
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
