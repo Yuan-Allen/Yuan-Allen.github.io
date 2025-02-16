@@ -1,0 +1,441 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（贪心算法篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1739686495995">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（贪心算法篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（贪心算法篇），个人向。
+
+[121] Best Time to Buy and Sell Stock
+
+难度：Easy
+语言：C++
+
+题目描述。
+遍历一遍数组即可。其中记录一下历史价格最低值，然后查看当前价格减去..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1739686495995" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（贪心算法篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-11-23
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（贪心算法篇），个人向。</p>
+<!-- more -->
+<h2 id="121-best-time-to-buy-and-sell-stock">[121] Best Time to Buy and Sell Stock</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/description/">题目描述</a>。<br>
+遍历一遍数组即可。其中记录一下历史价格最低值，然后查看当前价格减去历史最低值（即当前利润）是否大于最大利润即可，最后返回最大利润。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int maxProfit(vector&lt;int&gt; &amp;prices) {
+        int max_profit = 0;
+        int buy = prices[0];
+
+        for (int p : prices) {
+            if (p &lt;= buy) {
+                buy = p;
+            } else if (p - buy &gt; max_profit) {
+                max_profit = p - buy;
+            }
+        }
+
+        return max_profit;
+    }
+};
+</code></pre>
+<h2 id="55-jump-game">[55] Jump Game</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/jump-game/description/">题目描述</a>。<br>
+这道题只要想清楚，我们不需要关心<strong>怎么</strong>从起点跳到终点，只需要知道<strong>能不能</strong>跳到终点，这道题就变得很简单。<br>
+我们可以在遍历数组的同时更新能跳到的位置的覆盖范围（覆盖到了，就说明能跳到这里，怎么跳的不关心），最后看覆盖的范围有没有到最后一个位置即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool canJump(vector&lt;int&gt; &amp;nums) {
+        int curPos = 0;
+        int maxJump = 0;
+        int dest = nums.size() - 1;
+        while (maxJump &lt; dest &amp;&amp; curPos &lt;= maxJump) {
+            maxJump = max(maxJump, curPos + nums[curPos]);
+            curPos += 1;
+        }
+        return maxJump &gt;= dest;
+    }
+};
+</code></pre>
+<h2 id="45-jump-game-ii">[45] Jump Game II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/jump-game-ii/description/">题目描述</a>。<br>
+相比上一题，这题需要记录步数。<br>
+我们依然不用关注是如何跳到终点的，即不需要关注具体路径。<br>
+相比上一题，我们需要分别记录一下当前<code>step</code>能到达的最远距离<code>curMaxPos</code>和下一<code>step</code>能到达的最远距离<code>nextMaxPos</code>，然后在<code>curPos</code>到达<code>curMaxPos</code>时说明当前<code>step</code>已经走完，<code>nextMaxPos</code>已经更新完毕，此时更新一下<code>step</code>和<code>curMaxPos</code>，开始下一轮迭代。<br>
+注意<code>for</code>循环判断条件为<code>curMaxPos &lt; dest</code>而不是<code>nextMaxPos &lt; dest</code>，否则最终<code>step</code>可能会少一。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int jump(vector&lt;int&gt; &amp;nums) {
+        int step = 0;
+        int curMaxPos = 0;
+        int nextMaxPos = 0;
+        int dest = nums.size() - 1;
+
+        for (int curPos = 0; curMaxPos &lt; dest; ++curPos) {
+            nextMaxPos = max(nextMaxPos, curPos + nums[curPos]);
+            if (curPos == curMaxPos) {
+                step += 1;
+                curMaxPos = nextMaxPos;
+            }
+        }
+
+        return step;
+    }
+};
+</code></pre>
+<h2 id="763-partition-labels">[763] Partition Labels</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/partition-labels/description/">题目描述</a>。<br>
+和贪心好像没多大关系。<br>
+先遍历一遍字符串，统计各个字符的最远出现位置。<br>
+然后，第二次遍历字符串，遍历同时记录一下遍历到的字符的最远出现下标（<code>end = max(end, map[s[i] - 'a']);</code>）。当遍历到达记录的遍历过字符的最远出现下标了，就说明当前片段遍历结束，记录一下结果（<code>end - start + 1</code>），然后开始下一片段（<code>start = end + 1;</code>）。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; partitionLabels(string s) {
+        int length = s.size();
+        int map[26] = {0};
+        int start = 0, end = 0;
+        vector&lt;int&gt; result;
+        for (int i = 0; i &lt; length; ++i) {
+            map[s[i] - 'a'] = i;
+        }
+
+        for (int i = 0; i &lt; length; ++i) {
+            end = max(end, map[s[i] - 'a']);
+            if (i == end) {
+                result.push_back(end - start + 1);
+                start = end + 1;
+            }
+        }
+
+        return result;
+    }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>贪心的本质是选择每一阶段的局部最优，从而达到全局最优。</p>
+<ul>
+<li>对于<a href="#121-best-time-to-buy-and-sell-stock">121</a>来说，我们计算当前的最大利润，最后得到整体的最大利润。</li>
+<li>对于<a href="#55-jump-game">55</a>来说，我们计算当前能够跳到的最大范围，最后得到整体能跳到的最大范围，再看是否覆盖了终点位置。</li>
+<li>对于<a href="#45-jump-game-ii">45</a>来说，我们根据上一<code>step</code>能跳到的最大距离来计算当前<code>step</code>能跳到的最大距离，最后返回跳到终点时（即整体）的<code>step</code>数。</li>
+<li><a href="#763-partition-labels">763</a>和贪心关系不大。硬要说的话，我们通过统计当前遍历过字符的最远出现位置，最后得到当前片段整体的终止位置。</li>
+</ul>
+<h2 id="补充">补充</h2>
+<h3 id="53-maximum-subarray">[53] Maximum Subarray</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/maximum-subarray/description/">题目描述</a>。<br>
+当当前子数组和为负值，则立即抛弃当前累加过的值，直接以下一个数字为新的起点。过程中记录最大子数组和即可。<br>
+这道题也可用动态规划的思想，参考<code>maxSubArrayDP</code>。但动态规划需要<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的空间复杂度，所以还不如贪心了。这里动态规划中<code>dp[i]</code>也只与<code>dp[i-1]</code>相关，所以我们也可以把贪心的方式理解成是给动态规划的方法做了空间上的优化得到。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int maxSubArray(vector&lt;int&gt; &amp;nums) {
+        int result = nums[0];
+        int count = 0;
+
+        for (const int &amp;num : nums) {
+            count += num;
+            result = max(result, count);
+            count = max(count, 0);
+        }
+
+        return result;
+    }
+
+    int maxSubArrayDP(vector&lt;int&gt; &amp;nums) {
+        int n = nums.size();
+        vector&lt;int&gt; dp(n);
+        dp[0] = nums[0];
+        int result = nums[0];
+        for (int i = 1; i &lt; n; ++i) {
+            dp[i] = max(dp[i - 1] + nums[i], nums[i]);
+            result = max(result, dp[i]);
+        }
+        return result;
+    }
+};
+</code></pre>
+<h3 id="56-merge-intervals">[56] Merge Intervals</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/merge-intervals/description/">题目描述</a>。<br>
+先按照起点排序，然后看当前终点是否超过<code>intervals[i+1]</code>的起点。若不超过，说明两个区间没有重叠，压一下结果并更新一下起点。过程中不断更新终点。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;vector&lt;int&gt;&gt; merge(vector&lt;vector&lt;int&gt;&gt; &amp;intervals) {
+        int n = intervals.size();
+        vector&lt;vector&lt;int&gt;&gt; result;
+        sort(intervals.begin(), intervals.end(),
+             [](const vector&lt;int&gt; &amp;a, const vector&lt;int&gt; &amp;b) {
+                 return a[0] &lt; b[0];
+             });
+
+        int curStart = intervals[0][0], curEnd = intervals[0][1];
+        bool flag = false;
+        for (int i = 0; i &lt; n - 1; ++i) {
+            if (intervals[i + 1][0] &gt; curEnd) {
+                result.push_back({curStart, curEnd});
+                curStart = intervals[i + 1][0];
+            }
+            curEnd = max(curEnd, intervals[i + 1][1]);
+        }
+        result.push_back({curStart, curEnd});
+        return result;
+    }
+};
+</code></pre>
+<h3 id="122-best-time-to-buy-and-sell-stock-ii">[122] Best Time to Buy and Sell Stock II</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-ii/description/">题目描述</a>。<br>
+把问题分解成判断每一天即<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>[</mo><mi>i</mi><mo>−</mo><mn>1</mn><mo separator="true">,</mo><mi>i</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">[i-1, i)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathdefault">i</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">i</span><span class="mclose">)</span></span></span></span>天的收益，即可使用贪心算法累加收益。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int maxProfit(vector&lt;int&gt; &amp;prices) {
+        int profit = 0;
+        int n = prices.size();
+        for (int i = 1; i &lt; n; ++i) {
+            profit += max(prices[i] - prices[i - 1], 0);
+        }
+
+        return profit;
+    }
+};
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#121-best-time-to-buy-and-sell-stock">[121] Best Time to Buy and Sell Stock</a></li>
+<li><a href="#55-jump-game">[55] Jump Game</a></li>
+<li><a href="#45-jump-game-ii">[45] Jump Game II</a></li>
+<li><a href="#763-partition-labels">[763] Partition Labels</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E8%A1%A5%E5%85%85">补充</a>
+<ul>
+<li><a href="#53-maximum-subarray">[53] Maximum Subarray</a></li>
+<li><a href="#56-merge-intervals">[56] Merge Intervals</a></li>
+<li><a href="#122-best-time-to-buy-and-sell-stock-ii">[122] Best Time to Buy and Sell Stock II</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-binary-search/">
+              <h3 class="post-title">
+                LeetCode刷题记录（二分查找篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2024 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
