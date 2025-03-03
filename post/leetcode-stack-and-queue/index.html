@@ -1,0 +1,753 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（栈与队列篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1740977647949">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（栈与队列篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（栈与队列篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[232] Implement Queue using Stacks
+
+难度：Easy
+语言：C++
+
+题目描述。
+无难度。使用一个输入..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1740977647949" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（栈与队列篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-23
+              </span>
+              <span>
+                16 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（栈与队列篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="232-implement-queue-using-stacks">[232] Implement Queue using Stacks</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/implement-queue-using-stacks/description/">题目描述</a>。<br>
+无难度。使用一个输入栈，一个输出栈即可。<code>push</code>会先放到输入栈，<code>pop</code>和<code>peek</code>则从输出栈去取，若输出栈为空则把输入栈的元素一整个倒到输出栈里面，这个倒内容的过程自然就把弹出元素的顺序反了过来。</p>
+<pre><code class="language-c++">class MyQueue {
+  stack&lt;int&gt; input_stack;
+  stack&lt;int&gt; output_stack;
+
+  void transform_stack() {
+    while (!input_stack.empty()) {
+      output_stack.push(input_stack.top());
+      input_stack.pop();
+    }
+  }
+
+ public:
+  MyQueue() {}
+
+  void push(int x) { input_stack.push(x); }
+
+  int pop() {
+    if (output_stack.empty()) {
+      transform_stack();
+    }
+    int ret = output_stack.top();
+    output_stack.pop();
+    return ret;
+  }
+
+  int peek() {
+    if (output_stack.empty()) {
+      transform_stack();
+    }
+    return output_stack.top();
+  }
+
+  bool empty() { return output_stack.empty() &amp;&amp; input_stack.empty(); }
+};
+</code></pre>
+<h2 id="225-implement-stack-using-queues">[225] Implement Stack using Queues</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/implement-stack-using-queues/description/">题目描述</a>。<br>
+相比于<a href="#225-implement-stack-using-queues">用栈实现队列</a>，由于队列先进先出的特性，因此和前一道题不一样，并不是说两个队列叠加起来就变成后进先出了。<br>
+不过我们依然可以使用两个队列，不同的是，另一个队列仅仅是备份队列。我们可以现将第一个队列除了最后一个元素的所有元素都先放到第二个队列去，然后便可取出最后一个元素。<br>
+<strong>优化</strong>：与网上大多数解法不同的是，网上的solution都选择在<code>pop</code>以后直接调换<code>q1</code>与<code>q2</code>，但实际上这是完全没有必要的，并且增加了很多冗余操作。事实上我们只需要在<code>pop</code>的一开始判断<code>q1</code>是否为空即可，然后再调换。这样做带来的变化是，面对<code>push</code>...<code>push</code>, <code>pop</code>, <code>push</code>...<code>push</code>, <code>pop</code>这样的操作时，第二段<code>push</code>依然被执行到原有的<code>q1</code>里面，后一次<code>pop</code>也只需要将第二段<code>push</code>进去的新元素放到<code>q2</code>。而如果是网上的朴素解法，每次<code>pop</code>都需要把所有元素在<code>q1</code>与<code>q2</code>间转移，增加了很多冗余操作。<br>
+网上的另一种做法是只使用一个队列，即<code>pop</code>时把前面的元素重新<code>push</code>到队尾即可。这样的做法节省了空间，但就用不了笔者所设计的优化了。</p>
+<pre><code class="language-python">import queue
+
+
+class MyStack:
+    def __init__(self):
+        self.q1 = queue.Queue()
+        self.q2 = queue.Queue()
+
+    def push(self, x: int) -&gt; None:
+        self.q1.put(x)
+
+    def pop(self) -&gt; int:
+        if self.q1.empty():
+            self.q1, self.q2 = self.q2, self.q1
+        size = self.q1.qsize()
+        while size &gt; 1:
+            self.q2.put(self.q1.get())
+            size -= 1
+        popped = self.q1.get()
+
+        return popped
+
+    def top(self) -&gt; int:
+        popped = self.pop()
+        self.push(popped)
+        return popped
+
+    def empty(self) -&gt; bool:
+        return self.q1.empty() and self.q2.empty()
+</code></pre>
+<h2 id="20-valid-parentheses">[20] Valid Parentheses</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-parentheses/description/">题目描述</a>。<br>
+使用栈来记录一边括号，查看是否匹配即可。只要大一学数据结构时候写过计算器，这道题都等于没有难度。<br>
+此外，使用Rust的<code>match</code>语法和<code>matches!</code>宏，代码可以做到极致优雅。</p>
+<pre><code class="language-rust">impl Solution {
+    pub fn is_valid(s: String) -&gt; bool {
+        let mut stack = Vec::with_capacity(s.len());
+
+        for c in s.chars() {
+            match c {
+                '(' | '{' | '[' =&gt; stack.push(c),
+                ')' | '}' | ']' =&gt; {
+                    if let Some(top) = stack.pop() {
+                        if !matches!((top, c), ('(', ')') | ('{', '}') | ('[', ']')) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                _ =&gt; return false,
+            }
+        }
+
+        stack.is_empty()
+    }
+}
+</code></pre>
+<h2 id="1047-remove-all-adjacent-duplicates-in-string">[1047] Remove All Adjacent Duplicates In String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-all-adjacent-duplicates-in-string/description/">题目描述</a>。<br>
+使用栈来记录最近访问过的字符即可，基本无难度。此外，直接使用字符串作为栈可以省去最后把栈转为字符串的操作（如果要把栈转为字符串，还要注意倒序的问题。可以对字符串的<code>rbegin</code>开始赋值或者是最后<code>reverse</code>一下）。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  string removeDuplicates(string s) {
+    string result = &quot;&quot;;
+    for (char c : s) {
+      if (!result.empty() &amp;&amp; result.back() == c) {
+        result.pop_back();
+      } else {
+        result.push_back(c);
+      }
+    }
+    return result;
+  }
+};
+</code></pre>
+<h2 id="150-evaluate-reverse-polish-notation">[150] Evaluate Reverse Polish Notation</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/evaluate-reverse-polish-notation/description/">题目描述</a>。<br>
+应该是大一数据结构必做的题，现在来看基本无难度。<br>
+使用栈存储操作数，碰到运算符计算一下再压栈即可。</p>
+<pre><code class="language-python">class Solution:
+    def eval_op(self, num1: int, num2: int, op: str) -&gt; int:
+        if op == &quot;+&quot;:
+            return int(num2 + num1)
+        elif op == &quot;-&quot;:
+            return int(num2 - num1)
+        elif op == &quot;*&quot;:
+            return int(num2 * num1)
+        elif op == &quot;/&quot;:
+            return int(num2 / num1)
+        else:
+            print(&quot;Invalid OP&quot;)
+            return -1
+
+    def evalRPN(self, tokens: List[str]) -&gt; int:
+        operand = []
+        for token in tokens:
+            if token in &quot;+-*/&quot;:
+                num1 = operand.pop()
+                num2 = operand.pop()
+                operand.append(self.eval_op(num1, num2, token))
+            else:
+                operand.append(int(token))
+        assert len(operand) == 1
+        return operand.pop()
+</code></pre>
+<h2 id="239-sliding-window-maximum">[239] Sliding Window Maximum</h2>
+<blockquote>
+<p>难度：Hard<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/sliding-window-maximum/description/">题目描述</a>。<br>
+貌似是刷题过程中遇到的第一道Hard。这道题用到了单调队列，简单说就是队列内的内容是单调有序的（该题中为单调递减）。<br>
+针对不同的题目，单调队列的实现方式可能是不一样的。就该题而言，维护这样的一个队列，我们需要：</p>
+<ul>
+<li>在<code>push</code>时，如果新元素大于队尾的元素，需要先把队尾的元素弹出并扔掉。</li>
+<li>在<code>pop</code>时，需要传入一个参数（窗口的最左边元素），如果参数与队首的的元素相同（对应窗口的最左边元素是窗口内的最大值），我们才真正弹出队首的元素，否则忽略<code>pop</code>操作。</li>
+</ul>
+<p>这样的设计使<code>pop</code>时我们能快速判断当前窗口内的最大值是否减小，并且在减小后迅速找到下一个窗口内的最大值（即弹出队首后新的队首）。<br>
+可见队列的首尾都有弹出操作，因此我们使用<code>deque</code>（double-ended queue）来实现该单调队列。最终代码如下。</p>
+<pre><code class="language-Rust">use std::collections::VecDeque;
+
+struct MonotonicQueue {
+    inner_queue: VecDeque&lt;i32&gt;,
+}
+
+impl MonotonicQueue {
+    fn with_capacity(k: usize) -&gt; MonotonicQueue {
+        MonotonicQueue {
+            inner_queue: VecDeque::with_capacity(k),
+        }
+    }
+
+    fn front(&amp;self) -&gt; Option&lt;&amp;i32&gt; {
+        self.inner_queue.front()
+    }
+
+    fn push(&amp;mut self, num: i32) {
+        while let Some(&amp;back) = self.inner_queue.back() {
+            if num &gt; back {
+                self.inner_queue.pop_back();
+            } else {
+                break;
+            }
+        }
+        self.inner_queue.push_back(num);
+    }
+
+    fn pop(&amp;mut self, num: i32) {
+        if self.front() == Some(&amp;num) {
+            self.inner_queue.pop_front();
+        }
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.inner_queue.len()
+    }
+}
+
+impl Solution {
+    pub fn max_sliding_window(nums: Vec&lt;i32&gt;, k: i32) -&gt; Vec&lt;i32&gt; {
+        let k = k as usize;
+        let mut window = MonotonicQueue::with_capacity(k);
+        let mut res = Vec::with_capacity(nums.len());
+
+        for (i, &amp;num) in nums.iter().enumerate() {
+            if i &gt;= k {
+                window.pop(nums[i - k]);
+            }
+            window.push(num);
+
+            if i &gt;= k - 1 {
+                if let Some(&amp;max) = window.front() {
+                    res.push(max);
+                }
+            }
+        }
+        res
+    }
+}
+</code></pre>
+<h2 id="347-top-k-frequent-elements">[347] Top K Frequent Elements</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/top-k-frequent-elements/description/">题目描述</a>。<br>
+题目要求要优于<code>O(nlogn)</code>的时间复杂度，一开始以为优先级队列不能用，后来想想优先级队列复杂度是<code>O(nlogk)</code>的，所以满足题目要求。<br>
+既然能用优先级队列，题目就变得很简单了。先用<code>unordered_map</code>统计一下各数字的频率，然后塞到大小为<code>k</code>的优先级队列中即可。需要注意的是，优先级队列的实现应该是小顶堆，这样才能在堆满的时候把最小的元素弹出。<br>
+堆元素的比较使用了lambda函数，在定义优先级队列时需要在类型填入<code>decltype(compare)</code>以及为构造函数添加参数<code>queue(compare)</code>（但实测其实不添加参数也编译通过了）。具体可见代码。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  vector&lt;int&gt; topKFrequent(vector&lt;int&gt;&amp; nums, int k) {
+    unordered_map&lt;int, int&gt; frequency;
+    vector&lt;int&gt; result;
+    for (int num : nums) {
+      ++frequency[num];  // The default value is 0.
+    }
+
+    auto compare = [](const pair&lt;int, int&gt;&amp; a, const pair&lt;int, int&gt;&amp; b) {
+      return a.second &gt; b.second;
+    };
+    priority_queue&lt;pair&lt;int, int&gt;, vector&lt;pair&lt;int, int&gt;&gt;, decltype(compare)&gt;
+        queue(compare);
+
+    for (auto f : frequency) {
+      queue.push(f);
+      if (queue.size() &gt; k) {
+        queue.pop();
+      }
+    }
+
+    while (!queue.empty()) {
+      result.push_back(queue.top().first);
+      queue.pop();
+    }
+
+    return result;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>这部分遇见的题目总体还是比较简单的。可以把做过的题目分为以下几类：</p>
+<ul>
+<li>栈与队列的互相实现：考察对数据结构的基本掌握程度，<a href="#232-implement-queue-using-stacks">[232] Implement Queue using Stacks</a>使用两个栈来实现倒序以满足queue的接口，<a href="#225-implement-stack-using-queues">[225] Implement Stack using Queues</a>则使用了一个队列用来做备份，把队列的内容弹空到剩最后一个（最新的）元素来满足stack的接口。</li>
+<li>利用栈的匹配问题，例如<a href="#20-valid-parentheses">[20] Valid Parentheses</a>的括号匹配、<a href="#1047-remove-all-adjacent-duplicates-in-string">Remove All Adjacent Duplicates In String</a>的相邻字符匹配和<a href="#150-evaluate-reverse-polish-notation">[150] Evaluate Reverse Polish Notation</a>的运算符与操作数匹配，整体没什么难度。</li>
+<li>单调队列的构造与使用，例如<a href="#239-sliding-window-maximum">[239] Sliding Window Maximum</a>使用了单调递减队列记录了滑动窗口的最大值。</li>
+<li>优先级队列的使用，例如<a href="#347-top-k-frequent-elements">[347] Top K Frequent Elements</a>，直接用即可，无难度。</li>
+</ul>
+<h2 id="补充">补充</h2>
+<h3 id="155-min-stack">[155] Min Stack</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/min-stack/description/">题目描述</a>。<br>
+维护两个栈，一个正常栈负责正常操作，一个辅助栈<code>_minStack</code>负责记录最小值。<code>push</code>时，只有新值<code>val</code>小于等于辅助栈的栈顶元素才在辅助栈入栈；<code>pop</code>时，若正常栈与辅助栈栈顶元素一样则在辅助栈也<code>pop</code>。<br>
+另一种方法是无论如何都在两个栈同时<code>push</code>和<code>pop</code>，只是在辅助栈<code>push</code>的一直是当前最小值而已，见<a href="https://leetcode.cn/problems/min-stack/solutions/242190/zui-xiao-zhan-by-leetcode-solution/">这篇solution</a>。但是冗余操作多，浪费空间。</p>
+<pre><code class="language-c++">class MinStack {
+    stack&lt;int&gt; _stack;
+    stack&lt;int&gt; _minStack;
+
+  public:
+    MinStack() {}
+
+    void push(int val) {
+        _stack.push(val);
+        if (_minStack.empty() || val &lt;= _minStack.top()) {
+            _minStack.push(val);
+        }
+    }
+
+    void pop() {
+        int val = _stack.top();
+        _stack.pop();
+        if (val == _minStack.top()) {
+            _minStack.pop();
+        }
+    }
+
+    int top() { return _stack.top(); }
+
+    int getMin() { return _minStack.top(); }
+};
+</code></pre>
+<h3 id="394-decode-string">[394] Decode String</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/decode-string/description/">题目描述</a>。<br>
+stack存的是<code>std::pair&lt;int, std::string&gt;</code>，其中<code>int</code>是<code>k</code>，<code>string</code>为当前字符串。这个当前字符串会在遇到<code>[</code>后入栈然后清空，所以其实就是上一个<code>[</code>之后的字符串。<br>
+例如序列<code>3[a2[c5[b]]]</code>，则<code>{3, &quot;&quot;}</code>、<code>{2, &quot;a&quot;}</code>、<code>{5, &quot;c&quot;}</code>会分别被入栈。遇到<code>b</code>后的<code>]</code>后<code>{5, &quot;c&quot;}</code>会被弹出，当前字符串会变成<code>&quot;cbbbbb&quot;</code>，接着<code>{2, &quot;a&quot;}</code>会被弹出，当前字符串会变成<code>&quot;a&quot; + 2 * &quot;cbbbbb&quot;</code>，以此类推。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    std::string decodeString(const std::string &amp;s) {
+        std::stack&lt;std::pair&lt;int, std::string&gt;&gt; stack;
+        std::string res = &quot;&quot;;
+        int multi = 0;
+
+        for (char c : s) {
+            if (c == '[') {
+                stack.push({multi, res});
+                res = &quot;&quot;;
+                multi = 0;
+            } else if (c == ']') {
+                auto [cur_multi, last_res] = stack.top();
+                stack.pop();
+                std::string tmp = &quot;&quot;;
+                while (cur_multi--) {
+                    tmp += res;
+                }
+                res = last_res + tmp;
+            } else if (isdigit(c)) {
+                multi = multi * 10 + (c - '0');
+            } else {
+                res += c;
+            }
+        }
+        return res;
+    }
+};
+</code></pre>
+<h3 id="739-daily-temperatures">[739] Daily Temperatures</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/daily-temperatures/description/">题目描述</a>。<br>
+核心是单调栈。这里我们维护一个从栈底到栈顶元素单调递减（栈里面存的是下标，所以其实是下标在<code>temperatures</code>对应的元素单调递减）的栈。当我们遇到<code>temperatures[i] &gt; temperatures[st.top()]</code>的情况，就先把栈顶元素下标对应的结果更新成<code>i - st.top()</code>，然后弹栈。重复以上过程，直到当前温度小于等于栈顶对应温度，我们才将当前下标入栈。<br>
+这里通过单调栈，我们可以快速找到遇到过的上一个小于当前值的值，而这些小的值会与其右边最近的更大值匹配上。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; dailyTemperatures(vector&lt;int&gt; &amp;temperatures) {
+        int n = temperatures.size();
+        vector&lt;int&gt; result(n, 0);
+        stack&lt;int&gt; st;
+        for (int i = 0; i &lt; n; ++i) {
+            while (!st.empty() &amp;&amp; temperatures[i] &gt; temperatures[st.top()]) {
+                result[st.top()] = i - st.top();
+                st.pop();
+            }
+            st.push(i);
+        }
+        return result;
+    }
+};
+</code></pre>
+<h3 id="84-largest-rectangle-in-histogram">[84] Largest Rectangle in Histogram</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/largest-rectangle-in-histogram/description/">题目描述</a>。<br>
+类似<a href="https://leetcode.cn/problems/trapping-rain-water/description/">[42] Trapping Rain Water</a>的单调栈解法，只是在接雨水中，我们是为了找凹槽，所以是（栈底到栈顶）递减栈；而这里我们想要找到凸起，所以是递增栈。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int largestRectangleArea(vector&lt;int&gt; &amp;heights) {
+        stack&lt;int&gt; st;
+        heights.push_back(0);
+        heights.insert(heights.begin(), 0);
+        st.push(0);
+        int n = heights.size();
+        int result = 0;
+        for (int i = 1; i &lt; n; ++i) {
+            while (heights[i] &lt; heights[st.top()]) {
+                int index = st.top();
+                st.pop();
+                int w = i - st.top() - 1;
+                result = max(result, heights[index] * w);
+            }
+            st.push(i);
+        }
+        return result;
+    }
+};
+</code></pre>
+<h3 id="215-kth-largest-element-in-an-array">[215] Kth Largest Element in an Array</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/kth-largest-element-in-an-array/description/">题目描述</a>。<br>
+使用优先级队列即可。这里我们尝试自己实现一个最大堆。<br>
+使用完全二叉树来实现。我们原地修改<code>nums</code>来构造这个完全二叉树。每个树的左儿子<code>l</code>和右儿子<code>r</code>分别问<code>2 * i +1</code>和<code>2 * i + 2</code>。我们从最后一个非叶节点<code>heapSize / 2 -1</code>出发（最后一个叶节点<code>heapSize -1</code>的父亲，也就是<code>(heapSize - 1 - 1)  / 2</code>得到<code>heapSize / 2 - 1</code> ），依次对每个位置做下沉，最后得到这棵树。<br>
+最后我们需要让优先级队列出队<code>k - 1</code>次。每一次出队，相当于删除堆顶元素。将堆顶元素与最后一个元素做交换，然后记元素数量减一，再接着对堆顶位置重新做下沉即可。<br>
+最后返回<code>nums[0]</code>即堆顶元素即为所求答案。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void maxHeapify(vector&lt;int&gt; &amp;a, int i, int heapSize) {
+        int l = 2 * i + 1;
+        int r = 2 * i + 2;
+        int largest = i;
+        if (l &lt; heapSize &amp;&amp; a[l] &gt; a[largest]) {
+            largest = l;
+        }
+        if (r &lt; heapSize &amp;&amp; a[r] &gt; a[largest]) {
+            largest = r;
+        }
+        if (largest != i) {
+            swap(a[i], a[largest]);
+            maxHeapify(a, largest, heapSize);
+        }
+    }
+
+    void buildMaxHeap(vector&lt;int&gt; &amp;a, int heapSize) {
+        for (int i = heapSize / 2 - 1; i &gt;= 0; --i) {
+            maxHeapify(a, i, heapSize);
+        }
+    }
+
+    int findKthLargest(vector&lt;int&gt; &amp;nums, int k) {
+        int heapSize = nums.size();
+        buildMaxHeap(nums, heapSize);
+        while (--k) {
+            swap(nums[0], nums[heapSize - 1]);
+            heapSize -= 1;
+            maxHeapify(nums, 0, heapSize);
+        }
+        return nums[0];
+    }
+};
+</code></pre>
+<h3 id="295-find-median-from-data-stream">[295] Find Median from Data Stream</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-median-from-data-stream/description/">题目描述</a>。<br>
+核心在于，既然要方便随时找到中位数，我们应该要随时指向中位数的位置。<a href="https://leetcode.cn/problems/find-median-from-data-stream/solutions/961062/shu-ju-liu-de-zhong-wei-shu-by-leetcode-ktkst/">官方题解</a>给出了两种维护这样一个位置的方式。</p>
+<ul>
+<li>使用两个堆，一个大顶堆，一个小顶堆。大顶堆的所有元素都小于小顶堆的所有元素。我们在<code>push</code>的时候维持这两个堆的元素数量的平衡，使两个堆的<code>size</code>一致或者大顶堆比小顶堆多一个元素。当总数量为奇数时，大顶堆的堆顶就是中位数；总数量为偶数时，两个堆的堆顶的平均数就是中位数。</li>
+<li>使用有序集合（例如<code>multiset</code>，内部使用红黑树实现，使用迭代器迭代是有序的）。维护两个迭代器<code>left</code>和<code>right</code>，在插入的时候修改两个迭代器的位置，使两个迭代器始终指向元素的中间位置。因此中位数就是<code>left</code>或者<code>left</code>与<code>right</code>位置元素的平均数。</li>
+</ul>
+<p>以下代码使用第一种方法。</p>
+<pre><code class="language-c++">class MedianFinder {
+    priority_queue&lt;int&gt; lessHeap;
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; greaterHeap;
+
+  public:
+    MedianFinder() {}
+
+    void addNum(int num) {
+        if (lessHeap.empty() || num &lt; lessHeap.top()) {
+            lessHeap.push(num);
+            if (lessHeap.size() &gt; greaterHeap.size() + 1) {
+                greaterHeap.push(lessHeap.top());
+                lessHeap.pop();
+            }
+        } else {
+            greaterHeap.push(num);
+            if (greaterHeap.size() &gt; lessHeap.size()) {
+                lessHeap.push(greaterHeap.top());
+                greaterHeap.pop();
+            }
+        }
+    }
+
+    double findMedian() {
+        return lessHeap.size() &gt; greaterHeap.size()
+                   ? lessHeap.top()
+                   : (lessHeap.top() + greaterHeap.top()) / 2.0;
+    }
+};
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#232-implement-queue-using-stacks">[232] Implement Queue using Stacks</a></li>
+<li><a href="#225-implement-stack-using-queues">[225] Implement Stack using Queues</a></li>
+<li><a href="#20-valid-parentheses">[20] Valid Parentheses</a></li>
+<li><a href="#1047-remove-all-adjacent-duplicates-in-string">[1047] Remove All Adjacent Duplicates In String</a></li>
+<li><a href="#150-evaluate-reverse-polish-notation">[150] Evaluate Reverse Polish Notation</a></li>
+<li><a href="#239-sliding-window-maximum">[239] Sliding Window Maximum</a></li>
+<li><a href="#347-top-k-frequent-elements">[347] Top K Frequent Elements</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E8%A1%A5%E5%85%85">补充</a>
+<ul>
+<li><a href="#155-min-stack">[155] Min Stack</a></li>
+<li><a href="#394-decode-string">[394] Decode String</a></li>
+<li><a href="#739-daily-temperatures">[739] Daily Temperatures</a></li>
+<li><a href="#84-largest-rectangle-in-histogram">[84] Largest Rectangle in Histogram</a></li>
+<li><a href="#215-kth-largest-element-in-an-array">[215] Kth Largest Element in an Array</a></li>
+<li><a href="#295-find-median-from-data-stream">[295] Find Median from Data Stream</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-string/">
+              <h3 class="post-title">
+                LeetCode刷题记录（字符串篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
