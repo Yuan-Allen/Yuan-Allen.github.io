@@ -1,0 +1,1064 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（数组篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（数组篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（数组篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[704] Binary Search
+
+难度：Easy
+语言：C++
+
+题目描述。
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（数组篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-03-25
+              </span>
+              <span>
+                26 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（数组篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="704-binary-search">[704] Binary Search</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/binary-search/description/">题目描述</a>。<br>
+确定好并保持区间一致性即可，例如是闭区间还是开区间，不变量贯彻到底即可。</p>
+<pre><code class="language-c++">  int search(vector&lt;int&gt;&amp; nums, int target) {
+    int size = nums.size();
+    int lower = 0;
+    int upper = size - 1;
+    int index = 0;
+    while (true) {
+      if (upper &lt; lower) {
+        return -1;
+      }
+      index = (lower + upper) / 2;
+      int now = nums[index];
+      if (now == target) {
+        return index;
+      }
+      if (target &lt; now) {
+        upper = index - 1;
+      } else {
+        lower = index + 1;
+      }
+    }
+  }
+</code></pre>
+<h2 id="27-remove-element">[27] Remove Element</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-element/description/">题目描述</a>。<br>
+利用元素顺序可以改变的特性，左右指针往中间靠拢即可。</p>
+<pre><code class="language-python">    def removeElement(self, nums, val):
+        &quot;&quot;&quot;
+        :type nums: List[int]
+        :type val: int
+        :rtype: int
+        &quot;&quot;&quot;
+        head_index = 0
+        tail_index = len(nums) - 1
+        while tail_index &gt;= 0 and nums[tail_index] == val:
+            tail_index -= 1
+        while head_index &lt; tail_index:
+            if nums[head_index] == val:
+                nums[head_index] = nums[tail_index]
+                tail_index -= 1
+
+            head_index += 1
+            while head_index &lt;= tail_index and nums[tail_index] == val:
+                tail_index -= 1
+        return tail_index + 1
+</code></pre>
+<h2 id="977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/squares-of-a-sorted-array/description/">题目描述</a>。<br>
+原数组是有序的，因此平方后最大值一定在两端。利用双指针往中间靠拢即可。</p>
+<pre><code class="language-rust">    pub fn sorted_squares(nums: Vec&lt;i32&gt;) -&gt; Vec&lt;i32&gt; {
+        let (mut left, mut right) = (0, nums.len() - 1);
+        let mut cur_index = right;
+        let mut res: Vec&lt;i32&gt; = vec![0; right + 1];
+        while left &lt;= right {
+            let (left_squares, right_squares) =
+                (nums[left] * nums[left], nums[right] * nums[right]);
+
+            if left_squares &lt; right_squares {
+                right -= 1;
+                res[cur_index] = right_squares;
+            } else {
+                left += 1;
+                res[cur_index] = left_squares
+            };
+
+            cur_index -= 1;
+        }
+        res
+    }
+</code></pre>
+<h2 id="209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/minimum-size-subarray-sum/description/">题目描述</a>。<br>
+使用滑动窗口（其实也相当于快慢指针）即可。每次<code>sum &gt;= target</code>了就开始注意更新<code>left</code>指针，最后返回<code>min_len</code>即可。复杂度O(n)。说是Medium但是是做起来最快的一道。</p>
+<pre><code class="language-c++">  int minSubArrayLen(int target, vector&lt;int&gt;&amp; nums) {
+    int sum = 0;
+    int left = 0;
+    int right = 0;
+    int n = nums.size();
+    int min_len = n + 1;
+    while (right &lt; n) {
+      sum += nums[right];
+
+      if (sum &gt;= target) {
+        while (sum - nums[left] &gt;=
+               target) {  // if target can be zero, the condition should be
+                          // (left &lt;= right &amp;&amp; sum - nums[left] &gt;= target
+          sum -= nums[left];
+          left++;
+        }
+        if (right - left + 1 &lt; min_len) {
+          min_len = right - left + 1;
+        }
+      }
+      right++;
+    }
+
+    return min_len &gt; n ? 0 : min_len;
+  }
+</code></pre>
+<h2 id="59-spiral-matrix-ii">[59] Spiral Matrix II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/spiral-matrix-ii/description/">题目描述</a>。<br>
+没什么算法可言，就是锻炼代码能力，难点在于边界条件的判断。<br>
+一般来说坚持循环不变量即可，例如每次循环坚持左闭右开。但是有特殊情况，那就是n如果是奇数就会有一个中心点，如果都坚持左闭右开的话就会导致中心点永远填不到。网上一些解法是特殊处理，单独最后填中心点的值。<br>
+本人的解法则是牺牲了一定的循环不变量，即每个round第一个循环（矩阵上方从左到右）采用了左闭右闭，第二、三个循环采用左开右闭，第四个循环（矩阵左边从下到上）采用左开右开（右开与第一个循环的左闭相对应），避免了中心点的单独处理（第一个循环是左闭右闭，所以能够处理中心点）。这种解法与前面那种各有利弊，见仁见智。</p>
+<pre><code class="language-python">    def generateMatrix(self, n):
+        &quot;&quot;&quot;
+        :type n: int
+        :rtype: List[List[int]]
+        &quot;&quot;&quot;
+        ret = [[0] * n for _ in range(n)]
+        round_index = 0
+        cur_num = 1
+        while cur_num &lt;= n * n:
+            for i in range(0 + round_index, n - round_index):
+                ret[0 + round_index][i] = cur_num
+                cur_num += 1
+            for i in range(0 + round_index + 1, n - round_index):
+                ret[i][n - round_index - 1] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index - 1, -1):
+                ret[n - round_index - 1][i] = cur_num
+                cur_num += 1
+            for i in range(n - round_index - 2, 0 + round_index, -1):
+                ret[i][0 + round_index] = cur_num
+                cur_num += 1
+            round_index += 1
+        return ret
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>数组作为最基础的数据结构之一，内容也很简单。就做的几道经典题而言，要掌握的就是两个内容：</p>
+<ul>
+<li>循环不变量<br>
+无论是二分法还是最后的螺旋矩阵模拟，防止边界条件出错的方法都是保持循环不变量，即按照区间的定义来操作。</li>
+<li>双指针<br>
+两个指针可以是同向的（快慢指针、滑动窗口），也可以是相向的。不少题目都是用该套路来解（例如<a href="#27-remove-element">27</a>，<a href="#977-squares-of-a-sorted-array">977</a>，<a href="#209-minimum-size-subarray-sum">209</a>）。</li>
+</ul>
+<h2 id="补充">补充</h2>
+<h3 id="283-move-zeroes">[283] Move Zeroes</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/move-zeroes/description/">题目描述</a>。<br>
+题目要求保留非0元素相对顺序顺序。我们考虑把非0元素挨个挪到前面，然后把后面没被挪到的位置全部补0即可。<br>
+使用快慢指针即可。<code>fast</code>用来扫描非0元素，<code>slow</code>指向非0元素要被挪到的位置。<code>fast</code>扫描完以后再给<code>slow</code>及后面的位置补0。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void moveZeroes(vector&lt;int&gt; &amp;nums) {
+        int n = nums.size();
+        int slow = 0;
+        for (int fast = slow; fast &lt; n; ++fast) {
+            if (nums[fast] != 0) {
+                nums[slow++] = nums[fast];
+            }
+        }
+        while (slow &lt; n) {
+            nums[slow++] = 0;
+        }
+    }
+};
+</code></pre>
+<h3 id="11-container-with-most-water">[11] Container With Most Water</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/container-with-most-water/description/">题目描述</a>。<br>
+双指针往中间靠拢。注意靠拢的过程底边距离是不断缩小的，因此短板效应，我们只有移动较矮的那边指针才有可能使容纳的水量上升。哪边矮移动哪边，过程中不断记录最大值结果，直到指针相遇即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int maxArea(vector&lt;int&gt; &amp;height) {
+        int left = 0, right = height.size() - 1;
+        int res = 0;
+        while (left &lt; right) {
+            res = max(res, min(height[left], height[right]) * (right - left));
+            if (height[left] &lt; height[right]) {
+                left += 1;
+            } else {
+                right -= 1;
+            }
+        }
+        return res;
+    }
+};
+</code></pre>
+<h3 id="42-trapping-rain-water">[42] Trapping Rain Water</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/trapping-rain-water/description/">题目描述</a>。<br>
+双指针从左右往中间靠拢，同时记录左右指针各自扫到过的最大值<code>leftMax</code>和<code>rightMax</code>。<br>
+如果<code>height[left] &lt; height[right]</code>，则<code>++left</code>，否则<code>--right</code>。<br>
+由于我们每次移动的都是<code>left</code>和<code>right</code>较矮的那一个，保留较高的那一个，因此<code>left</code>和<code>right</code>一定其中有一个是当前扫过的所有元素的最高值（高的指针等待矮的那个移动，直到另一个指针扫到更高的了才轮到这个指针移动）。<br>
+因此，当<code>height[left] &lt; height[right]</code>，<code>height[right]</code>就是扫过的所有元素的最高值（同时也是<code>rightMax</code>）。对于左指针<code>left</code>，其<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi mathvariant="normal">左</mi><mi mathvariant="normal">边</mi><mi mathvariant="normal">最</mi><mi mathvariant="normal">高</mi><mi mathvariant="normal">值</mi><mi mathvariant="normal">（</mi><mi mathvariant="normal">即</mi><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi>M</mi><mi>a</mi><mi>x</mi><mi mathvariant="normal">）</mi><mo>≤</mo><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi mathvariant="normal">右</mi><mi mathvariant="normal">边</mi><mi mathvariant="normal">最</mi><mi mathvariant="normal">高</mi><mi mathvariant="normal">值</mi></mrow><annotation encoding="application/x-tex">left左边最高值（即leftMax） \le left右边最高值</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">左</span><span class="mord cjk_fallback">边</span><span class="mord cjk_fallback">最</span><span class="mord cjk_fallback">高</span><span class="mord cjk_fallback">值</span><span class="mord cjk_fallback">（</span><span class="mord cjk_fallback">即</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">x</span><span class="mord cjk_fallback">）</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">右</span><span class="mord cjk_fallback">边</span><span class="mord cjk_fallback">最</span><span class="mord cjk_fallback">高</span><span class="mord cjk_fallback">值</span></span></span></span>，这是由于<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi mathvariant="normal">左</mi><mi mathvariant="normal">边</mi><mi mathvariant="normal">最</mi><mi mathvariant="normal">高</mi><mi mathvariant="normal">值</mi><mo>=</mo><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi>M</mi><mi>a</mi><mi>x</mi><mo>&lt;</mo><mo>=</mo><mi mathvariant="normal">所</mi><mi mathvariant="normal">有</mi><mi mathvariant="normal">遇</mi><mi mathvariant="normal">到</mi><mi mathvariant="normal">过</mi><mi mathvariant="normal">的</mi><mi mathvariant="normal">最</mi><mi mathvariant="normal">高</mi><mi mathvariant="normal">值</mi><mo>=</mo><mi>r</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mi>M</mi><mi>a</mi><mi>x</mi><mo>&lt;</mo><mo>=</mo><mi>l</mi><mi>e</mi><mi>f</mi><mi>t</mi><mi mathvariant="normal">右</mi><mi mathvariant="normal">边</mi><mi mathvariant="normal">最</mi><mi mathvariant="normal">高</mi><mi mathvariant="normal">值</mi></mrow><annotation encoding="application/x-tex">left左边最高值 = leftMax &lt;= 所有遇到过的最高值 = rightMax  &lt;= left右边最高值</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">左</span><span class="mord cjk_fallback">边</span><span class="mord cjk_fallback">最</span><span class="mord cjk_fallback">高</span><span class="mord cjk_fallback">值</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">x</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">&lt;</span></span><span class="base"><span class="strut" style="height:0.36687em;vertical-align:0em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.36687em;vertical-align:0em;"></span><span class="mord cjk_fallback">所</span><span class="mord cjk_fallback">有</span><span class="mord cjk_fallback">遇</span><span class="mord cjk_fallback">到</span><span class="mord cjk_fallback">过</span><span class="mord cjk_fallback">的</span><span class="mord cjk_fallback">最</span><span class="mord cjk_fallback">高</span><span class="mord cjk_fallback">值</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">h</span><span class="mord mathdefault">t</span><span class="mord mathdefault" style="margin-right:0.10903em;">M</span><span class="mord mathdefault">a</span><span class="mord mathdefault">x</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">&lt;</span></span><span class="base"><span class="strut" style="height:0.36687em;vertical-align:0em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault">t</span><span class="mord cjk_fallback">右</span><span class="mord cjk_fallback">边</span><span class="mord cjk_fallback">最</span><span class="mord cjk_fallback">高</span><span class="mord cjk_fallback">值</span></span></span></span>。因此此时使用<code>leftMax</code>计算<code>left</code>所在柱子水量即可，即<code>ans += leftMax - height[left]</code>。<br>
+<code>height[left] &gt;= height[right]</code>的情况反过来即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int trap(vector&lt;int&gt; &amp;height) {
+        int n = height.size();
+        int left = 0, right = n - 1;
+        int leftMax = 0, rightMax = 0;
+        int ans = 0;
+        while (left &lt; right) {
+            leftMax = max(leftMax, height[left]);
+            rightMax = max(rightMax, height[right]);
+            if (height[left] &lt; height[right]) {
+                // leftMax &lt; rightMax
+                ans += leftMax - height[left];
+                ++left;
+            } else {
+                // leftMax &gt;= rightMax
+                ans += rightMax - height[right];
+                --right;
+            }
+        }
+
+        return ans;
+    }
+};
+</code></pre>
+<h3 id="189-rotate-array">[189] Rotate Array</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/rotate-array/description/">题目描述</a>。<br>
+我们的目标是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度。<br>
+三步反转即可：</p>
+<ul>
+<li>反转整个数组</li>
+<li>反转数组<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>[</mo><mn>0</mn><mo separator="true">,</mo><mi>k</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">[0, k)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mclose">)</span></span></span></span>的部分</li>
+<li>反转数组<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>[</mo><mi>k</mi><mo separator="true">,</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">[k, n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的部分</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    void rotate(vector&lt;int&gt; &amp;nums, int k) {
+        k %= nums.size();
+        reverse(nums.begin(), nums.end());
+        reverse(nums.begin(), nums.begin() + k);
+        reverse(nums.begin() + k, nums.end());
+    }
+};
+</code></pre>
+<h3 id="238-product-of-array-except-self">[238] Product of Array Except Self</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/product-of-array-except-self/description/">题目描述</a>。<br>
+计算前缀乘积<code>left[i] = left[i-1] * nums[i-1]</code>，再计算后缀乘积<code>right[i] = right[i+1] * nums[i+1]</code>，然后每个数除自身以外数组的乘积就是<code>left[i] * right[i]</code>。这个方法的时间和空间复杂度均为<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>。<br>
+我们可以再基于以上方法把空间复杂度降到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>（不考虑output的空间复杂度）。我们直接使用<code>res</code>先作为<code>left</code>，然后再用一个变量来存储<code>right</code>。我们在计算最终结果的过程中同时更新<code>right</code>变量，便可把这部分的空间复杂度降下来。最终得到如下代码。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; productExceptSelf(vector&lt;int&gt; &amp;nums) {
+        int n = nums.size();
+        vector&lt;int&gt; res(n, 1);
+        for (int i = 1; i &lt; n; ++i) {
+            res[i] = res[i - 1] * nums[i - 1];
+        }
+        int right = 1;
+        for (int i = n - 2; i &gt;= 0; --i) {
+            right *= nums[i + 1];
+            res[i] *= right;
+        }
+        return res;
+    }
+};
+</code></pre>
+<h3 id="41-first-missing-positive">[41] First Missing Positive</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/first-missing-positive/description/">题目描述</a>。<br>
+题目难点在于同时需要<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的时间复杂度和<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度。<br>
+实际上这道题不存在<strong>真正</strong><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>空间复杂度的方法，最终我们也是使用并修改了原数组<code>nums</code>，不过不能修改<code>nums</code>的话可能就无解了。<br>
+思路就是，我们将<code>nums[i]</code>放回（交换）到<code>nums[nums[i] - 1]</code>的地方，尝试将数组构造成<code>[1, 2, ..., N]</code>的形式。最终，再看这种形式中数字缺失不满足的地方（即<code>nums[i] != i+1</code>），然后返回<code>i</code>即可。若都满足，说明结果应该是<code>n + 1</code>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int firstMissingPositive(vector&lt;int&gt; &amp;nums) {
+        int n = nums.size();
+        for (int i = 0; i &lt; n; ++i) {
+            while (nums[i] != i + 1) {
+                if (nums[i] &lt; 1 || nums[i] &gt; n ||
+                    nums[i] == nums[nums[i] - 1]) {
+                    break;
+                }
+                int idx = nums[i] - 1;
+                nums[i] = nums[idx];
+                nums[idx] = idx + 1;
+            }
+        }
+
+        for (int i = 0; i &lt; n; ++i) {
+            if (nums[i] != i + 1) {
+                return i + 1;
+            }
+        }
+        return n + 1;
+    }
+};
+</code></pre>
+<h3 id="73-set-matrix-zeroes">[73] Set Matrix Zeroes</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/set-matrix-zeroes/description/">题目描述</a>。<br>
+很容易想到，我们可以分别使用两个数组，一个记录每一行是否存在0，一个记录每一列是否存在0。先遍历一遍矩阵，填完这两个数组，然后再根据数组更新一遍矩阵即可。但是难点在于我们要使用<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度完成。<br>
+LeetCode上很多这种优化空间复杂度的解其实并没有换成什么多新颖的算法，只是借用了输入（或输出）里原本的空间而已。这里我们借用了矩阵里第一行和第一列的空间分别用来做那两个标记的数组。我们再使用一个额外变量<code>flag_col0</code>来记录第一列原本是否存在0（第一行原本是否存在0用<code>matrix[0][0]</code>就可以了）。于是我们先扫描一遍矩阵，更新<code>flag_col0</code>的同时把第一行和第一列填上，然后再根据第一行和第一列的元素更新矩阵即可。这里我们从最后一行填到第一行，防止第一行的值被提前覆盖掉（其他行要参考第一行的值）。最后，再根据<code>falg_col0</code>更新第一列。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void setZeroes(vector&lt;vector&lt;int&gt;&gt; &amp;matrix) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+        int flag_col0 = false;
+        for (int i = 0; i &lt; m; ++i) {
+            if (matrix[i][0] == 0) {
+                flag_col0 = true;
+            }
+            for (int j = 1; j &lt; n; ++j) {
+                if (matrix[i][j] == 0) {
+                    matrix[0][j] = matrix[i][0] = 0;
+                }
+            }
+        }
+
+        for (int i = m - 1; i &gt;= 0; --i) {
+            for (int j = 1; j &lt; n; ++j) {
+                if (matrix[0][j] == 0 || matrix[i][0] == 0) {
+                    matrix[i][j] = 0;
+                }
+            }
+        }
+        if (flag_col0) {
+            for (int i = 0; i &lt; m; ++i) {
+                matrix[i][0] = 0;
+            }
+        }
+    }
+};
+</code></pre>
+<h3 id="54-spiral-matrix">[54] Spiral Matrix</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/spiral-matrix/description/">题目描述</a>。<br>
+和<a href="#59-spiral-matrix-ii">[59] Spiral Matrix II</a>类似，按层遍历矩阵。这里我们使用四个不同的变量来模拟4个边界，并在每次模拟完一边时更新该方向边界。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; spiralOrder(vector&lt;vector&lt;int&gt;&gt; &amp;matrix) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+        vector&lt;int&gt; res;
+        int u = 0, d = m - 1, l = 0, r = n - 1;
+        while (true) {
+            for (int j = l; j &lt;= r; ++j) {
+                res.emplace_back(matrix[u][j]);
+            }
+            if (++u &gt; d) {
+                break;
+            }
+            for (int i = u; i &lt;= d; ++i) {
+                res.emplace_back(matrix[i][r]);
+            }
+            if (--r &lt; l) {
+                break;
+            }
+            for (int j = r; j &gt;= l; --j) {
+                res.emplace_back(matrix[d][j]);
+            }
+            if (--d &lt; u) {
+                break;
+            }
+            for (int i = d; i &gt;= u; --i) {
+                res.emplace_back(matrix[i][l]);
+            }
+            if (++l &gt; r) {
+                break;
+            }
+        }
+        return res;
+    }
+};
+</code></pre>
+<h3 id="48-rotate-image">[48] Rotate Image</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/rotate-image/description/">题目描述</a>。<br>
+利用公式<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>n</mi><mi>e</mi><mi>w</mi><mi>R</mi><mi>o</mi><mi>w</mi><mo>=</mo><mi>o</mi><mi>l</mi><mi>d</mi><mi>C</mi><mi>o</mi><mi>l</mi><mo separator="true">,</mo><mi>n</mi><mi>e</mi><mi>w</mi><mi>C</mi><mi>o</mi><mi>l</mi><mo>=</mo><mi>n</mi><mo>−</mo><mi>o</mi><mi>l</mi><mi>d</mi><mi>R</mi><mi>o</mi><mi>w</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">newRow = oldCol, newCol = n - oldRow - 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mord mathdefault" style="margin-right:0.00773em;">R</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">n</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.77777em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.00773em;">R</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>反复推四遍回到原点，然后把公式套进去即可。循环范围是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mfrac><mi>n</mi><mn>2</mn></mfrac><mo>∗</mo><mfrac><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow><mn>2</mn></mfrac></mrow><annotation encoding="application/x-tex">\frac{n}{2} * \frac{n+1}{2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.040392em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.695392em;"><span style="top:-2.6550000000000002em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">n</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1.190108em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.845108em;"><span style="top:-2.6550000000000002em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">n</span><span class="mbin mtight">+</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span>，其中n为偶数则<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">+1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">+</span><span class="mord">1</span></span></span></span>没影响，奇数<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">+1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">+</span><span class="mord">1</span></span></span></span>则后面会进一个数字，例如<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mn>5</mn><mo>∗</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">5*5</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">5</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">5</span></span></span></span>的矩阵会得到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mn>2</mn><mo>∗</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">2*3</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">3</span></span></span></span>，最后会留下中间的中心点。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void rotate(vector&lt;vector&lt;int&gt;&gt; &amp;matrix) {
+        int n = matrix.size();
+        for (int i = 0; i &lt; n / 2; ++i) {
+            for (int j = 0; j &lt; (n + 1) / 2; ++j) {
+                int tmp = matrix[i][j];
+                // newRow = oldCol, newCol = n - oldRow - 1
+                matrix[i][j] = matrix[n - j - 1][i];
+                matrix[n - j - 1][i] = matrix[n - i - 1][n - j - 1];
+                matrix[n - i - 1][n - j - 1] = matrix[j][n - i - 1];
+                matrix[j][n - i - 1] = tmp;
+            }
+        }
+    }
+};
+</code></pre>
+<h3 id="240-search-a-2d-matrix-ii">[240] Search a 2D Matrix II</h3>
+<blockquote>
+<p>难度：Meidum<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/search-a-2d-matrix-ii/description/">题目描述</a>。<br>
+这道题的关键是要想到可以从<strong>右上角</strong>开始搜索，搜索范围是当前元素<code>matrix[x][y]</code>到原矩阵左下角的矩阵。</p>
+<ul>
+<li>若<code>matrix[x][y] == target</code>，说明找到值，返回<code>true</code>。</li>
+<li>若<code>matrix[x][y] &gt; target</code>，则当前列（<code>matrix[x][y]</code>以及<strong>其下面</strong>的）值都大于<code>target</code>，<code>y</code>减小。</li>
+<li>若<code>matrix[x][y] &lt; target</code>，则当前行（<code>matrix[x][y]</code>以及<strong>其左边</strong>的）值都小于<code>target</code>，<code>x</code>增大。</li>
+</ul>
+<p>如此下去，若<code>x</code>或<code>y</code>碰到边界则说明值不存在，返回<code>false</code>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool searchMatrix(vector&lt;vector&lt;int&gt;&gt; &amp;matrix, int target) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+        int x = 0, y = n - 1;
+        while (x &lt; m &amp;&amp; y &gt;= 0) {
+            if (matrix[x][y] == target) {
+                return true;
+            }
+            if (matrix[x][y] &gt; target) {
+                --y;
+            } else {
+                ++x;
+            }
+        }
+        return false;
+    }
+};
+</code></pre>
+<h3 id="88-merge-sorted-array">[88] Merge Sorted Array</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/merge-sorted-array/description/">题目描述</a>。<br>
+题目要求把结果放在<code>nums1</code>里面，这就要求在排序的时候不覆盖<code>nums1</code>里面还未排序的值，同时我们又想要追求使用<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度来完成。<br>
+结果就是，我们可以反过来从最后开始排序。可以证明<code>nums1</code>的后面总是有足够的空间的（<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>m</mi><mo>+</mo><mi>n</mi><mo>−</mo><msub><mi>p</mi><mn>1</mn></msub><mo>−</mo><mn>1</mn><mo>≥</mo><mi>m</mi><mo>−</mo><msub><mi>p</mi><mn>1</mn></msub><mo>−</mo><mn>1</mn><mo>+</mo><mi>n</mi><mo>−</mo><msub><mi>p</mi><mn>2</mn></msub><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">m+n-p_1-1≥m-p_1-1+n-p_2-1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">m</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">n</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.7777700000000001em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathdefault">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.78041em;vertical-align:-0.13597em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≥</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">m</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.7777700000000001em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathdefault">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathdefault">n</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.7777700000000001em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathdefault">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>）来让<code>nums1</code>的未排序元素不被覆盖。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void merge(vector&lt;int&gt; &amp;nums1, int m, vector&lt;int&gt; &amp;nums2, int n) {
+        int i = m - 1, j = n - 1, cur = m + n - 1;
+        while (i &gt;= 0 &amp;&amp; j &gt;= 0) {
+            nums1[cur--] = nums1[i] &gt;= nums2[j] ? nums1[i--] : nums2[j--];
+        }
+        while (i &gt;= 0) {
+            nums1[cur--] = nums1[i--];
+        }
+        while (j &gt;= 0) {
+            nums1[cur--] = nums2[j--];
+        }
+    }
+};
+</code></pre>
+<h3 id="26-remove-duplicates-from-sorted-array">[26] Remove Duplicates from Sorted Array</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-duplicates-from-sorted-array/description/">题目描述</a>。<br>
+基础双指针操作。快指针在前面扫，扫到不一样的就填到慢指针位置即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int removeDuplicates(vector&lt;int&gt; &amp;nums) {
+        int fast = 1;
+        int slow = 0;
+        int n = nums.size();
+        while (fast &lt; n) {
+            if (nums[fast] != nums[slow]) {
+                nums[++slow] = nums[fast];
+            }
+            ++fast;
+        }
+        return slow + 1;
+    }
+};
+</code></pre>
+<h3 id="80-remove-duplicates-from-sorted-array-ii">[80] Remove Duplicates from Sorted Array II</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-duplicates-from-sorted-array-ii/description/">题目描述</a>。<br>
+相比<a href="#26-remove-duplicates-from-sorted-array">[26] Remove Duplicates from Sorted Array</a>，同一数字允许出现的次数变为了两次。但做法还是没什么区别。<br>
+注意这里<code>slow</code>上道题解法中的<code>slow</code>定义略有不同。上题中的<code>slow</code>是已经填过的最后一个位置的索引，而这里的<code>slow</code>是还未填答案的下一个要填的位置的索引。两种定义各凭喜好使用。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int removeDuplicates(vector&lt;int&gt; &amp;nums) {
+        int fast = 2;
+        int slow = 2;
+        int n = nums.size();
+        while (fast &lt; n) {
+            if (nums[fast] != nums[slow - 2]) {
+                nums[slow++] = nums[fast];
+            }
+            ++fast;
+        }
+        return n &gt; 2 ? slow : n;
+    }
+};
+</code></pre>
+<h3 id="274-h-index">[274] H-Index</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/h-index/description/">题目描述</a>。<br>
+排序，然后从大到小遍历一遍即可。<br>
+但是排序的空间复杂度是<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mi>l</mi><mi>o</mi><mi>g</mi><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(nlogn)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>。这里则用了计数排序，把<code>citations</code>的值压缩到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>[</mo><mn>0</mn><mo separator="true">,</mo><mi>n</mi><mo>]</mo></mrow><annotation encoding="application/x-tex">[0, n]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">n</span><span class="mclose">]</span></span></span></span>内，最后再从大到小遍历得出结果。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int hIndex(vector&lt;int&gt; &amp;citations) {
+        int n = citations.size();
+        int paperNum = 0;
+        vector&lt;int&gt; counter(n + 1, 0); // 0 to n
+        for (int c : citations) {
+            counter[min(n, c)] += 1;
+        }
+        for (int i = n; i &gt;= 0; --i) {
+            paperNum += counter[i];
+            if (paperNum &gt;= i) {
+                return i;
+            }
+        }
+        return 0;
+    }
+};
+</code></pre>
+<h3 id="380-insert-delete-getrandom-o1">[380] Insert Delete GetRandom O(1)</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/insert-delete-getrandom-o1/description/">题目描述</a>。<br>
+使用变长数组+哈希表即可。哈希表存储值到其在数组中的索引的映射，用来快速查看值是否存在以及快速查找值在数组中的位置，实现<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的插入和删除。<code>getRandom</code>则随机取一个索引处的值返回即可。</p>
+<pre><code class="language-c++">class RandomizedSet {
+    vector&lt;int&gt; v;
+    unordered_map&lt;int, int&gt; h;
+
+  public:
+    RandomizedSet() { srand((unsigned)time(NULL)); }
+
+    bool insert(int val) {
+        if (h.count(val)) {
+            return false;
+        }
+        h[val] = v.size();
+        v.emplace_back(val);
+        return true;
+    }
+
+    bool remove(int val) {
+        if (h.count(val) == 0) {
+            return false;
+        }
+        int backVal = v.back();
+        v[h[val]] = backVal;
+        h[backVal] = h[val];
+        v.pop_back();
+        h.erase(val);
+        return true;
+    }
+
+    int getRandom() {
+        int idx = rand() % v.size();
+        return v[idx];
+    }
+};
+</code></pre>
+<h3 id="134-gas-station">[134] Gas Station</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/gas-station/description/">题目描述</a>。<br>
+Naive的方式是从每个起点出发检查一遍即可，但时间复杂度较高。我们可以想出某些方式来减少检查的数量，以减少时间复杂度。<br>
+可以通过数学证明（参考<a href="https://leetcode.cn/problems/gas-station/solutions/488357/jia-you-zhan-by-leetcode-solution/">这篇solution</a>）得到，若从x无法到达y，则从x, y之间的任何一个加油站出发都无法到达y。因此，我们直接再从y + 1的位置出发检查即可。如此一来，时间复杂度可降到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int canCompleteCircuit(vector&lt;int&gt; &amp;gas, vector&lt;int&gt; &amp;cost) {
+        int n = gas.size();
+        int start = 0;
+        while (start &lt; n) {
+            int tank = 0;
+            int cnt = 0;
+            while (cnt &lt; n) {
+                int i = (start + cnt) % n;
+                tank = tank + gas[i] - cost[i];
+                if (tank &lt; 0) {
+                    break;
+                }
+                ++cnt;
+            }
+
+            if (cnt == n) {
+                return start;
+            } else {
+                start += cnt + 1;
+            }
+        }
+        return -1;
+    }
+};
+</code></pre>
+<h3 id="135-candy">[135] Candy</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/candy/description/">题目描述</a>。</p>
+<ul>
+<li>如果是递增序列，则比上一个孩子通过多分配一个即可（<code>pre + 1</code>）。</li>
+<li>如果是递减序列，则给最后一个孩子分配一个，同时其他递减序列上的每个孩子都要多分配一个。
+<ul>
+<li>例如分配了<code>[1, 2 ,3, 1]</code>个糖果，此时下一个还是递减，除了要在尾部追加一个1，还有把前面的1变成2，得到<code>[1, 2, 3, 2, 1]</code>。</li>
+<li>当递减序列的长度达到递增序列的长度时，要把递增序列的最后一个也包含到递减序列里面。这是为了防止该值小于等于递减序列的第一个值（递增序列的最后一个值应该比左右都要大）。例如已经分配<code>[1, 2, 3, 2, 1]</code>个糖果，下一个还是递减，则应该得到<code>[1, 2, 4, 3, 2, 1]</code>而不是<code>[1, 2, 3, 3, 2, 1]</code>。</li>
+<li>我们不用显式模拟递减序列的分配过程，只需要每次<code>ret</code>加上递减序列长度即可模拟递减序列每个<code>+1</code>的过程。</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    int candy(vector&lt;int&gt; &amp;ratings) {
+        int inc = 1;
+        int dec = 0;
+        int ret = 1;
+        int pre = 1;
+        int n = ratings.size();
+        for (int i = 1; i &lt; n; ++i) {
+            if (ratings[i] &gt;= ratings[i - 1]) {
+                pre = ratings[i] == ratings[i - 1] ? 1 : pre + 1;
+                ret += pre;
+                dec = 0;
+                inc = pre;
+            } else {
+                ++dec;
+                if (dec == inc) {
+                    // To ensure the last of the inc seq should be greater
+                    // than the start of dec seq (by add it to the dec seq)
+                    ++dec;
+                }
+                ret += dec;
+                pre = 1; // The last one of the dec seq should be 1
+            }
+        }
+        return ret;
+    }
+};
+</code></pre>
+<h3 id="167-two-sum-ii-input-array-is-sorted">[167] Two Sum II - Input Array Is Sorted</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/two-sum-ii-input-array-is-sorted/description/">题目描述</a>。<br>
+双指针中间靠拢，无难度。</p>
+<ul>
+<li>若和小于<code>target</code>，左指针右移。</li>
+<li>若和大于<code>target</code>，右指针左移。</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; twoSum(vector&lt;int&gt; &amp;numbers, int target) {
+        int left = 0, right = numbers.size() - 1;
+        while (left &lt; right) {
+            int sum = numbers[left] + numbers[right];
+            if (sum == target) {
+                return {left + 1, right + 1};
+            } else if (sum &lt; target) {
+                ++left;
+            } else {
+                --right;
+            }
+        }
+        return {-1, -1};
+    }
+};
+</code></pre>
+<h3 id="36-valid-sudoku">[36] Valid Sudoku</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-sudoku/description/">题目描述</a>。<br>
+可以以naive的方式依次按行、按列和按box检查是否符合数独条件。这样是三次遍历，做下来也是没问题的。<br>
+但是这里我们尝试只用对<code>board</code>做一次遍历来完成题目。我们使用<code>rowMap</code>、<code>colMap</code>和<code>boxMap</code>来分别记录每行、每列和每个小<code>box</code>中每个数字是否出现过，来在一次遍历的过程中检查是否满足数独条件。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool isValidSudoku(vector&lt;vector&lt;char&gt;&gt; &amp;board) {
+        int numRow = board.size();
+        int numCol = board.size();
+        bool rowMap[9][9] = {0};
+        bool colMap[9][9] = {0};
+        bool boxMap[3][3][9] = {0};
+
+        for (int i = 0; i &lt; numRow; ++i) {
+            for (int j = 0; j &lt; numCol; ++j) {
+                if (board[i][j] == '.') {
+                    continue;
+                }
+                int index = board[i][j] - '1';
+                if (rowMap[i][index] || colMap[j][index] ||
+                    boxMap[i / 3][j / 3][index]) {
+                    return false;
+                }
+                rowMap[i][index] = true;
+                colMap[j][index] = true;
+                boxMap[i / 3][j / 3][index] = true;
+            }
+        }
+
+        return true;
+    }
+};
+</code></pre>
+<h3 id="289-game-of-life">[289] Game of Life</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/game-of-life/description/">题目描述</a>。<br>
+要注意每次统计邻居状态的时候应该使用邻居一开始的状态，而不要让邻居这一轮更新过后的状态影响到当前这一轮的统计。Naive的想法是复制一个新的<code>copyBoard</code>，然后用<code>copyBoard</code>做判断即可。<br>
+但我们显然希望在空间复杂度上有优化。为了做到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度，我们使用新的复合状态来同时表示旧状态和新状态，例如<code>-1</code>表示位置之前是live，现在变成dead；<code>2</code>表示位置之前是dead，现在变成live。最后，再遍历一遍<code>board</code>，把<code>-1</code>和<code>2</code>变成<code>0</code>和<code>1</code>即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    void gameOfLife(vector&lt;vector&lt;int&gt;&gt; &amp;board) {
+        // -1: live to die (1 -&gt; -1)
+        // 2: die to live (0 -&gt; 2)
+
+        int m = board.size();
+        int n = board[0].size();
+
+        for (int i = 0; i &lt; m; ++i) {
+            for (int j = 0; j &lt; n; ++j) {
+
+                // Count live
+                int liveCount = 0;
+                for (int dx = -1; dx &lt; 2; ++dx) {
+                    for (int dy = -1; dy &lt; 2; ++dy) {
+                        int x = i + dx, y = j + dy;
+                        if (dx == 0 &amp;&amp; dy == 0 || x &lt; 0 || x &gt;= m || y &lt; 0 ||
+                            y &gt;= n) {
+                            continue;
+                        }
+                        if (board[x][y] == 1 || board[x][y] == -1) {
+                            liveCount += 1;
+                        }
+                    }
+                }
+
+                if (board[i][j] == 1) {
+                    if (liveCount &lt; 2 || liveCount &gt; 3) {
+                        board[i][j] = -1;
+                    }
+                } else if (liveCount == 3) {
+                    board[i][j] = 2;
+                }
+            }
+        }
+
+        for (int i = 0; i &lt; m; ++i) {
+            for (int j = 0; j &lt; n; ++j) {
+                if (board[i][j] == -1) {
+                    board[i][j] = 0;
+                } else if (board[i][j] == 2) {
+                    board[i][j] = 1;
+                }
+            }
+        }
+    }
+};
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#704-binary-search">[704] Binary Search</a></li>
+<li><a href="#27-remove-element">[27] Remove Element</a></li>
+<li><a href="#977-squares-of-a-sorted-array">[977] Squares of a Sorted Array</a></li>
+<li><a href="#209-minimum-size-subarray-sum">[209] Minimum Size Subarray Sum</a></li>
+<li><a href="#59-spiral-matrix-ii">[59] Spiral Matrix II</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E8%A1%A5%E5%85%85">补充</a>
+<ul>
+<li><a href="#283-move-zeroes">[283] Move Zeroes</a></li>
+<li><a href="#11-container-with-most-water">[11] Container With Most Water</a></li>
+<li><a href="#42-trapping-rain-water">[42] Trapping Rain Water</a></li>
+<li><a href="#189-rotate-array">[189] Rotate Array</a></li>
+<li><a href="#238-product-of-array-except-self">[238] Product of Array Except Self</a></li>
+<li><a href="#41-first-missing-positive">[41] First Missing Positive</a></li>
+<li><a href="#73-set-matrix-zeroes">[73] Set Matrix Zeroes</a></li>
+<li><a href="#54-spiral-matrix">[54] Spiral Matrix</a></li>
+<li><a href="#48-rotate-image">[48] Rotate Image</a></li>
+<li><a href="#240-search-a-2d-matrix-ii">[240] Search a 2D Matrix II</a></li>
+<li><a href="#88-merge-sorted-array">[88] Merge Sorted Array</a></li>
+<li><a href="#26-remove-duplicates-from-sorted-array">[26] Remove Duplicates from Sorted Array</a></li>
+<li><a href="#80-remove-duplicates-from-sorted-array-ii">[80] Remove Duplicates from Sorted Array II</a></li>
+<li><a href="#274-h-index">[274] H-Index</a></li>
+<li><a href="#380-insert-delete-getrandom-o1">[380] Insert Delete GetRandom O(1)</a></li>
+<li><a href="#134-gas-station">[134] Gas Station</a></li>
+<li><a href="#135-candy">[135] Candy</a></li>
+<li><a href="#167-two-sum-ii-input-array-is-sorted">[167] Two Sum II - Input Array Is Sorted</a></li>
+<li><a href="#36-valid-sudoku">[36] Valid Sudoku</a></li>
+<li><a href="#289-game-of-life">[289] Game of Life</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/openharmony-share-app-file/">
+              <h3 class="post-title">
+                OpenHarmony中的应用文件分享机制
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

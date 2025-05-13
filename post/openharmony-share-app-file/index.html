@@ -1,0 +1,472 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpenHarmony中的应用文件分享机制 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="OpenHarmony中的应用文件分享机制 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              OpenHarmony中的应用文件分享机制
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-03-10
+              </span>
+              <span>
+                10 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/openharmony-share-app-file.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>应用文件分享是应用之间通过分享URI（Uniform Resource Identifier）或文件描述符FD（File Descriptor）的方式，进行文件共享的过程。由于FD分享的文件关闭FD后，无法再打开分享文件，因此不推荐使用，本文重点介绍URI分享方式。</p>
+<!-- more -->
+<h2 id="应用可分享目录">应用可分享目录</h2>
+<h3 id="从沙箱说起">从沙箱说起</h3>
+<p>应用沙箱是一种以安全防护为目的的隔离机制，避免数据受到恶意路径穿越访问。在这种沙箱的保护机制下，应用可见的目录范围即为“应用沙箱目录”。</p>
+<ul>
+<li>对于每个应用，系统会在内部存储空间映射出一个专属的“应用沙箱目录”，它是“应用文件目录”与一部分系统文件（应用运行必需的少量系统文件）所在的目录组成的集合。</li>
+<li>应用沙箱限制了应用可见的数据的最小范围。在“应用沙箱目录”中，应用仅能看到自己的应用文件以及少量的系统文件（应用运行必需的少量系统文件）。因此，本应用的文件也不为其他应用可见，从而保护了应用文件的安全。</li>
+<li>应用可以在“应用文件目录”下保存和处理自己的应用文件；系统文件及其目录对于应用是只读的；而应用若需访问用户文件，则需要通过特定API同时经过用户的相应授权才能进行。</li>
+</ul>
+<p>下图展示了应用沙箱下，应用可访问的文件范围和方式。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1710049042983.png" alt="" loading="lazy"></figure>
+<p>如前文所述，“应用沙箱目录”内分为两类：<strong>应用文件目录</strong>和<strong>系统文件目录</strong>。</p>
+<p>系统文件目录对应用的可见范围由OpenHarmony系统预置，开发者无需关注。</p>
+<p>在此主要介绍应用文件目录，如下图所示。应用文件目录下某个文件或某个具体目录的路径称为应用文件路径。应用文件目录下的各个文件路径，具备不同的属性和特征。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1710049148238.png" alt="" loading="lazy"></figure>
+<h3 id="可分享目录">可分享目录</h3>
+<p>基于以上背景，应用可分享的目录如下。</p>
+<table>
+<thead>
+<tr>
+<th>沙箱路径</th>
+<th>物理路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/data/storage/el1/base</td>
+<td>/data/app/el1/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el1级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/base</td>
+<td>/data/app/el2/&lt;currentUserId&gt;/base/&lt;PackageName&gt;</td>
+<td>应用el2级别加密数据目录</td>
+</tr>
+<tr>
+<td>/data/storage/el2/distributedfiles</td>
+<td>/mnt/hmdfs/&lt;currentUserId&gt;/account/device_view/<br>&lt;networkId&gt;/data/&lt;PackageName&gt;</td>
+<td>应用el2加密级别有帐号分布式数据融合目录</td>
+</tr>
+</tbody>
+</table>
+<h2 id="文件uri规范">文件URI规范</h2>
+<p>文件URI的格式为：<br>
+格式为file://&lt;bundleName&gt;/&lt;path&gt;</p>
+<ul>
+<li>file：文件URI的标志。</li>
+<li>bundleName：该文件资源的属主。</li>
+<li>path：文件资源在应用沙箱中的路径。</li>
+</ul>
+<h2 id="分享文件给其他应用">分享文件给其他应用</h2>
+<h3 id="获取文件路径">获取文件路径</h3>
+<p>在分享文件给其他应用前，开发者需要先获取应用文件路径。</p>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>filesDir</td>
+<td>&lt;路径前缀&gt;/&lt;加密等级&gt;/base/files</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<pre><code class="language-typescript">import UIAbility from '@ohos.app.ability.UIAbility';
+import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件的沙箱路径
+    let pathInSandbox = this.context.filesDir + &quot;/test.txt&quot;;
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(pathInSandbox);
+    // 获取的uri为&quot;file://com.example.demo/data/storage/el2/base/files/test.txt&quot;
+  }
+}
+</code></pre>
+<p>具体来说，先通过应用上下文<code>Context</code>获取文件在沙箱中的路径，然后再通过该路径生成对应的的URI</p>
+<h3 id="设置获取文件的权限以及选择要分享的应用">设置获取文件的权限以及选择要分享的应用</h3>
+<blockquote>
+<p>在OpenHarmony中，Ability是应用所具备能力的抽象，也是应用程序的重要组成部分。Ability是系统调度应用的最小单元，是能够完成一个独立功能的组件，一个应用可以包含一个或多个Ability。 类似Android中的Application和Activity的融合。</p>
+</blockquote>
+<p>分享文件给其他应用需要使用<code>startAbility()</code>接口，将获取到的URI填充在<code>want</code>的参数<code>uri</code>中，标注URI的文件类型，<code>type</code>字段可参考<a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/#%E5%B1%9E%E6%80%A7"><code>Want</code>属性</a>，并通过设置<code>want</code>的<code>flag</code>来设置对应的读写权限，<code>action</code>字段配置为<code>ohos.want.action.sendData</code>表示进行应用文件分享，开发示例如下。</p>
+<pre><code class="language-typescript">import fileuri from '@ohos.file.fileuri';
+import window from '@ohos.window';
+import wantConstant from '@ohos.app.ability.wantConstant';
+import UIAbility from '@ohos.app.ability.UIAbility';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+export default class EntryAbility extends UIAbility {
+  onWindowStageCreate(windowStage: window.WindowStage) {
+    // 获取文件沙箱路径
+    let filePath = this.context.filesDir + '/test.txt';
+    // 将沙箱路径转换为uri
+    let uri = fileuri.getUriFromPath(filePath);
+    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+      .then(() =&gt; {
+        console.info('Invoke getCurrentBundleStats succeeded.');
+      })
+      .catch((err: BusinessError) =&gt; {
+        console.error(`Invoke startAbility failed, code is ${err.code}, message is ${err.message}`);
+      });
+  }
+  // ...
+}
+</code></pre>
+<h2 id="使用其他应用分享的文件">使用其他应用分享的文件</h2>
+<h3 id="配置modulejson5配置文件">配置module.json5配置文件</h3>
+<blockquote>
+<p>module.json5主要包含以下内容：</p>
+<ul>
+<li>Module的基本配置信息，例如Module名称、类型、描述、支持的设备类型等基本信息。</li>
+<li>应用组件信息，包含UIAbility组件和ExtensionAbility组件的描述信息。</li>
+<li>应用运行过程中所需的权限信息</li>
+</ul>
+</blockquote>
+<p>被分享应用需要在module.json5配置文件的<code>actions</code>标签的值配置为<code>ohos.want.action.sendData</code>，表示接收应用分享文件，配置<code>uris</code>字段，表示接收URI的类型，即只接收其他应用分享该类型的URI，如下表示本应用只接收<code>scheme</code>为<code>file</code>，类型为<code>txt</code>的文件，示例如下。</p>
+<pre><code class="language-json">{
+  &quot;module&quot;: {
+    ...
+    &quot;abilities&quot;: [
+      {
+        ...
+        &quot;skills&quot;: [
+          {
+            ...
+            &quot;actions&quot;: [
+              &quot;ohos.want.action.sendData&quot;
+            ],
+            &quot;uris&quot;: [
+              {
+                &quot;scheme&quot;: &quot;file&quot;,
+                &quot;type&quot;: &quot;text/plain&quot;
+              }
+           ]
+          }
+        ]
+      }
+    ]
+  }
+}
+</code></pre>
+<h3 id="want匹配">Want匹配</h3>
+<p>前面展示的代码中有这么一段未解释完全的地方：</p>
+<pre><code class="language-typescript">    let want: Want  = {
+      // 配置被分享文件的读写权限，例如对被分享应用进行读写授权
+      flags: wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION,
+      // 配置分享应用的隐式拉起规则
+      action: 'ohos.want.action.sendData',
+      uri: uri,
+      type: 'text/plain'
+    }
+    this.context.startAbility(want)
+    // balabala
+</code></pre>
+<p><code>flag</code>配置读写权限都能理解，那么“隐式拉起规则”是个什么东西？</p>
+<p>我们可以注意到，<code>startAbility</code>接口似乎并没有指定要拉起哪个Ability，这个示例中所有的参数都在<code>want</code>里面，那么很明显，<code>startAbility</code>就是靠这个<code>want</code>参数去匹配Ability的。</p>
+<p>在启动目标应用组件时，会通过<strong>显式Want</strong>或者<strong>隐式Want</strong>进行目标应用组件的匹配，这里说的匹配规则就是调用方传入的want参数中设置的参数如何与目标应用组件声明的配置文件进行匹配。</p>
+<p>显式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1710053916471.png" alt="" loading="lazy"></figure>
+<p>隐式Want匹配原理如下表所示。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1710054171962.png" alt="" loading="lazy"></figure>
+<p>简单来说，<code>abilityName</code>是否留空决定了是采用显式匹配还是隐式匹配。<br>
+从隐式<code>Want</code>的定义，可得知：</p>
+<ul>
+<li>调用方传入的<code>want</code>参数，表明调用方需要执行的操作，并提供相关数据以及其他应用类型限制。</li>
+<li>待匹配应用组件的<code>skills</code>配置，声明其具备的能力（<code>module.json5</code>配置文件中的<code>skills</code>标签参数）。</li>
+</ul>
+<p>系统将调用方传入的<code>want</code>参数（包含<code>action</code>、<code>entities</code>、<code>uri</code>和<code>type</code>属性）与已安装待匹配应用组件的<code>skills</code>配置（包含<code>actions</code>、<code>entities</code>、<code>uris</code>和<code>type</code>属性）依次进行匹配。当四个属性匹配均通过，则此应用才会<strong>被应用选择器展示给用户进行选择</strong>。</p>
+<p>因此，在上面的例子中，被分享应用在<code>module.json5</code>配置文件的<code>skills</code>标签填入了与分享方填入的<code>want</code>参数相匹配的值，就能通过隐式匹配的方式成功被<code>startAbility</code>匹配上。</p>
+<h3 id="被分享方获取信息">被分享方获取信息</h3>
+<p>被分享方的UIAbility被启动后，可以在其<code>onCreate()</code>或者<code>onNewWant()</code>回调中获取传入的Want参数信息。</p>
+<blockquote>
+<p><code>onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void;</code><br>
+UIAbility实例处于完全关闭状态下被创建完成后进入该生命周期回调，执行初始化业务逻辑操作。即UIAbility实例冷启动时进入该生命周期回调。</p>
+</blockquote>
+<p>通过接口want的参数获取分享文件的URI，获取文件URI后通过fs.open()接口打开文件，获取对应的file对象后，可对文件进行读写操作。</p>
+<pre><code class="language-typescript">// xxx.ets
+import fs from '@ohos.file.fs';
+import Want from '@ohos.app.ability.Want';
+import { BusinessError } from '@ohos.base';
+
+function getShareFile() {
+  try {
+    let want: Want = ...; // 获取分享方传递过来的want信息
+
+    // 从want信息中获取uri字段
+    let uri = want.uri;
+    if (uri == null || uri == undefined) {
+      console.info('uri is invalid');
+      return;
+    }
+    try {
+      // 根据需要对被分享文件的URI进行相应操作。例如读写的方式打开URI获取file对象
+      let file = fs.openSync(uri, fs.OpenMode.READ_WRITE);
+      console.info('open file successfully!');
+    } catch (err) {
+      let error: BusinessError = err as BusinessError;
+      console.error(`Invoke openSync failed, code is ${error.code}, message is ${error.message}`);
+    }
+  } catch (error) {
+    let err: BusinessError = error as BusinessError;
+    console.error(`Invoke openSync failed, code is ${err.code}, message is ${err.message}`);
+  }
+}
+</code></pre>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://gitee.com/openharmony/filemanagement_app_file_service/tree/master">filemanagement_app_file_service</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/share-app-file.md/">应用文件分享</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/file-management/app-sandbox-directory.md/">应用沙箱目录</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/application-context-stage.md/#%E8%8E%B7%E5%8F%96%E5%BA%94%E7%94%A8%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84">获取应用文件路径</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-want.md/">Want</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-inner-application-uiAbilityContext.md/#uiabilitycontextstartability-3">startAbility</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/quick-start/module-configuration-file.md/">module.json5配置文件</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/application-models/explicit-implicit-want-mappings.md/">显式Want与隐式Want匹配规则</a></li>
+<li><a href="http://test.openharmony.cn:7780/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-uiAbility.md/#uiabilityoncreate">onCreate</a></li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%BA%94%E7%94%A8%E5%8F%AF%E5%88%86%E4%BA%AB%E7%9B%AE%E5%BD%95">应用可分享目录</a>
+<ul>
+<li><a href="#%E4%BB%8E%E6%B2%99%E7%AE%B1%E8%AF%B4%E8%B5%B7">从沙箱说起</a></li>
+<li><a href="#%E5%8F%AF%E5%88%86%E4%BA%AB%E7%9B%AE%E5%BD%95">可分享目录</a></li>
+</ul>
+</li>
+<li><a href="#%E6%96%87%E4%BB%B6uri%E8%A7%84%E8%8C%83">文件URI规范</a></li>
+<li><a href="#%E5%88%86%E4%BA%AB%E6%96%87%E4%BB%B6%E7%BB%99%E5%85%B6%E4%BB%96%E5%BA%94%E7%94%A8">分享文件给其他应用</a>
+<ul>
+<li><a href="#%E8%8E%B7%E5%8F%96%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84">获取文件路径</a></li>
+<li><a href="#%E8%AE%BE%E7%BD%AE%E8%8E%B7%E5%8F%96%E6%96%87%E4%BB%B6%E7%9A%84%E6%9D%83%E9%99%90%E4%BB%A5%E5%8F%8A%E9%80%89%E6%8B%A9%E8%A6%81%E5%88%86%E4%BA%AB%E7%9A%84%E5%BA%94%E7%94%A8">设置获取文件的权限以及选择要分享的应用</a></li>
+</ul>
+</li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E5%85%B6%E4%BB%96%E5%BA%94%E7%94%A8%E5%88%86%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6">使用其他应用分享的文件</a>
+<ul>
+<li><a href="#%E9%85%8D%E7%BD%AEmodulejson5%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6">配置module.json5配置文件</a></li>
+<li><a href="#want%E5%8C%B9%E9%85%8D">Want匹配</a></li>
+<li><a href="#%E8%A2%AB%E5%88%86%E4%BA%AB%E6%96%B9%E8%8E%B7%E5%8F%96%E4%BF%A1%E6%81%AF">被分享方获取信息</a></li>
+</ul>
+</li>
+<li><a href="#reference">Reference</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/development-standards/">
+              <h3 class="post-title">
+                个人心得：Git使用与开发规范
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,300 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>个人心得：Git使用与开发规范 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="个人心得：Git使用与开发规范 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。
+
+前言
+强烈建议先通过交互式教程 learn git branching 了解Git对于操纵修改提交历史的各种进阶操作。
+提交规..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              个人心得：Git使用与开发规范
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-12-03
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/development-standards.svg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>长时间开发，已经慢慢积累出了自己的一套开发规范，在此做下记录，同时也为读者提供一个参考。此文档可能会持续更新。</p>
+<!-- more -->
+<h2 id="前言">前言</h2>
+<p><strong>强烈建议</strong>先通过交互式教程 <a href="https://learngitbranching.js.org/?locale=zh_CN">learn git branching</a> 了解Git对于操纵修改提交历史的各种进阶操作。</p>
+<h2 id="提交规范">提交规范</h2>
+<p>参考 <a href="https://www.conventionalcommits.org/zh-hans/v1.0.0/">约定式提交</a> 。</p>
+<h2 id="基本工作流">基本工作流</h2>
+<h3 id="大型项目">大型项目</h3>
+<p>请参照 <a href="https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow">Gitflow</a> 。</p>
+<h3 id="小型项目">小型项目</h3>
+<p>分支命名同 <a href="#%E5%A4%A7%E5%9E%8B%E9%A1%B9%E7%9B%AE">大型项目</a> 。和大型项目唯一的区别是去掉了<code>develop</code>分支，即<code>feature</code>等分支可直接合入到<code>main</code>分支。</p>
+<h3 id="代码审核">代码审核</h3>
+<p>多人合作，无论项目大小，禁止直接将其他分支合入到<code>main</code>分支。必须在仓库对应平台（如Github）上发起分支合并的PR，并指定小组其他剩余成员review，code review通过才可合入。</p>
+<h2 id="保持提交历史干净">保持提交历史干净</h2>
+<h3 id="借助git-stash拉取最新更改">借助git stash拉取最新更改</h3>
+<blockquote>
+<p>你正在a分支上进行工作，做了一些更改并还没有提交。此时你发现a分支上有一个别人上传的新提交，你想把新提交拉下来，基于此继续开发，但同时你本地的工作又还没有做完，你不想直接丢掉本地的更改。</p>
+</blockquote>
+<p>参考以下命令：</p>
+<pre><code class="language-shell">git stash
+git pull
+git stash pop
+</code></pre>
+<p><code>git stash</code>可以把你当前的工作区暂存，然后<code>git pull</code>拉取远程提交，<code>git stash pop</code>再恢复工作区。通俗点就是用草稿纸记一下你的当前状态，然后再从草稿纸恢复过来。</p>
+<p>另一种应用场景是你正在你的分支上做开发，突然你的队友让你去其他分支帮忙看下bug，此时也可以使用<code>git stash</code>暂存一下，看完bug，回到自己的分支，再<code>git stash pop</code>。</p>
+<h3 id="merge还是rebase"><code>merge</code>还是<code>rebase</code></h3>
+<p>分支合入的方式选择<code>merge</code>还是<code>rebase</code>是一个有争议的话题。一般来说，<code>rebase</code>能尽量保持提交历史的干净，而<code>merge</code>能不破坏原有的提交记录。本人更偏向于<code>rebase</code>，因为干净的提交历史非常易于整理和阅读，而<code>rebase</code>能实现这一点。</p>
+<p>基于此，以下讨论开发中<code>rebase</code>的使用。</p>
+<h3 id="使用rebase获取main分支的最新更改">使用<code>rebase</code>获取<code>main</code>分支的最新更改</h3>
+<blockquote>
+<p>你在<code>main</code>分支的<code>M1</code>提交上创建了一个<code>feature</code>分支，并在<code>feature</code>分支上新增了一个提交<code>F1</code>。此时你发现<code>main</code>分支上有了别人上传的一个新提交<code>M2</code>，于是你想把<code>M2</code>的内容拉到你的<code>feature</code>分支上，使你可以在最新的<code>main</code>分支修改上继续做你<code>feature</code>分支的开发。</p>
+</blockquote>
+<p>习惯使用<code>merge</code>而不是<code>rebase</code>的人可能会选择直接把<code>main</code>分支<code>merge</code>到你的<code>feature</code>分支上，但个人不建议这样，因为这可能会让提交历史看起来很怪异（可能导致历史提交记录各种相互交织，看起来异常复杂）。<strong>笔者看来</strong>，良好的提交历史里面应该只有其他分支向<code>main</code>分支方向的<code>merge</code>，而不存在<code>main</code>分支向其他分支方向的<code>merge</code>。也就是，<code>merge</code>应该是单向的。</p>
+<p>一种方式是可以使用<code>cherry-pick</code>，读者可以自行搜索。但这里想要介绍的是<code>rebase</code>的方式。在以上场景下，请把你的<code>feature</code>分支在本地<code>rebase</code>到<code>main</code>分支上（可能需要处理冲突），然后在本地，你的<code>feature</code>分支就从基于<code>M1</code>变成了基于<code>M2</code>，也就是<code>M1&lt;-M2(main)&lt;-F1(feature)</code>这种样子，整个提交历史变成了一条线性，看起来美观许多。</p>
+<p>本地<code>rebase</code>以后，需要将你的本地<code>feature</code>分支force push（<code>--force</code>参数）到远程仓库，这是因为你本地的<code>feature</code>分支已经和你远程的<code>feature</code>分支所在位置不一样了，<strong>需要将本地的<code>rebase</code>也强行推送到远程，这点很重要</strong>。</p>
+<h3 id="在提交pr合并前先rebase">在提交PR/合并前先<code>rebase</code></h3>
+<p>请在你提交PR前（也就是想合并分支前）先把你的个人分支<code>rebase</code>到<code>main</code>分支之上（记得force push），然后再发起PR。这样做的好处有二：</p>
+<ul>
+<li>干净的历史记录。这样做以后，你的第一个修改是接在<code>main</code>分支的最后一个修改后面的，整个提交历史是线性的，没有分叉和交汇，非常干净，易于阅读（特别是对于reviewer）与日后维护。</li>
+<li>无需要再处理的冲突。在你<code>rebase</code>的过程当中，你已经完成了你与<code>main</code>分支的实际代码合并（也就是<a href="#%E4%BD%BF%E7%94%A8rebase%E8%8E%B7%E5%8F%96main%E5%88%86%E6%94%AF%E7%9A%84%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9">上一节</a>提到的，你已经通过<code>rebase</code>获取到了<code>main</code>分支的所有最新修改），同时完成了对于代码冲突的解决。你的reviewer也会知道，你发起的这个PR已经考虑到了所有<code>main</code>分支最新的修改。之后在合并时，由于提交历史已经是线性的，<code>main</code>分支会直接<code>fast-forward</code>到你的<code>feature</code>分支的最新提交上，<s>非常优雅</s>。</li>
+</ul>
+<h3 id="潜在的风险">潜在的风险</h3>
+<p>请确保你要force push的这条分支只有你一个人在开发，没有其他人在上面，否则你的行为可能会让其他人在下次拉取提交时很困扰（直接<code>pull</code>的话会出现很混乱的提交合并，后果很严重！）。因此如果这条分支还有其他人，请务必先做好协商。</p>
+<h2 id="其他习惯技巧">其他习惯/技巧</h2>
+<h3 id="开始工作结束工作-的第一件事git-fetch">开始工作/结束工作 的第一件事：<code>git fetch</code></h3>
+<p>请不要直接无脑<code>git pull</code>，否则可能会产生一些比较严重的后果，例如当别人可能已经通过rebase+force push或者其他方式更改了远程的提交历史/分支结构。</p>
+<p>良好的习惯是先<code>git fetch</code>，获取远程的最新更改，检查一下远程状态，检阅一下别人的最新工作，再决定要做什么操作。</p>
+<p>例如，当你发现你所在的某条分支竟然已经被某个不守规矩的人rebase并force push了，此时你要做的应该是先把你本地的这条分支删除，然后重新去把远程的这条分支拉下来。</p>
+<p>结束工作（commit）前也是如此。请先确认好该分支没有别人上传的新提交再commit。如果有新提交，请参考前面介绍的<a href="#%E5%80%9F%E5%8A%A9git-stash%E6%8B%89%E5%8F%96%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9"><code>git stash</code></a>，把远程的更新拉过来再进行自己的提交，保证自己的commit在远程的这个新提交之后，而不是出现奇怪的分叉。</p>
+<blockquote>
+<p>如果你已经commit了，问题也不大，你可以通过<code>git pull --rebase</code>，把你的commit置于拉取到的远程提交之后。</p>
+</blockquote>
+<h2 id="工具推荐">工具推荐</h2>
+<ul>
+<li><strong>强烈建议</strong>使用可视化工具<strong>查看</strong>本地/远程提交历史以及具体更改，例如vscode插件 <a href="https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph">git graph</a> 。</li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%89%8D%E8%A8%80">前言</a></li>
+<li><a href="#%E6%8F%90%E4%BA%A4%E8%A7%84%E8%8C%83">提交规范</a></li>
+<li><a href="#%E5%9F%BA%E6%9C%AC%E5%B7%A5%E4%BD%9C%E6%B5%81">基本工作流</a>
+<ul>
+<li><a href="#%E5%A4%A7%E5%9E%8B%E9%A1%B9%E7%9B%AE">大型项目</a></li>
+<li><a href="#%E5%B0%8F%E5%9E%8B%E9%A1%B9%E7%9B%AE">小型项目</a></li>
+<li><a href="#%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%A0%B8">代码审核</a></li>
+</ul>
+</li>
+<li><a href="#%E4%BF%9D%E6%8C%81%E6%8F%90%E4%BA%A4%E5%8E%86%E5%8F%B2%E5%B9%B2%E5%87%80">保持提交历史干净</a>
+<ul>
+<li><a href="#%E5%80%9F%E5%8A%A9git-stash%E6%8B%89%E5%8F%96%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9">借助git stash拉取最新更改</a></li>
+<li><a href="#merge%E8%BF%98%E6%98%AFrebase"><code>merge</code>还是<code>rebase</code></a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8rebase%E8%8E%B7%E5%8F%96main%E5%88%86%E6%94%AF%E7%9A%84%E6%9C%80%E6%96%B0%E6%9B%B4%E6%94%B9">使用<code>rebase</code>获取<code>main</code>分支的最新更改</a></li>
+<li><a href="#%E5%9C%A8%E6%8F%90%E4%BA%A4pr%E5%90%88%E5%B9%B6%E5%89%8D%E5%85%88rebase">在提交PR/合并前先<code>rebase</code></a></li>
+<li><a href="#%E6%BD%9C%E5%9C%A8%E7%9A%84%E9%A3%8E%E9%99%A9">潜在的风险</a></li>
+</ul>
+</li>
+<li><a href="#%E5%85%B6%E4%BB%96%E4%B9%A0%E6%83%AF%E6%8A%80%E5%B7%A7">其他习惯/技巧</a>
+<ul>
+<li><a href="#%E5%BC%80%E5%A7%8B%E5%B7%A5%E4%BD%9C%E7%BB%93%E6%9D%9F%E5%B7%A5%E4%BD%9C-%E7%9A%84%E7%AC%AC%E4%B8%80%E4%BB%B6%E4%BA%8Bgit-fetch">开始工作/结束工作 的第一件事：<code>git fetch</code></a></li>
+</ul>
+</li>
+<li><a href="#%E5%B7%A5%E5%85%B7%E6%8E%A8%E8%8D%90">工具推荐</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/ssh-remoteforward/">
+              <h3 class="post-title">
+                使用ssh端口转发让远程服务器访问本地代理
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

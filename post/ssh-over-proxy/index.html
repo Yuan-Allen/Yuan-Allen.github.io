@@ -1,0 +1,351 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Using Proxy for SSH | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Using Proxy for SSH | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="如果我们直接使用ssh连接国外的服务器，会被GFW检测出，出现干扰、丢包等问题。因此使用proxy进行ssh连接变得很有必要。
+
+背景
+最近在使用Utah的Cloudlab，由于提供的服务器部署在美国，在使用ssh连接时会经常断掉，甚至长时..." />
+    <meta name="keywords" content="Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Using Proxy for SSH
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-03-01
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/ssh-over-proxy.jpg" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>如果我们直接使用ssh连接国外的服务器，会被GFW检测出，出现干扰、丢包等问题。因此使用proxy进行ssh连接变得很有必要。</p>
+<!-- more -->
+<h2 id="背景">背景</h2>
+<p>最近在使用<a href="https://www.utah.edu/">Utah</a>的<a href="https://www.cloudlab.us/">Cloudlab</a>，由于提供的服务器部署在美国，在使用ssh连接时会经常断掉，甚至长时间连接不上，对工作形成了很大的干扰，于是萌生了让ssh走proxy的想法。</p>
+<h2 id="环境">环境</h2>
+<ul>
+<li>系统：macOS 13.2.1 (22D68)</li>
+<li>ssh version: OpenSSH_9.0p1, LibreSSL 3.3.6</li>
+<li>使用的proxy方案：ClashX (Version 1.96.2) &amp; 机场</li>
+</ul>
+<h2 id="做法">做法</h2>
+<h3 id="命令">命令</h3>
+<p>查询资料，得到使用代理的ssh命令如下：</p>
+<pre><code class="language-shell">ssh -o ProxyCommand=&quot;nc -X 5 -x 127.0.0.1:7890 %h %p&quot; user@server
+</code></pre>
+<h3 id="参数解释">参数解释</h3>
+<h4 id="翻看文档">翻看文档</h4>
+<blockquote>
+<p>太长不看可以跳到<a href="#%E6%80%BB%E7%BB%93">参数总结</a></p>
+</blockquote>
+<p><code>man ssh</code>，我们可以得到相关参数信息：</p>
+<pre><code>-o option
+             Can be used to give options in the format used in the
+             configuration file.  This is useful for specifying options for
+             which there is no separate command-line flag.  For full details
+             of the options listed below, and their possible values, see
+             ssh_config(5).
+</code></pre>
+<p><code>man ssh_config</code>，得到：</p>
+<pre><code>ProxyCommand
+             Specifies the command to use to connect to the server.  The
+             command string extends to the end of the line, and is executed
+             using the user's shell ‘exec’ directive to avoid a lingering
+             shell process.
+
+             Arguments to ProxyCommand accept the tokens described in the
+             TOKENS section.  The command can be basically anything, and
+             should read from its standard input and write to its standard
+             output.  It should eventually connect an sshd(8) server running
+             on some machine, or execute sshd -i somewhere.  Host key
+             management will be done using the Hostname of the host being
+             connected (defaulting to the name typed by the user).  Setting
+             the command to none disables this option entirely.  Note that
+             CheckHostIP is not available for connects with a proxy command.
+
+             This directive is useful in conjunction with nc(1) and its proxy
+             support.  For example, the following directive would connect via
+             an HTTP proxy at 192.0.2.0:
+
+                ProxyCommand /usr/bin/nc -X connect -x 192.0.2.0:8080 %h %p
+</code></pre>
+<p><code>man nc</code>：</p>
+<pre><code>-X proxy_version
+             Requests that nc should use the specified protocol when talking
+             to the proxy server.  Supported protocols are “4” (SOCKS v.4),
+             “5” (SOCKS v.5) and “connect” (HTTPS proxy).  If the protocol is
+             not specified, SOCKS version 5 is used.
+
+-x proxy_address[:port]
+             Requests that nc should connect to hostname using a proxy at
+             proxy_address and port.  If port is not specified, the well-known
+             port for the proxy protocol is used (1080 for SOCKS, 3128 for
+             HTTPS).
+</code></pre>
+<h4 id="总结">总结：</h4>
+<ul>
+<li><code>-o</code>参数用于提供配置选项。</li>
+<li><code>ProxyCommand</code>指定用于连接Server的命令。</li>
+<li><code>nc</code>是一个可以用来在网络上读写数据的命令行工具。
+<ul>
+<li><code>-X</code>指定与proxy使用的protocol，4代表SOCKS V.4，5代表SOCKS v.5，connect代表使用HTTPS proxy。实际上，该参数的默认值是5。</li>
+<li><code>-x</code>指定proxy的addr与port。</li>
+</ul>
+</li>
+</ul>
+<p>由于使用的是ClashX，默认的混合代理端口为7890。在使用时，请根据你的实际情况填写代理端口。</p>
+<h2 id="这就结束了">这就结束了？</h2>
+<p>如果你在Google搜索“如何让ssh走代理”，那么教程多半在你得到<a href="#%E5%91%BD%E4%BB%A4">这条命令</a>后就结束了。于是你兴冲冲的去terminal尝试，结果被现实狠狠打脸：</p>
+<pre><code>kex_exchange_identification: Connection closed by remote host
+Connection closed by UNKNOWN port 65535
+</code></pre>
+<p>可是你已经在网上找了各种“如何让ssh走代理”的教程，你发现得到的内容与上面的命令都别无二致。那么究竟是哪里出错了？</p>
+<h3 id="回到端口">回到端口</h3>
+<p>由于<a href="https://www.ssh.com/academy/ssh/port">历史原因</a>，ssh的默认端口为22。如果你使用的是机场代理，那么很有可能是机场由于自身原因关闭了22端口。<br>
+网上关于上述报错的场景多在于访问Github仓库失败，<a href="https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port">解决方案为改为使用443端口访问ssh.github.com</a>。如果你想访问的就是Github，那么这或许能解决你的问题。<br>
+但很遗憾，我访问的不是Github，并不能直接用443端口去ssh连接远程的服务器。所以我们还有一个方法：修改远程服务器的ssh端口。</p>
+<h3 id="修改ssh端口">修改ssh端口</h3>
+<p>进入服务器，打开<code>/etc/ssh/sshd_config</code>，找到</p>
+<pre><code>#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+</code></pre>
+<p>这里<code>Port 22</code>被注释掉，因为原本22就是默认端口。将这里修改为</p>
+<pre><code>Port 22
+Port 10022
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+</code></pre>
+<p>这里10022仅做示例，你可以修改为你想要设置的其他端口，但是请注意端口不要冲突。22端口同样打开，这样你可以同时在这两个端口中选择使用进行ssh连接。<br>
+重启ssh服务：</p>
+<pre><code class="language-shell">sudo systemctl restart sshd
+</code></pre>
+<p>现在我们将<a href="#%E5%91%BD%E4%BB%A4">命令</a>修改成如下</p>
+<pre><code>ssh -o ProxyCommand=&quot;nc -X 5 -x 127.0.0.1:7890 %h %p&quot; user@server -p 10022
+</code></pre>
+<p>指定了10022端口，发现连接成功！</p>
+<h3 id="vs-code">VS code</h3>
+<p>如果你使用的是<a href="https://code.visualstudio.com/">VS code</a>，你可以在<code>~/.ssh/config</code>中作如下配置：</p>
+<pre><code>Host server
+  HostName server
+  User user
+  Port 10022
+  ProxyCommand nc -X 5 -x 127.0.0.1:7890 %h %p
+</code></pre>
+<p>注意这里<code>Port</code>与<code>ProxyCommand</code>的设置。</p>
+<h2 id="总结-2">总结</h2>
+<p>由于需要连接到国外的服务器，为了ssh连接的稳定性，我们想到使用代理来协助ssh连接。根据查找资料，我们得到了让ssh使用本机ClashX代理的命令。但是代理提供商可能会把22端口封掉，导致连接失败。此时我们可以修改服务器的ssh端口，然后重新用新的端口进行连接。如果使用VS code进行远程连接，也可以修改<code>.ssh</code>目录下的config文件从而不用反复输入命令。</p>
+<p>Done!</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E8%83%8C%E6%99%AF">背景</a></li>
+<li><a href="#%E7%8E%AF%E5%A2%83">环境</a></li>
+<li><a href="#%E5%81%9A%E6%B3%95">做法</a>
+<ul>
+<li><a href="#%E5%91%BD%E4%BB%A4">命令</a></li>
+<li><a href="#%E5%8F%82%E6%95%B0%E8%A7%A3%E9%87%8A">参数解释</a>
+<ul>
+<li><a href="#%E7%BF%BB%E7%9C%8B%E6%96%87%E6%A1%A3">翻看文档</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结：</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E8%BF%99%E5%B0%B1%E7%BB%93%E6%9D%9F%E4%BA%86">这就结束了？</a>
+<ul>
+<li><a href="#%E5%9B%9E%E5%88%B0%E7%AB%AF%E5%8F%A3">回到端口</a></li>
+<li><a href="#%E4%BF%AE%E6%94%B9ssh%E7%AB%AF%E5%8F%A3">修改ssh端口</a></li>
+<li><a href="#vs-code">VS code</a></li>
+</ul>
+</li>
+<li><a href="#%E6%80%BB%E7%BB%93-2">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

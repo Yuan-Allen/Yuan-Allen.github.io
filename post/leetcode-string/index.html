@@ -1,0 +1,807 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（字符串篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（字符串篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（字符串篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[344] Reverse String
+
+难度：Easy
+语言：C++
+
+题目描述。
+左右指针往中间靠拢即可，无难度。
+  void r..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（字符串篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-09
+              </span>
+              <span>
+                16 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（字符串篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="344-reverse-string">[344] Reverse String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-string/description/">题目描述</a>。<br>
+左右指针往中间靠拢即可，无难度。</p>
+<pre><code class="language-c++">  void reverseString(vector&lt;char&gt;&amp; s) {
+    char tmp;
+
+    for (int left = 0, right = s.size() - 1; left &lt; right; left++, right--) {
+      tmp = s[left];
+      s[left] = s[right];
+      s[right] = tmp;
+    }
+  }
+</code></pre>
+<h2 id="541-reverse-string-ii">[541] Reverse String II</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-string-ii/description/">题目描述</a>。<br>
+按照题目要求反转字符串即可，基本无难度。</p>
+<pre><code class="language-python">    def reverseStr(self, s: str, k: int) -&gt; str:
+        s = list(s)
+        cur = 0
+        size = len(s)
+        while cur &lt; size:
+            left = cur
+            right = min(left + k - 1, size - 1)
+            while left &lt; right:
+                tmp = s[left]
+                s[left] = s[right]
+                s[right] = tmp
+                left += 1
+                right -= 1
+            cur += 2 * k
+        return &quot;&quot;.join(s)
+</code></pre>
+<h2 id="151-reverse-words-in-a-string">[151] Reverse Words in a String</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-words-in-a-string/description/">题目描述</a>。<br>
+最简单的方法是先分好词，然后翻转然后拼起来即可。但为了增加挑战性，我们希望能只用<code>O(1)</code>的额外空间，即in-place地解决问题。<br>
+那么如何in-place修改呢？我们可以考虑翻转两次。第一次翻转整个字符串，第二次再翻转各个单词，如此单词内部顺序正确，整体的单词顺序也被翻转过来了。除此之外，我们还需要先去除多余空格。由此，可得到以下步骤：</p>
+<ol>
+<li>去除多余空格。</li>
+<li>翻转字符串，然后翻转单词。</li>
+</ol>
+<p>对于去除空格，我们使用了快慢指针的方式，即一个快指针在前面扫描，遇到多余的空格就不处理，否则把字符填到慢指针的地方，最后<code>resize</code>一下。<br>
+最后得到的代码如下。</p>
+<pre><code class="language-rust">impl Solution {
+    pub fn reverse(s: &amp;mut Vec&lt;char&gt;, mut begin: usize, mut end: usize) {
+        while begin &lt; end {
+            let temp = s[begin];
+            s[begin] = s[end];
+            s[end] = temp;
+            begin += 1;
+            end -= 1;
+        }
+    }
+    pub fn remove_extra_spaces(s: &amp;mut Vec&lt;char&gt;) {
+        let mut slow: usize = 0;
+        let len = s.len();
+        let mut i: usize = 0;
+        while i &lt; len {
+            if !s[i].is_ascii_whitespace() {
+                if slow != 0 {
+                    s[slow] = ' ';
+                    slow += 1;
+                }
+                while i &lt; len &amp;&amp; !s[i].is_ascii_whitespace() {
+                    s[slow] = s[i];
+                    slow += 1;
+                    i += 1;
+                }
+            }
+            i += 1;
+        }
+        s.resize(slow, ' ');
+    }
+    pub fn reverse_words(s: String) -&gt; String {
+        let mut s = s.chars().collect::&lt;Vec&lt;char&gt;&gt;();
+        Self::remove_extra_spaces(&amp;mut s);
+        let len = s.len();
+        Self::reverse(&amp;mut s, 0, len - 1);
+        let mut start = 0;
+        for i in 0..=len {
+            if i == len || s[i].is_ascii_whitespace() {
+                Self::reverse(&amp;mut s, start, i - 1);
+                start = i + 1;
+            }
+        }
+        s.iter().collect::&lt;String&gt;()
+    }
+}
+</code></pre>
+<h2 id="28-find-the-index-of-the-first-occurrence-in-a-string">[28] Find the Index of the First Occurrence in a String</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/find-the-index-of-the-first-occurrence-in-a-string/description/">题目描述</a>。<br>
+使用了KMP算法。关于KMP算法，具体可以看<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0028.%E5%AE%9E%E7%8E%B0strStr.md">这篇文章</a>。<br>
+简单来说，先构造<code>next</code>表，该表记录了<code>needle</code>从开始到<code>index</code>所处位置的最长公共前后缀的长度。之后在查找时，若<code>needle</code>和<code>haystack</code>当前位置匹配失败，则可根据<code>next</code>表找到<code>needle</code>中和后缀相同的前缀所处的末尾位置，然后再从该位置继续匹配，这样可省去前缀的重复匹配的开销。该算法的时间复杂度为<code>O(m+n)</code>。</p>
+<pre><code class="language-python">class Solution:
+    def getNext(self, needle: str) -&gt; List:
+        j = 0
+        i = 1
+        length = len(needle)
+        next_table = [0] * length
+        while i &lt; length:
+            while j &gt; 0 and needle[i] != needle[j]:
+                j = next_table[j - 1]
+            if needle[i] == needle[j]:
+                j += 1
+            next_table[i] = j
+            i += 1
+        return next_table
+
+    def strStr(self, haystack: str, needle: str) -&gt; int:
+        next_table = self.getNext(needle)
+        j = 0
+        i = 0
+        haystack_length = len(haystack)
+        needle_length = len(needle)
+        while i &lt; haystack_length:
+            while j &gt; 0 and haystack[i] != needle[j]:
+                j = next_table[j - 1]
+            if haystack[i] == needle[j]:
+                j += 1
+                if j == needle_length:
+                    return i - needle_length + 1
+            i += 1
+        return -1
+</code></pre>
+<h2 id="459-repeated-substring-pattern">[459] Repeated Substring Pattern</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/repeated-substring-pattern/description/">题目描述</a>。<br>
+看见题目后先自己写了个简单解法。Naive的想法就是把<code>pattern</code>重复几次到<code>s</code>的长度，然后再看两者是否相等即可。其中又有一些小优化，例如<code>pattern</code>的长度最长只需要到<code>total_length</code>的一半，以及<code>total_length % i == 0</code>才需要继续判断。<br>
+这种方法是可以通过测试的， 但还有更高效的算法。可以使用KMP算法来解决该问题。<br>
+在<a href="#28-find-the-index-of-the-first-occurrence-in-a-string">[28] Find the Index of the First Occurrence in a String</a>中，我们提到了通过构建<code>next</code>表来存储最长公共前后缀的长度，在该题中也一样，先对字符串<code>s</code>构建<code>next</code>表。如果<code>s</code>存在最小重复子串单位，则<code>total_length - common_length</code>就是该最小单位的长度。最后，我们再检查是否<code>total_length % diff == 0</code>即可判断该字符串<code>s</code>是否由重复的子字符串构成。<br>
+更详细的解释可参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0459.%E9%87%8D%E5%A4%8D%E7%9A%84%E5%AD%90%E5%AD%97%E7%AC%A6%E4%B8%B2.md">这篇文章</a>。</p>
+<pre><code class="language-c++">class Solution {
+ public:
+  void getNext(int* next, string s) {
+    int j = 0;
+    int length = s.size();
+    next[0] = j;
+    for (int i = 1; i &lt; length; ++i) {
+      while (j &gt; 0 &amp;&amp; s[i] != s[j]) {
+        j = next[j - 1];
+      }
+      if (s[i] == s[j]) {
+        ++j;
+      }
+      next[i] = j;
+    }
+  }
+
+  bool repeatedSubstringPattern(string s) {
+    int total_length = s.size();
+    vector&lt;int&gt; next(total_length);
+    getNext(&amp;next[0], s);
+    int common_length = next[total_length - 1];
+
+    if (common_length == 0) {
+      return false;
+    }
+
+    int diff = total_length - common_length;
+    if (total_length % diff == 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  bool repeatedSubstringPatternNaive(string s) {
+    string pattern(1, s[0]);
+    int total_length = s.size();
+    int i = 1;
+
+    while (i &lt;= total_length / 2) {
+      if (total_length % i == 0) {
+        int times = total_length / i;
+        string result = pattern;
+        while (times-- &gt; 1) {
+          result += pattern;
+        }
+        if (result == s) {
+          return true;
+        }
+      }
+      pattern += s[i];
+      ++i;
+    }
+
+    return false;
+  }
+};
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>其实本质算法上看，字符串与数组并无区别，只是元素变成了字符而已。</p>
+<ul>
+<li>字符串的一些题涉及到了双指针的方法。其中，双指针又可用于反转字符串。<a href="#151-reverse-words-in-a-string">[151] Reverse Words in a String</a>又在此基础上更进一步，需要把字符串翻转两次，其中第一次翻转整个字符串，第二次仅翻转单词来达到仅翻转所有单词顺序的效果。</li>
+<li>另一部分题用到了KMP算法。KMP算法通过记录了从开始到字符串各个位置子串的最长公共前后缀的长度。通过该记录，可以在查找子串的过程中失败时方便回退到前缀末尾对应的位置，跳过已匹配的部分，降低时间复杂度。<a href="#459-repeated-substring-pattern">[459] Repeated Substring Pattern</a>还通过数学原理判断了是否存在可重复的子串来构成原字符串。具体来说，通过<code>total_length</code>和<code>common_length</code>的差找到了可能的最小重复单位的长度，再通过取模判断原字符串是否是最小单位的倍数。</li>
+</ul>
+<h2 id="补充">补充</h2>
+<h3 id="3-longest-substring-without-repeating-characters">[3] Longest Substring Without Repeating Characters</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">题目描述</a>。<br>
+使用滑动窗口即可。不断尝试移动右指针，若会导致重复则移动左指针使窗口缩小直到右指针指向元素的加入不会导致重复。重复这个过程一直到右指针到达边界，过程中记录窗口最大长度即可。<br>
+相比下<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/solutions/227999/wu-zhong-fu-zi-fu-de-zui-chang-zi-chuan-by-leetc-2/">官方题解</a>优先移动左指针，然后再在不导致重复的前提下不断尝试移动右指针。其本质实际是一样的。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int lengthOfLongestSubstring(string s) {
+        int n = s.size();
+        int maxLength = 0;
+        int slow = 0, fast = 0;
+        unordered_set&lt;char&gt; charSet;
+        while (fast &lt; n) {
+            while (charSet.find(s[fast]) != charSet.end()) {
+                charSet.erase(s[slow++]);
+            }
+            charSet.insert(s[fast]);
+            maxLength = max(maxLength, fast - slow + 1);
+            ++fast;
+        }
+        return maxLength;
+    }
+};
+</code></pre>
+<h3 id="13-roman-to-integer">[13] Roman to Integer</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/roman-to-integer/description/">题目描述</a>。<br>
+用<code>unordered_map</code>存储字符到数字的映射以简化代码。<br>
+根据规则，如果当前字符代表的数字比下一个字符代表的数字小，则减去当前数字而不是加上。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    unordered_map&lt;char, int&gt; hmap = {{'I', 1},   {'V', 5},   {'X', 10},
+                                     {'L', 50},  {'C', 100}, {'D', 500},
+                                     {'M', 1000}};
+
+    int romanToInt(string s) {
+        int n = s.size();
+        int ret = 0;
+        for (int i = 0; i &lt; n; ++i) {
+            int value = hmap[s[i]];
+            if (i + 1 &lt; n &amp;&amp; value &lt; hmap[s[i + 1]]) {
+                ret -= value;
+            } else {
+                ret += value;
+            }
+        }
+        return ret;
+    }
+};
+</code></pre>
+<h3 id="12-integer-to-roman">[12] Integer to Roman</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/integer-to-roman/description/">题目描述</a>。<br>
+直接打表，转换的时候（按照数字从大到小）查表即可。</p>
+<pre><code class="language-c++">const pair&lt;int, string&gt; hmap[] = {
+    {1000, &quot;M&quot;}, {900, &quot;CM&quot;}, {500, &quot;D&quot;}, {400, &quot;CD&quot;}, {100, &quot;C&quot;},
+    {90, &quot;XC&quot;},  {50, &quot;L&quot;},   {40, &quot;XL&quot;}, {10, &quot;X&quot;},   {9, &quot;IX&quot;},
+    {5, &quot;V&quot;},    {4, &quot;IV&quot;},   {1, &quot;I&quot;}};
+class Solution {
+  public:
+    string intToRoman(int num) {
+        string result;
+        for (auto &amp;[value, symbol] : hmap) {
+            while (num &gt;= value) {
+                result += symbol;
+                num -= value;
+            }
+        }
+        return result;
+    }
+};
+</code></pre>
+<h3 id="58-length-of-last-word">[58] Length of Last Word</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/length-of-last-word/description/">题目描述</a>。<br>
+容易想到遍历一遍，过程中记录最后遇到的单词的长度即可。但题目既然已经指定了是最后一个单词，那显然有性能更友好的方式，即从尾开始反向遍历，遍历完第一个单词即可，从而省去前面多余部分遍历。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    int lengthOfLastWord(string s) {
+        int index = s.size() - 1;
+        int length = 0;
+        while (s[index] == ' ') {
+            --index;
+        }
+
+        while (index &gt;= 0 &amp;&amp; s[index] != ' ') {
+            length += 1;
+            --index;
+        }
+
+        return length;
+    }
+};
+</code></pre>
+<h3 id="14-longest-common-prefix">[14] Longest Common Prefix</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/longest-common-prefix/description/">题目描述</a>。<br>
+先以<code>strs[0]</code>作为<code>commenPrefix</code>，然后用<code>strs[1]</code>来比较，比较后更新前缀长度，然后用<code>strs[2]</code>来比较，以此类推，中间一直更新前缀长度即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    string longestCommonPrefix(vector&lt;string&gt; &amp;strs) {
+        string commenPrefix = strs[0];
+        int prefixLength = commenPrefix.size();
+        int n = strs.size();
+        for (int i = 1; i &lt; n; ++i) {
+            int length = min(prefixLength, (int)strs[i].size());
+            int j = 0;
+            while (j &lt; length &amp;&amp; commenPrefix[j] == strs[i][j]) {
+                ++j;
+            }
+            prefixLength = j;
+            if (prefixLength == 0) { // Early stop
+                return commenPrefix.substr(0, 0);
+            }
+        }
+        return commenPrefix.substr(0, prefixLength);
+    }
+};
+</code></pre>
+<h3 id="6-zigzag-conversion">[6] Zigzag Conversion</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/zigzag-conversion/description/">题目描述</a>。<br>
+可以看成是有<code>numRows</code>行<code>string</code>，模拟的过程就是不断在这<code>numRows</code>行<code>string</code>的后面追加。而追加的顺序是从上到下和从下到上不断变换，这一点用<code>dir</code>和<code>curRow += dir</code>来控制。于是有如下代码。<br>
+尽管，通过找规律的方式推导数学公式，可以直接写出答案，进一步把空间复杂度压缩到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>。但找规律的方式始终不像是在考察代码能力，甚至都不像是在考察数学能力。个人认为比较偏题，因此没有采用。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    string convert(string s, int numRows) {
+        if (numRows &lt; 2) {
+            return s;
+        }
+
+        vector&lt;string&gt; rows(numRows);
+        string result = &quot;&quot;;
+        int dir = -1;
+        int curRow = 0;
+        for (char c : s) {
+            rows[curRow] += c;
+            if (curRow == 0 || curRow == numRows - 1) {
+                dir = -dir;
+            }
+            curRow += dir;
+        }
+
+        for (string row : rows) {
+            result += row;
+        }
+        return result;
+    }
+};
+</code></pre>
+<h3 id="68-text-justification">[68] Text Justification</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/text-justification/description/">题目描述</a>。<br>
+按照题目要求模拟即可。实际难度不高，主要是代码写起来麻烦。<br>
+要考虑以下情况：</p>
+<ul>
+<li>最后一行：左对齐，单空格分隔，最后补空格。</li>
+<li>一行只有一个单词：单词然后补空格</li>
+<li>其他情况（不是最后一行且有多个单词）：除法计算平均空格数<code>avgSpaces</code>，取模得到左边有多少位置<code>extraSpaces</code>空格要<code>+1</code>。</li>
+</ul>
+<p>此外，这里使用了<code>left</code>和<code>right</code>指针做优化，然后直接从<code>words</code>获取数据，避免了中间临时存储当前行<code>words</code>的开销。</p>
+<pre><code class="language-c++">class Solution {
+    // Returns a string composed of n spaces.
+    string blank(int n) { return string(n, ' '); }
+
+    // Joins words in the range [left, right) using the separator sep.
+    string join(vector&lt;string&gt; &amp;words, int left, int right, string sep) {
+        string s = words[left];
+        for (int i = left + 1; i &lt; right; ++i) {
+            s += sep + words[i];
+        }
+        return s;
+    }
+
+  public:
+    vector&lt;string&gt; fullJustify(vector&lt;string&gt; &amp;words, int maxWidth) {
+        vector&lt;string&gt; ans;
+        int right = 0, n = words.size();
+        while (true) {
+            int left = right; // Index of the first word in the current line.
+            int sumLen = 0;   // Total length of words in the current line.
+            // Determine how many words can fit in the current line.
+            // Note: At least one space is required between words.
+            while (right &lt; n &amp;&amp;
+                   sumLen + words[right].length() + right - left &lt;= maxWidth) {
+                sumLen += words[right++].length();
+            }
+
+            // Last line: left-justified. Words are separated by a single space,
+            // and extra spaces are appended at the end of the line.
+            if (right == n) {
+                string s = join(words, left, n, &quot; &quot;);
+                ans.emplace_back(s + blank(maxWidth - s.length()));
+                return ans;
+            }
+
+            int numWords = right - left;
+            int numSpaces = maxWidth - sumLen;
+
+            // If there is only one word in the line, left-justify it and pad
+            // with spaces.
+            if (numWords == 1) {
+                ans.emplace_back(words[left] + blank(numSpaces));
+                continue;
+            }
+
+            // For a line with multiple words, evenly distribute spaces.
+            int avgSpaces = numSpaces / (numWords - 1);
+            int extraSpaces = numSpaces % (numWords - 1);
+            // Join words that receive an extra space.
+            string s1 =
+                join(words, left, left + extraSpaces + 1, blank(avgSpaces + 1));
+            // Join the remaining words.
+            string s2 =
+                join(words, left + extraSpaces + 1, right, blank(avgSpaces));
+            ans.emplace_back(s1 + blank(avgSpaces) + s2);
+        }
+    }
+};
+</code></pre>
+<h3 id="125-valid-palindrome">[125] Valid Palindrome</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/valid-palindrome/description/">题目描述</a>。<br>
+容易想到我们可以先把字符串转成只包含字母数字并且纯小写的形式，然后再判断回文即可。但这样需要<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的空间复杂度来存储中间字符串。<br>
+因此我们可以直接在原字符串上判断，遇到非字母数字的字符直接跳过即可，判断时再转一下小写。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool isPalindrome(string s) {
+        int left = 0, right = s.size() - 1;
+        while (left &lt; right) {
+            while (left &lt; right &amp;&amp; !isalnum(s[left])) {
+                ++left;
+            }
+            while (left &lt; right &amp;&amp; !isalnum(s[right])) {
+                --right;
+            }
+            if (tolower(s[left]) != tolower(s[right])) {
+                return false;
+            }
+            ++left;
+            --right;
+        }
+        return true;
+    }
+};
+</code></pre>
+<h3 id="392-is-subsequence">[392] Is Subsequence</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/is-subsequence/description/">题目描述</a><br>
+双指针扫一遍即可，检查扫完<code>t</code>的时候是否扫完了<code>s</code>。基本无难度。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool isSubsequence(string s, string t) {
+        int sp = 0, tp = 0;
+        int sSize = s.size(), tSize = t.size();
+        while (sp &lt; sSize &amp;&amp; tp &lt; tSize) {
+            if (s[sp] == t[tp]) {
+                ++sp;
+            }
+            ++tp;
+        }
+        return sp &gt;= sSize;
+    }
+};
+</code></pre>
+<h3 id="30-substring-with-concatenation-of-all-words">[30] Substring with Concatenation of All Words</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/substring-with-concatenation-of-all-words/description/">题目描述</a>。<br>
+使用滑动窗口，一次滑动单词长度<code>n</code>。<br>
+我们再分别选取<code>i</code>从<code>0</code>到<code>n-1</code>的位置作为滑动窗口的起点，即可覆盖所有结果。<br>
+因此代码是一个二重循环：</p>
+<ul>
+<li>外循环负责分别选取<code>0</code>到<code>n-1</code>的位置作为滑动起点。</li>
+<li>内循环负责进行滑动窗口的滑动，一次滑动长度<code>n</code>。</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    vector&lt;int&gt; findSubstring(string s, vector&lt;string&gt; &amp;words) {
+        int m = words.size();
+        int n = words[0].size();
+        int ls = s.size();
+        vector&lt;int&gt; result;
+        for (int i = 0; i &lt; n &amp;&amp; i + m * n - 1 &lt; ls; ++i) {
+            unordered_map&lt;string, int&gt; diff;
+            for (int j = 0; j &lt; m; ++j) {
+                diff[s.substr(i + j * n, n)] += 1;
+            }
+            for (string &amp;word : words) {
+                if (--diff[word] == 0) {
+                    diff.erase(word);
+                }
+            }
+
+            if (diff.empty()) {
+                result.emplace_back(i);
+            }
+
+            for (int start = i + n; start + m * n - 1 &lt; ls; start += n) {
+                string word = s.substr(start - n, n);
+                if (--diff[word] == 0) {
+                    diff.erase(word);
+                }
+                word = s.substr(start + (m - 1) * n, n);
+                if (++diff[word] == 0) {
+                    diff.erase(word);
+                }
+                if (diff.empty()) {
+                    result.emplace_back(start);
+                }
+            }
+        }
+        return result;
+    }
+};
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#344-reverse-string">[344] Reverse String</a></li>
+<li><a href="#541-reverse-string-ii">[541] Reverse String II</a></li>
+<li><a href="#151-reverse-words-in-a-string">[151] Reverse Words in a String</a></li>
+<li><a href="#28-find-the-index-of-the-first-occurrence-in-a-string">[28] Find the Index of the First Occurrence in a String</a></li>
+<li><a href="#459-repeated-substring-pattern">[459] Repeated Substring Pattern</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E8%A1%A5%E5%85%85">补充</a>
+<ul>
+<li><a href="#3-longest-substring-without-repeating-characters">[3] Longest Substring Without Repeating Characters</a></li>
+<li><a href="#13-roman-to-integer">[13] Roman to Integer</a></li>
+<li><a href="#12-integer-to-roman">[12] Integer to Roman</a></li>
+<li><a href="#58-length-of-last-word">[58] Length of Last Word</a></li>
+<li><a href="#14-longest-common-prefix">[14] Longest Common Prefix</a></li>
+<li><a href="#6-zigzag-conversion">[6] Zigzag Conversion</a></li>
+<li><a href="#68-text-justification">[68] Text Justification</a></li>
+<li><a href="#125-valid-palindrome">[125] Valid Palindrome</a></li>
+<li><a href="#392-is-subsequence">[392] Is Subsequence</a></li>
+<li><a href="#30-substring-with-concatenation-of-all-words">[30] Substring with Concatenation of All Words</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/plt-plot-bug/">
+              <h3 class="post-title">
+                踩坑记录：相同数据，两次plt画图结果不一致
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

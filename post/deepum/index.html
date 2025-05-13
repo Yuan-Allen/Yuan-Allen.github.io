@@ -1,0 +1,364 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ASPLOS&#39;23 &#34;DeepUM: Tensor Migration and Prefetching in Unified Memory&#34; 论文解析 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="ASPLOS&#39;23 &#34;DeepUM: Tensor Migration and Prefetching in Unified Memory&#34; 论文解析 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制..." />
+    <meta name="keywords" content="System for AI,Paper Notes" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              ASPLOS&#39;23 &#34;DeepUM: Tensor Migration and Prefetching in Unified Memory&#34; 论文解析
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-10-24
+              </span>
+              <span>
+                15 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/system-for-ai/" class="post-tag">
+                  # System for AI
+                </a>
+              
+                <a href="https://alleny.xyz/tag/paper-notes/" class="post-tag">
+                  # Paper Notes
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/deepum.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>发表在ASPLOS'23的DeepUM是一篇关于GPU内存优化的论文。在本文中，作者提出了一个名为DeepUM的框架，利用CUDA Unified Memory（UM）来允许DNNs的GPU内存超额使用。虽然UM通过page fault机制允许内存超额使用，但page migration引入了巨大的开销。DeepUM使用一种新的correlation prefetching技术来隐藏page migration的开销。它是完全自动且对用户透明的。本文还提出了两种优化技术来最小化GPU fault handling time。作者使用来自MLPerf、PyTorch示例和Hugging Face的九个大规模DNN对DeepUM的性能进行评估，并将其性能与六种最先进的GPU内存交换方法进行比较。评估结果表明，DeepUM对于GPU内存超额使用非常有效，并且可以处理其他方法无法处理的更大模型。</p>
+<!-- more -->
+<h1 id="background">Background</h1>
+<h2 id="gpus-and-cuda-programming-model">GPUs and CUDA Programming Model</h2>
+<p>GPGPU允许程序员在GPU上短时间处理大量的计算，这是因为GPU上有成百上千的GPU thread在同时进行计算。为了能高效地利用GPU进行计算，许多编程模型被提出，例如CUDA，oneAPI，openACC和OpenCL。</p>
+<p>这篇论文的工作是基于CUDA的。CUDA是由NVIDIA开发的GPU并行编程模型。程序员需要定义一个CUDA kernel函数，将计算任务卸载到GPU上。然后，CUDA kernel由N个不同的CUDA线程在GPU上并行执行。每个CUDA线程都有一个唯一的thread ID，用于确定控制流和计算要访问的内存地址。CUDA thread被分组为thread block，而thread block则被分组为grid。当程序员启动一个CUDA kernel时，其可以指定grid的配置，例如一个grid上的thread block个数以及一个thread block上的thread个数。</p>
+<figure data-type="image" tabindex="1"><img src="https://alleny.xyz/post-images/1698048986672.png" alt="" loading="lazy"></figure>
+<p>上图是NVIDIA GPU内存的层级展示。一个GPU包含了数十个streaming multiprocessors（SMs）。每个thread block被map到一个SM上（多个thread block可能被map到一个SM），每个SM内包含了数百个CUDA core，而一个thread就会被map到一个CUDA core上，所以thread block到SM，thread到CUDA core就是对应的软件到硬件的映射关系。</p>
+<p>每个SM具有不同类型的内存单元，如寄存器、L1 cache、shared memory和constant memory（只读内存）。虽然寄存器是每个线程私有的，但其他内存单元在SM内部是共享的。在SM之外，有一个L2 cache在所有SM之间共享。Global memory是一种片外DRAM，通常是几个GB到几十个GB。通常情况下，靠近CUDA核心（SM）的存储单元具有较低的延迟和较小的容量。尽管GPU提供了几十个GB的global memory，但DNN工作负载严重缺乏global memory容量。</p>
+<p>由于GPU线程无法直接访问main memory，除非程序员将CPU内存空间映射到GPU内存空间，程序员必须手动在GPU全局内存和CPU内存之间移动数据。此外，访问映射到GPU内存空间的CPU内存会导致性能下降，因为每次内存访问都会产生PCIe传输。为此，NVIDIA提出了统一内存（UM）的概念。</p>
+<h2 id="cuda-unified-memory">CUDA Unified Memory</h2>
+<p>UM为访问同一系统上GPU和CPU上的内存提供了单一内存空间。从Pascal架构开始，NVIDIA GPU引入了page migration engine，其使用page fault机制使GPU有了虚拟内存系统。一个page fault发生前后的snapshot如图所示。UM使得GPU内存可以超额使用，而无需程序员进行任何干预，因此极大减轻了程序员的负担。</p>
+<figure data-type="image" tabindex="2"><img src="https://alleny.xyz/post-images/1698050541178.png" alt="" loading="lazy"></figure>
+<p>尽管UM有各种优点，GPU page fault handling的成本很高。当GPU里的一个page fault发生的时候，其对应SM的TLB会被lock住，并且在这个SM里面的所有fault被处理完之前不能做任何新的translation。此外，page faults需要在CPU和GPU之间进行昂贵的I/O操作，因此强烈建议插入CUDA prefetch API函数（例如cudaMemPrefetchAsync()）或CUDA user-hint API函数（例如cudaMemAdvise()），以减少page fault的发生。</p>
+<h2 id="nvidia-page-fault-handler">NVIDIA Page Fault Handler</h2>
+<p>Fault buffer：GPU中的一个循环队列，用于存储fault access informtion。由于GPU可以同时生成多个faults，因此fault buffer中可能包含同一page的多个fault entries。</p>
+<p>UM block：一组最大512个连续的pages，同时也是NVIDIA driver的管理单位。</p>
+<p>下图为NVIDIA page fault handler的一个流程图。</p>
+<figure data-type="image" tabindex="3"><img src="https://alleny.xyz/post-images/1698051779774.png" alt="" loading="lazy"></figure>
+<h1 id="motivation">Motivation</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，其中就包括关于memory swapping的研究。</p>
+<p>但是之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用，因此还是想使用UM。但是又要想办法hide UM带来的overhead，对此作者设计了DeepUM。</p>
+<h1 id="structure-of-deepum">Structure of DeepUM</h1>
+<p>为了隐藏上述提到UM带来的overhead，作者提出了DeepUM，其核心是对要访问的block做prefetch。</p>
+<figure data-type="image" tabindex="4"><img src="https://alleny.xyz/post-images/1698051846769.png" alt="" loading="lazy"></figure>
+<p>上图为DeepUM的整体结构，包含了DeepUM runtime和DeepUM driver。</p>
+<ul>
+<li>
+<p>DeepUM runtime的主要作用是为CUDA的内存分配API提供包装函数，从而将GPU内存分配请求转换为UM空间的内存分配请求。其管理了一个名为execution ID table的表，保存了kernel启动的历史记录以及由kernel的名字和参数算得的hash值。当一个新的kernel启动命令发送到DeepUM runtime时，其先为该kernel算一个hash值，然后通过该hash值去execution ID table进行查找。如果找到了，就给这个kernel相同的execution ID，否则为其分配一个新的execution ID并存储到表里面。最后，DeepUM runtime会将一个callback在kernel launch command入队（enqueue）前先入队，这个callback通过Linux ioctl将该execution ID传递给给DeepUM driver以进行后续的correlation prefetching。</p>
+</li>
+<li>
+<p>DeepUM driver的主要作用是处理page faults以及做prefetch。DeepUM driver管理的correlation tables在DNN训练期间记录kernel执行的历史以及其访问的page，其使用这个correlation table来进行prefetch。</p>
+</li>
+</ul>
+<p>DeepUM driver中有四个kernel threads，分别是</p>
+<ul>
+<li>fault handling thread，负责读取fault buffer，将信息传递给其他线程。</li>
+<li>correlator thread，负责管理correlation table。</li>
+<li>prefetching thread，负责查询correlation table，并据此计算要prefetch的UM block地址。</li>
+<li>migration thread，负载在GPU和CPU之间做UM block的迁移。</li>
+</ul>
+<p>图中还有两个queue，分别是fault queue和prefetch queue。fault queue相比prefetch queue拥有更高的优先级（被migration thread执行），以让GPU可以尽快的对faulted accesses进行reply。</p>
+<h1 id="correlation-prefetching-for-gpu-pages">Correlation Prefetching for GPU Pages</h1>
+<h2 id="pair-based-correlation-prefetching">Pair-Based Correlation Prefetching</h2>
+<p>传统的correlation prefetch有两种方法，分别是stride-based和pair-based。DeepUM是基于pair-based的。pair-based correlation prefetching如图所示。NumLevels表示不同的level，比如c是a的后一个的后一个，所以放在第二个level；NumSuccs则是MRU从左到右排序的。</p>
+<figure data-type="image" tabindex="5"><img src="https://alleny.xyz/post-images/1698053775988.png" alt="" loading="lazy"></figure>
+<h2 id="correlation-prefetching-in-deepum">Correlation Prefetching in DeepUM</h2>
+<h3 id="两种correlation-table">两种Correlation Table</h3>
+<p>和原始的correlation prefetching不一样，DeepUM使用了两种类型的correlation table：execution ID和UM block，两种类型的NumLevels都为1。</p>
+<ul>
+<li>execution ID correlation table (the execution table in short)：记录exexcution ID（也就是对应CUDA kernel）的执行历史。Execution table只存在一个。一个execution table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130115505.png" alt="" loading="lazy"><br>
+由上图可见，每个entry由多组correlated IDs组成，每一组包含了四个execution ID。其中前三个表示在当前kernel之前执行过的kernel，第四个表示预测在当前kernel的下一个要执行的kernel。注意这里下一个kernel预测错误带来的开销是很昂贵的。</li>
+<li>UM block correlation table (a block table in short)：记录UM block的访问历史。相比全局只存在一个的execution table，block table是对于每个execution ID都有一个的。一个block table的示例如图所示。<br>
+<img src="https://alleny.xyz/post-images/1698130931220.png" alt="" loading="lazy"><br>
+我们提到block table是对于每个execution ID都有一个的，如图所示，其记录的也是相对应的CUDA kernel内的UM block访问历史。可以观察到，虽然这个table和原始的correlation table结构相似，但是多出了一个start UM block和一个end UM block的指针。
+<ul>
+<li>start UM block指向这个kernel执行中第一个发生fault的UM block。</li>
+<li>end UM block指向这个kernel执行中最后一个要prefetch的UM block。end UM block记录的实际就是当前kernel执行结束前最后一个发生fault的UM block。</li>
+</ul>
+</li>
+</ul>
+<h3 id="prefetching-mechanisms-and-chaining">Prefetching Mechanisms and Chaining</h3>
+<p>当page fault发生，DeepUM driver就去查找当前执行的kernel的对应的UM block correlation table，然后去对faulted UM block这条后面记录的correlated UM block内的所有pages做prefetch。</p>
+<p>那么start UM block和end UM block发挥了什么作用呢？当prefetching thread遇到了end block时，就结束对当前kernel的prefetch，然后通过查阅execution ID table预测下一个要执行的kernel，接着对下一个kernel的end block进行prefetch。也就是说，start UM block和end UM block是用来配合之前提到的execution ID correlation table做chaining的。</p>
+<p>那么chaining什么时候结束？关于prefetch和chaining，文中提到了三个时间节点：</p>
+<ul>
+<li>当出现一个新的page fault interrupt signal，或者prefetching thread错误预测了下一个要执行的kernel，<strong>chaining结束</strong>。</li>
+<li>当prefetching thread把后续N个kernel的prefetch commands都已经enqueue了，<strong>chaining暂停</strong>。</li>
+<li>当前正在执行的kernel执行结束后，<strong>prefetching thread继续</strong>。</li>
+</ul>
+<h1 id="optimizations-for-gpu-page-fault-handing">Optimizations for GPU Page Fault Handing</h1>
+<p>文中提到了两种针对page fault handing的优化，分别为page pre-eviction和Invalidating UM Blocks of Inactive PyTorch Blocks。</p>
+<h2 id="page-pre-eviction">Page Pre-eviction</h2>
+<p>当要migrating faulted pages时，GPU内存分配失败，就会触发eviction。正如图中对X，Y的eviction，page eviction的发生会增大fault handling的时间。</p>
+<figure data-type="image" tabindex="6"><img src="https://alleny.xyz/post-images/1698133876496.png" alt="" loading="lazy"></figure>
+<p>因此，作者想到在GPU内存空间不足时去做pre-eviction。具体来说，当page满足下列两个条件时，就会被evict。</p>
+<ul>
+<li>最久未迁移（Least recently migrated）</li>
+<li>预计不会被当前正在执行的kernel以及接下来的N个被预测将执行的kernel访问</li>
+</ul>
+<h2 id="invalidating-um-blocks-of-inactive-pytorch-blocks">Invalidating UM Blocks of Inactive PyTorch Blocks</h2>
+<h3 id="pytorch-memory-pool与pt-block">Pytorch Memory Pool与PT Block</h3>
+<p>PyTorch通过管理memory pools的方式来最小化内存的分配和释放的时间，同时减小内存碎片。PyTorch中的memory pool有两种：large和small。PyTorch中的内存对象也叫做block，为了和UM block作区分，我们称其为PT block。large pool包含了超过1MB的PT blocks，而small pool包含了小于或等于1MB的PT blocks。PyTorch的内存分配器会返回最小可用的PT block，并且如果PT block的size还是太大，则会将其做split。</p>
+<p>这里的关键在于，当PT block被DNN模型使用结束，返回到内存分配器时，内存分配器只会将其mark成inactive（当然还要放回合适的memory pool）而不是直接free掉（对于设备来说），除非pool中没有可用的内存空间了，才会把inactive的PT block释放掉来生成新的内存空间。</p>
+<h3 id="invalidating-um-blocks">Invalidating UM Blocks</h3>
+<p>上面的机制被放在与UM一起使用时就会出现问题，即inactive的PT blocks也会被evicted到CPU内存上，造成不必要的数据传输开销。并且，这还占用了CPU的内存空间。更严重的场景是，当这些inactive的PT blocks又被mark成active，那还要再把这些PT blocks从CPU迁移到GPU，造成更多不必要的数据传输。</p>
+<p>因此，作者的思路很简单，也就是在PyTorch的内存分配器中加入少量代码，来告诉DeepUM driver何时一个PT block被标记成了inactive。如果一个将要evict的page属于一个inactive PT block，那么DeepUM driver就直接简单将其对应的UM block invalidate就好。</p>
+<h1 id="evaluation">Evaluation</h1>
+<p>限于篇幅原因，对这部分内容只给出一些大概的结论总结，如果对具体的实验数据或者实验细节感兴趣可以去阅读论文原文。</p>
+<p>作者首先将将DeepUM与Naive UM和IBM LMS做了一个对比。结果显示：</p>
+<ul>
+<li>和其他内存预取策略一样，DeepUM的性能依赖于应用的memory access patterns以及内存迁移时间和计算时间相比的比例。例如在DLRM这样的模型上，内存的访问模式不规则（因为高度依赖输入数据），导致LMS与DeepUM在上面都运行得不好。</li>
+<li>DeepUM相比LMS和LMS-mod（LMS的修改版本，速度慢一些但是能比LMS运行更大的batch size）能运行更大的batch size。这是通过虚拟内存的支持做到的。</li>
+<li>平均来看，DeepUM有着最好的性能，相比UM有3.06✕的加速比，相比LMS有1.11✕的加速比。</li>
+<li>虽然LMS有着最好的能耗，但是LMS与DeepUM之间的差距很小</li>
+</ul>
+<p>作者还进了其他的一些测试，例如：</p>
+<ul>
+<li>作者评估了存储correlation table所用的大小。这个大小随着模型与batch size而变化。注意correlation table是存储在CPU内存的。</li>
+<li>作者评估了page faults发生的次数，结果显示DeepUM的prefetch相当精准，并且能大量减少page fault发生的次数。</li>
+<li>作者评估了prefetching和optimizations所带来的效果，结果显示prefetching，prefetching+preeviction和prefetching+preeviction+invalidate分别平均减小了45.6%，63.7%和66.7%的运行时间。</li>
+<li>作者评估了预取的不同程度（即N的大小）带来的的影响，结果显示，当N=32时，加速比最高，同时能耗最低。</li>
+<li>作者评估了UM Block Correlation Table的不同参数配置带来的影响，结果显示，当Assoc为2，NumSuccs为4，NumRows为2048时，能带来相对最好的效果。</li>
+</ul>
+<p>作者还将DeepUM与5个TensorFlow-Based的研究的实验数据进行了比较，结果显示DeepUM拥有与Sentinel相当的性能，比剩余其他的几个都快。但是Sentinel是需要手动优化的，而DeepUM是对用户透明的。并且，DeepUM相比之前的方法能允许更大的batch size。作者将这种性能的差别归于DeepUM对数据移动的更小的粒度。</p>
+<h1 id="related-work">Related Work</h1>
+<p>作者回顾了以前的研究，最后将多个工作放在一起进行了一个比较，结果如图所示。</p>
+<figure data-type="image" tabindex="7"><img src="https://alleny.xyz/post-images/1698138077614.png" alt="" loading="lazy"></figure>
+<h1 id="conclusions">Conclusions</h1>
+<p>随着模型参数量的越来越大，其对GPU内存的需求也越来越大，而普通用户则难以拥有如此大量且高端的GPU。幸运的是，我们可以采取将预训练的大模型再进行微调的方式获得我们想要的模型。但问题是，当前最先进的模型实在是太大了，以至于连微调都无法在一个小规模的系统上进行了，因此，许多关于GPU内存容量的研究便被开始开展，本文便是一篇关于memory swapping的文章。</p>
+<p>之前的工作很少基于UM，主要是由于UM带来了额外的overhead。但是作者认为，使用UM能为我们带来很多好处，最重要的就是能让GPU内存被超额使用。对此作者设计了DeepUM。</p>
+<p>为了隐藏UM带来的overhead，DeepUM通过prefetch策略，减少page fault的发生，同时提出了pre-eviction和invalidate block两种优化来减小处理page fault时的开销。</p>
+<p>测试显示，DeepUM能达到与需要手动优化的Sentinel相当的性能，并比其他几个baseline的性能都要好。同时，DeepUM也能处理其他几个方法处理不了的更大的模型。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#background">Background</a>
+<ul>
+<li><a href="#gpus-and-cuda-programming-model">GPUs and CUDA Programming Model</a></li>
+<li><a href="#cuda-unified-memory">CUDA Unified Memory</a></li>
+<li><a href="#nvidia-page-fault-handler">NVIDIA Page Fault Handler</a></li>
+</ul>
+</li>
+<li><a href="#motivation">Motivation</a></li>
+<li><a href="#structure-of-deepum">Structure of DeepUM</a></li>
+<li><a href="#correlation-prefetching-for-gpu-pages">Correlation Prefetching for GPU Pages</a>
+<ul>
+<li><a href="#pair-based-correlation-prefetching">Pair-Based Correlation Prefetching</a></li>
+<li><a href="#correlation-prefetching-in-deepum">Correlation Prefetching in DeepUM</a>
+<ul>
+<li><a href="#%E4%B8%A4%E7%A7%8Dcorrelation-table">两种Correlation Table</a></li>
+<li><a href="#prefetching-mechanisms-and-chaining">Prefetching Mechanisms and Chaining</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#optimizations-for-gpu-page-fault-handing">Optimizations for GPU Page Fault Handing</a>
+<ul>
+<li><a href="#page-pre-eviction">Page Pre-eviction</a></li>
+<li><a href="#invalidating-um-blocks-of-inactive-pytorch-blocks">Invalidating UM Blocks of Inactive PyTorch Blocks</a>
+<ul>
+<li><a href="#pytorch-memory-pool%E4%B8%8Ept-block">Pytorch Memory Pool与PT Block</a></li>
+<li><a href="#invalidating-um-blocks">Invalidating UM Blocks</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#evaluation">Evaluation</a></li>
+<li><a href="#related-work">Related Work</a></li>
+<li><a href="#conclusions">Conclusions</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/ssh-over-proxy/">
+              <h3 class="post-title">
+                Using Proxy for SSH
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

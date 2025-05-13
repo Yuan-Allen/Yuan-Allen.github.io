@@ -1,0 +1,1128 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PowerInfer源码解析（二）：计算图构建与算子调用 | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="PowerInfer源码解析（二）：计算图构建与算子调用 | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="上篇文章概括了PowerInfer的模型加载过程，这次我们来看一看推理时的流程。
+
+相关
+
+PowerInfer源码解析（一）：模型加载。
+PowerInfer源码解析（三）：算子实现。
+
+计算图构建
+让我们回到examples/main/..." />
+    <meta name="keywords" content="System for AI,Technical Sharing" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              PowerInfer源码解析（二）：计算图构建与算子调用
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-09-25
+              </span>
+              <span>
+                25 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/system-for-ai/" class="post-tag">
+                  # System for AI
+                </a>
+              
+                <a href="https://alleny.xyz/tag/WT-UATSMl/" class="post-tag">
+                  # Technical Sharing
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://alleny.xyz/post-images/powerinfer-source-analysis-2.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>上篇文章概括了PowerInfer的模型加载过程，这次我们来看一看推理时的流程。</p>
+<!-- more -->
+<h2 id="相关">相关</h2>
+<ul>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-1/">PowerInfer源码解析（一）：模型加载</a>。</li>
+<li><a href="https://alleny.xyz/post/powerinfer-source-analysis-3/">PowerInfer源码解析（三）：算子实现</a>。</li>
+</ul>
+<h2 id="计算图构建">计算图构建</h2>
+<p>让我们回到<code>examples/main/main.cpp:main</code>，模型在加载之后，又经过了一堆推理时的参数准备，最终调用<code>llama_decode</code>进行推理。</p>
+<pre><code class="language-c++">int main(int argc, char ** argv) {
+    // -- snip --
+                for (int i = 0; i &lt; (int) embd.size(); i += params.n_batch) {
+                int n_eval = (int) embd.size() - i;
+                if (n_eval &gt; params.n_batch) {
+                    n_eval = params.n_batch;
+                }
+
+                LOG(&quot;eval: %s\n&quot;, LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
+
+                if (llama_decode(ctx, llama_batch_get_one(&amp;embd[i], n_eval, n_past, 0))) {
+                    LOG_TEE(&quot;%s : failed to eval\n&quot;, __func__);
+                    return 1;
+                }
+
+                n_past += n_eval;
+
+                LOG(&quot;n_past = %d\n&quot;, n_past);
+            }
+    // -- snip --
+}
+</code></pre>
+<p><code>llama_decode</code>会调用到<code>llama_decode_internal</code>，<code>llama_decode_internal</code>则会使用<code>llama_build_graph</code>来构建计算图。<br>
+对于<code>LLM_ARCH_LLAMA</code>和<code>LLM_ARCH_BAMBOO</code>模型架构，PowerInfer调用<code>llm.build_llama_variants</code>来生成计算图（替代了原有的<code>llm.build_llama</code>函数）。<br>
+对原先的<code>build_llama</code>而言，新的<code>build_llama_variants</code>的区别主要在于，对于使用sparse inference的情况，PowerInfer会使用单独的<code>llm_build_ffn_sparse</code>（区别于<code>llm_build_ffn</code>）来生成FFN部分。</p>
+<pre><code class="language-c++">    struct ggml_cgraph * build_llama_variants() {
+        // -- snip --
+                if (llama_use_sparse_inference(&amp;model)) {
+                    llm_build_cb_short cbs = [&amp;](ggml_tensor * cur, const char * name) {
+                        std::string name_str = std::string(name) + &quot;-&quot; + std::to_string(il);
+                        ggml_set_name(cur, name_str.c_str());
+                    };
+                    // We only offload the ffn input to GPU if all neurons are offloaded
+                    if (model.layers[il].gpu_offload_ratio &gt;= 1.) {
+                        cb(cur, &quot;ffn_norm&quot;, il);
+                    } else {
+                        cbs(cur, &quot;ffn_norm&quot;);
+                    }
+                    cur = llm_build_ffn_sparse(ctx0, cur,
+                        model.layers[il].ffn_up,   NULL,
+                        model.layers[il].ffn_gate, NULL,
+                        model.layers[il].ffn_down_t, NULL,
+                        model.layers[il].mlp_pre_w1,
+                        model.layers[il].mlp_pre_w2,
+                        ffn_inp, // as for now, llama's pred use the same input as the ffn
+                        model.layers[il].gpu_idx, 
+                        model.layers[il].gpu_bucket, model.layers[il].ffn_gate_gpu, model.layers[il].ffn_down_gpu, model.layers[il].ffn_up_gpu,
+                        LLM_FFN_RELU, gate_type, model.layers[il].gpu_offload_ratio, cbs);
+                } else {
+                    // fallback to dense
+                    cb(cur, &quot;ffn_norm&quot;, il);
+                    llm_ffn_op_type   act_type = model.arch == LLM_ARCH_BAMBOO ? LLM_FFN_RELU : LLM_FFN_SILU;
+                    cur = llm_build_ffn(ctx0, cur,
+                        model.layers[il].ffn_up,   NULL,
+                        model.layers[il].ffn_gate, NULL,
+                        model.layers[il].ffn_down, NULL,
+                        act_type, gate_type, cb, il);
+                }
+    // -- snip --
+}
+</code></pre>
+<p>在<code>llm_build_ffn_sparse</code>中我们可以具体看见FFN部分是如何被构建的。我们可以先看一下原版Llama的MLP的具体架构。<br>
+<img src="https://alleny.xyz/post-images/1727258017810.png" alt="" loading="lazy"><br>
+图中的Gate，Up和Down均为线性层。即Llama的MLP的输入会一边经过Gate然后激活函数，另一边经过Up，最后两者乘起来再经过Down，最终得到MLP的输出。<br>
+至于PowerInfer，则在前面加了一个Predictor用来预测当前层的哪些neurons会被激活。并且，这些neurons可能是分别分布在GPU和CPU上的，同时还要考虑利用到激活的稀疏性，因此还会调用特制的算子来进行计算。<br>
+<img src="https://alleny.xyz/post-images/1727323918446.png" alt="" loading="lazy"><br>
+于是来看看代码。</p>
+<pre><code class="language-c++">static struct ggml_tensor * llm_build_ffn_sparse(
+        struct ggml_context * ctx,
+         struct ggml_tensor * cur,
+         struct ggml_tensor * up,
+         struct ggml_tensor * up_b,
+         struct ggml_tensor * gate,
+         struct ggml_tensor * gate_b,
+         struct ggml_tensor * down_t,
+         struct ggml_tensor * down_b,
+         struct ggml_tensor * pre_w1,
+         struct ggml_tensor * pre_w2,
+         struct ggml_tensor * pred_inpl,
+         struct ggml_tensor * gpu_index,
+         struct ggml_tensor * gpu_bucket,
+         struct ggml_tensor * gate_gpu,
+         struct ggml_tensor * down_gpu,
+         struct ggml_tensor * up_gpu,
+            llm_ffn_op_type   type_op,
+          llm_ffn_gate_type   type_gate,
+                     double   gpu_offload_ratio,
+   const llm_build_cb_short &amp; cb_outer) {
+    bool full_gpu = gpu_offload_ratio &gt;= 1.0;
+    ggml_tensor * ffn_input = cur;
+
+    llm_build_cb_short cb = [&amp;cb_outer](struct ggml_tensor * tensor, const char * name) {
+        cb_outer(tensor, name);
+#if defined(GGML_USE_CUBLAS)
+        // Determine offloading based on src[0] (weight for both mul and axpy)
+        bool operates_on_gpu = tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_GPU;
+        if (operates_on_gpu) {
+            ggml_cuda_assign_buffers_no_alloc(tensor);
+        }
+#endif
+    };
+
+    // prepare sparse idx
+    ggml_tensor * idx = ggml_mul_mat(ctx, pre_w1, pred_inpl);
+    cb(idx, &quot;mlp_pre_hidden&quot;);
+    idx = ggml_relu(ctx, idx);
+    cb(idx, &quot;mlp_pre_relu&quot;);
+    idx = ggml_mul_mat(ctx, pre_w2, idx);
+    // If the FFN layer is not fully offloaded, we need to transfer the sparsity index
+    // back to the CPU to avoid synchronization issues.
+    (full_gpu ? cb : cb_outer)(idx, &quot;mlp_pre_out&quot;);
+
+    auto act_fn = [&amp;](ggml_tensor * tensor, const char * name) {
+        switch (type_op) {
+            case LLM_FFN_RELU:
+                {
+                    tensor = ggml_relu(ctx, tensor);
+                    cb(tensor, name);
+                } break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported activation function&quot;);
+        }
+        return tensor;
+    };
+
+    // FFN up
+    struct ggml_tensor * up_out = llm_build_sparse_mul_mat(ctx, up, ffn_input, idx, up_gpu, gpu_index, gpu_bucket, cb_outer, &quot;up&quot;, full_gpu);
+    if (up_b) {
+        up_out = ggml_add(ctx, up_out, up_b);
+        cb(up_out, &quot;ffn_up_b&quot;);
+    }
+
+    struct ggml_tensor * gate_out = nullptr;
+    if (gate) {
+        ggml_tensor * gate_input = (type_gate == LLM_FFN_PAR || type_gate == LLM_FFN_SYM) ? ffn_input : up_out;
+        gate_out = llm_build_sparse_mul_mat(ctx, gate, gate_input, idx, gate_gpu, gpu_index, gpu_bucket, cb_outer, &quot;gate&quot;, full_gpu);
+        if (gate_b) {
+            gate_out = ggml_add(ctx, gate_out, gate_b);
+            cb(gate_out, &quot;ffn_gate_b&quot;);
+        }
+        switch (type_gate) {
+            case LLM_FFN_PAR:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, up_out);
+                    cb(cur, &quot;ffn_gate_par&quot;);
+                } break;
+            case LLM_FFN_SYM:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    ggml_tensor * act_up = act_fn(up_out, &quot;ffn_up_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, act_up);
+                    cb(cur, &quot;ffn_gate_sym&quot;);
+                } break;
+            case LLM_FFN_SEQ:
+                {
+                    cur = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                } break;
+            default: GGML_ASSERT(false &amp;&amp; &quot;unsupported gate type&quot;);
+        }
+    } else {
+        cur = act_fn(up_out, &quot;ffn_up_act&quot;);
+    }
+
+    cur = llm_build_sparse_axpy(ctx, down_t, cur, idx, down_gpu, gpu_index, gpu_bucket, cb_outer, &quot;down&quot;, full_gpu);
+
+    if (down_b) {
+        cur = ggml_add(ctx, cur, down_b);
+        cb(cur, &quot;ffn_down_b&quot;);
+    }
+
+    return cur;
+}
+</code></pre>
+<p>让我们来具体看一下里面的内容。<br>
+首先是一个矩阵乘、一个ReLU、再一个矩阵乘，组成了predictor部分，张量名字分别为<code>mlp_pre_hidden</code>、<code>mlp_pre_relu</code>和<code>mlp_pre_out</code>，最终得到sparse idx，即哪些neurons会被激活的预测结果。</p>
+<pre><code class="language-c++">    // prepare sparse idx
+    ggml_tensor * idx = ggml_mul_mat(ctx, pre_w1, pred_inpl);
+    cb(idx, &quot;mlp_pre_hidden&quot;);
+    idx = ggml_relu(ctx, idx);
+    cb(idx, &quot;mlp_pre_relu&quot;);
+    idx = ggml_mul_mat(ctx, pre_w2, idx);
+    // If the FFN layer is not fully offloaded, we need to transfer the sparsity index
+    // back to the CPU to avoid synchronization issues.
+    (full_gpu ? cb : cb_outer)(idx, &quot;mlp_pre_out&quot;);
+</code></pre>
+<p>定义了后续所使用的激活函数，目前只支持ReLU。</p>
+<pre><code class="language-c++">    auto act_fn = [&amp;](ggml_tensor * tensor, const char * name) {
+        switch (type_op) {
+            case LLM_FFN_RELU:
+                {
+                    tensor = ggml_relu(ctx, tensor);
+                    cb(tensor, name);
+                } break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported activation function&quot;);
+        }
+        return tensor;
+    };
+</code></pre>
+<p>回忆Llama MLP的结构，首先一边是<code>ffn_up</code>。</p>
+<pre><code class="language-c++">    // FFN up
+    struct ggml_tensor * up_out = llm_build_sparse_mul_mat(ctx, up, ffn_input, idx, up_gpu, gpu_index, gpu_bucket, cb_outer, &quot;up&quot;, full_gpu);
+    if (up_b) {
+        up_out = ggml_add(ctx, up_out, up_b);
+        cb(up_out, &quot;ffn_up_b&quot;);
+    }
+</code></pre>
+<p>另一边是<code>ffn_gate</code>以及后续的激活函数。<br>
+注意这里又有一个gate类型的选择。其类型分别有：</p>
+<ul>
+<li><code>LLM_FFN_SEQ</code>：<code>ffn_gate</code>和<code>ffn_up</code>的计算是顺序的，先计算<code>ffn_up</code>，再把<code>ffn_up</code>的结果作为<code>ffn_gate</code>的输入。</li>
+<li><code>LLM_FFN_PAR</code>：<code>ffn_gate</code>与<code>ffn_up</code>的计算是并行的。<code>ffn_gate</code>的输入是<code>ffn_input</code>，等输入经过<code>ffn_gate</code>和激活函数后再和<code>up_out</code>相乘。</li>
+<li><code>LLM_FFN_SYM</code>：与<code>LLM_FFN_PAR</code>的区别是，<code>up_out</code>也要先经过激活函数才与<code>ffn_gate_act</code>相乘。<br>
+最后，结果会再经过<code>ffn_down</code>，进行一个axpy操作，得到最终结果。</li>
+</ul>
+<pre><code class="language-c++">    struct ggml_tensor * gate_out = nullptr;
+    if (gate) {
+        ggml_tensor * gate_input = (type_gate == LLM_FFN_PAR || type_gate == LLM_FFN_SYM) ? ffn_input : up_out;
+        gate_out = llm_build_sparse_mul_mat(ctx, gate, gate_input, idx, gate_gpu, gpu_index, gpu_bucket, cb_outer, &quot;gate&quot;, full_gpu);
+        if (gate_b) {
+            gate_out = ggml_add(ctx, gate_out, gate_b);
+            cb(gate_out, &quot;ffn_gate_b&quot;);
+        }
+        switch (type_gate) {
+            case LLM_FFN_PAR:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, up_out);
+                    cb(cur, &quot;ffn_gate_par&quot;);
+                } break;
+            case LLM_FFN_SYM:
+                {
+                    ggml_tensor * act_gate = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                    ggml_tensor * act_up = act_fn(up_out, &quot;ffn_up_act&quot;);
+                    cur = ggml_mul(ctx, act_gate, act_up);
+                    cb(cur, &quot;ffn_gate_sym&quot;);
+                } break;
+            case LLM_FFN_SEQ:
+                {
+                    cur = act_fn(gate_out, &quot;ffn_gate_act&quot;);
+                } break;
+            default: GGML_ASSERT(false &amp;&amp; &quot;unsupported gate type&quot;);
+        }
+    } else {
+        cur = act_fn(up_out, &quot;ffn_up_act&quot;);
+    }
+</code></pre>
+<p>需要注意的是，<code>llm_build_ffn_sparse</code>调用了专门的<code>llm_build_sparse_mul_mat</code>来进行矩阵乘，其以使用sparse idx来利用激活的稀疏性特征。<br>
+在<code>llm_build_sparse_mul_mat</code>中，如果是全部计算卸载到GPU的情况则直接对<code>up_gpu</code>和输入调用<code>ggml_mul_mat_idx</code>并返回即可。<br>
+否则，对CPU上的<code>up</code>和GPU上的<code>up_gpu</code>分别使用<code>ggml_mul_mat_idx</code>和<code>ggml_mul_mat_idx_upscale</code>进行计算，然后再把得到的结果<code>out</code>和<code>out_gpu</code>使用<code>ggml_add</code>进行汇总，得到最终结果。</p>
+<pre><code class="language-c++">static struct ggml_tensor * llm_build_sparse_mul_mat(
+        struct ggml_context * ctx,
+         struct ggml_tensor * up,
+         struct ggml_tensor * inp,
+         struct ggml_tensor * idx,
+         struct ggml_tensor * up_gpu,
+         struct ggml_tensor * gpu_index,
+         struct ggml_tensor * gpu_bucket,
+   const llm_build_cb_short &amp; cb,
+                 const char * name,
+                         bool full_gpu) {
+    std::string full_name = &quot;ffn_&quot; + std::string(name) + &quot;_sparse&quot;;
+    ggml_tensor * out = nullptr;
+
+#ifdef GGML_USE_HIPBLAS
+// WARNING: THIS IS A HACK! 
+// if up_gpu-&gt;data is null
+// inference fails when model exceeds 40B on rocm device
+// so we just let up_gpu-&gt;data point to itself
+    
+    up_gpu-&gt;data = up_gpu;
+
+#endif 
+
+#ifdef GGML_USE_CUBLAS
+    // Full offloading fast path
+    if (full_gpu) {
+        GGML_ASSERT(up_gpu &amp;&amp; &quot;full_gpu but no up_gpu&quot;);
+        out = ggml_mul_mat_idx(ctx, up_gpu, inp, idx, NULL);
+        ggml_cuda_assign_buffers_no_alloc(out);
+        cb(out, (full_name).c_str());
+        return out;
+    }
+#endif
+
+    out = ggml_mul_mat_idx(ctx, up, inp, idx, gpu_index);
+    cb(out, full_name.c_str());
+
+#ifdef GGML_USE_CUBLAS
+    if (up_gpu) {
+        ggml_tensor * out_gpu = ggml_mul_mat_idx_upscale(ctx, up_gpu, inp, idx, gpu_bucket, out-&gt;ne[0]);
+        ggml_cuda_assign_buffers_no_alloc(out_gpu);
+        cb(out_gpu, (full_name + &quot;_gpu&quot;).c_str());
+        out = ggml_add(ctx, out, out_gpu);
+        // We don't need to assign buffers here, as the output will be passed into Axpy,
+        // which in this case, is also a hybrid operation.
+        cb(out, (full_name + &quot;_merged&quot;).c_str());
+    }
+#endif
+
+    return out;
+}
+</code></pre>
+<p>查看所调用的<code>ggml_mul_mat_idx</code>。我们可以看见，<code>a</code>，<code>b</code>，<code>sparse idx</code>（由predictor得到）和<code>gpu_idx</code>（offline时候得到）分别被作为了四个<code>src</code>参与计算。<code>op</code>使用的是<code>GGML_OP_MUL_MAT_SPARSE</code>（区别于<code>GGML_OP_MUL_MAT</code>）。</p>
+<pre><code class="language-c++">struct ggml_tensor * ggml_mul_mat_idx(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        struct ggml_tensor  * b,
+        struct ggml_tensor  * sparse_idx,
+        // Under hybrid inference, this tensor is to indicate which row are offloaded to GPU;
+        // When using full GPU inference, it is NULL.
+        struct ggml_tensor  * gpu_idx) {
+    GGML_ASSERT(!ggml_is_transposed(a));
+
+    bool is_node = false;
+
+    if (a-&gt;grad || b-&gt;grad) {
+        is_node = true;
+    }
+
+    const int64_t ne[4] = { a-&gt;ne[1], b-&gt;ne[1], b-&gt;ne[2], b-&gt;ne[3] };
+    struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_F32, MAX(a-&gt;n_dims, b-&gt;n_dims), ne);
+
+    result-&gt;op   = GGML_OP_MUL_MAT_SPARSE;
+    result-&gt;grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
+    result-&gt;src[0] = a;
+    result-&gt;src[1] = b;
+    result-&gt;src[2] = sparse_idx;
+    result-&gt;src[3] = gpu_idx;
+
+    int32_t params[] = { gpu_idx ? 0 : 1 };
+    ggml_set_op_params(result, params, sizeof(params));
+
+    return result;
+}
+</code></pre>
+<h2 id="算子调用">算子调用</h2>
+<p>回到<code>llama_decode_internal</code>中。计算图被构建以后，后续则会被使用<code>ggml_graph_compute_helper</code>进行计算。<br>
+<code>ggml_graph_compute_helper</code>会调用<code>ggml_graph_plan</code>评估工作缓冲区的大小，得到一个<code>ggml_cplan</code>（主要成员为<code>work_size</code>，<code>work_data</code>和<code>n_threads</code>）。然后，会使用<code>ggml_graph_compute(graph, &amp;plan)</code>进行计算。</p>
+<pre><code class="language-c++">static void ggml_graph_compute_helper(std::vector&lt;uint8_t&gt; &amp; buf, ggml_cgraph * graph, int n_threads) {
+    struct ggml_cplan plan = ggml_graph_plan(graph, n_threads);
+
+    if (plan.work_size &gt; 0) {
+        buf.resize(plan.work_size);
+        plan.work_data = buf.data();
+    }
+
+    ggml_graph_compute(graph, &amp;plan);
+}
+</code></pre>
+<p>区别于原先的代码，PowerInfer所使用的<code>state_shared</code>中<code>n_threads</code>与<code>n_active</code>均比<code>cplan</code>中的值少1，这应该是由于PowerInfer中有一个单独的线程专门用作GPU Executor。<br>
+然后，PowerInfer创建的工作线程所执行函数为<code>ggml_graph_compute_thread_hybrid</code>（区别于<code>ggml_graph_compute_thread</code>），最终完成计算。</p>
+<pre><code class="language-c++">int ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan) {
+    {
+        GGML_ASSERT(cplan);
+        GGML_ASSERT(cplan-&gt;n_threads &gt; 0);
+
+        if (cplan-&gt;work_size &gt; 0) {
+            GGML_ASSERT(cplan-&gt;work_data);
+        }
+    }
+
+    const int n_threads = cplan-&gt;n_threads;
+#ifdef GGML_USE_HYBRID_THREADING
+    struct ggml_compute_state_shared state_shared = {
+        /*.cgraph                  =*/ cgraph,
+        /*.cgraph_plan             =*/ cplan,
+        /*.perf_node_start_cycles  =*/ 0,
+        /*.perf_node_start_time_us =*/ 0,
+        /*.n_threads               =*/ n_threads-1,
+        /*.aic                     =*/ 0,
+        /*.n_active                =*/ n_threads-1,
+        /*.node_n                  =*/ -1,
+        /*.abort_callback          =*/ NULL,
+        /*.abort_callback_data     =*/ NULL,
+    };
+#else
+    struct ggml_compute_state_shared state_shared = {
+        /*.cgraph                  =*/ cgraph,
+        /*.cgraph_plan             =*/ cplan,
+        /*.perf_node_start_cycles  =*/ 0,
+        /*.perf_node_start_time_us =*/ 0,
+        /*.n_threads               =*/ n_threads,
+        /*.aic                     =*/ 0,
+        /*.n_active                =*/ n_threads,
+        /*.node_n                  =*/ -1,
+        /*.abort_callback          =*/ NULL,
+        /*.abort_callback_data     =*/ NULL,
+    };
+#endif
+    struct ggml_compute_state * workers = alloca(sizeof(struct ggml_compute_state)*n_threads);
+
+    // create thread pool
+    if (n_threads &gt; 1) {
+        for (int j = 1; j &lt; n_threads; ++j) {
+            workers[j] = (struct ggml_compute_state) {
+                .thrd   = 0,
+                .ith = j,
+                .shared = &amp;state_shared,
+            };
+#ifdef GGML_USE_HYBRID_THREADING
+            const int rc = ggml_thread_create(&amp;workers[j].thrd, NULL, ggml_graph_compute_thread_hybrid, &amp;workers[j]);
+#else
+            const int rc = ggml_thread_create(&amp;workers[j].thrd, NULL, ggml_graph_compute_thread, &amp;workers[j]);
+#endif
+            GGML_ASSERT(rc == 0);
+            UNUSED(rc);
+        }
+    }
+
+    workers[0].ith = 0;
+    workers[0].shared = &amp;state_shared;
+
+    const int64_t perf_start_cycles  = ggml_perf_cycles();
+    const int64_t perf_start_time_us = ggml_perf_time_us();
+
+    // this is a work thread too
+
+#ifdef GGML_USE_HYBRID_THREADING
+    int compute_status = (size_t) ggml_graph_compute_thread_hybrid(&amp;workers[0]);
+#else
+    int compute_status = (size_t) ggml_graph_compute_thread(&amp;workers[0]);
+#endif
+
+    // don't leave affinity set on the main thread
+    clear_numa_thread_affinity();
+
+    // join or kill thread pool
+    if (n_threads &gt; 1) {
+        for (int j = 1; j &lt; n_threads; j++) {
+            const int rc = ggml_thread_join(workers[j].thrd, NULL);
+            GGML_ASSERT(rc == 0);
+        }
+    }
+
+    // performance stats (graph)
+    {
+        int64_t perf_cycles_cur  = ggml_perf_cycles()  - perf_start_cycles;
+        int64_t perf_time_us_cur = ggml_perf_time_us() - perf_start_time_us;
+
+        cgraph-&gt;perf_runs++;
+        cgraph-&gt;perf_cycles  += perf_cycles_cur;
+        cgraph-&gt;perf_time_us += perf_time_us_cur;
+
+        GGML_PRINT_DEBUG(&quot;%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\n&quot;,
+                __func__, cgraph-&gt;perf_runs,
+                (double) perf_cycles_cur      / (double) ggml_cycles_per_ms(),
+                (double) cgraph-&gt;perf_cycles  / (double) ggml_cycles_per_ms() / (double) cgraph-&gt;perf_runs,
+                (double) perf_time_us_cur     / 1000.0,
+                (double) cgraph-&gt;perf_time_us / 1000.0 / cgraph-&gt;perf_runs);
+    }
+
+    return compute_status;
+}
+</code></pre>
+<p>因此重头戏就在工作线程所执行的<code>ggml_graph_compute_thread_hybrid</code>里面。这是一个比较长的函数，我们来梳理一下里面的流程。</p>
+<ul>
+<li>主要的函数体是一个<code>while(true)</code>的循环，计算图的节点会在里面依次得到计算。</li>
+<li>第0号线程(<code>state-&gt;ith == 0</code>)会进入一条单独的路径。事实上从<code>if (node-&gt;backend == GGML_BACKEND_CPU) continue;</code>可以看出这是专门用来负责GPU计算的线程。其会使用一个<code>while (1)</code>循环来等待<code>node-&gt;src[0]-&gt;is_finish</code>，<code>node-&gt;src[1]-&gt;is_finish</code>和<code>node-&gt;src[2]-&gt;is_finish</code>均准备就绪，然后设置参数(<code>params.type = GGML_TASK_COMPUTE</code>)调用<code>ggml_compute_forward</code>进行计算，之后再把<code>node-&gt;is_finish</code>置为1。以此往复，直到<code>node_n &gt;= cgraph-&gt;n_nodes</code>。</li>
+<li>其他线程（非0号）是负责执行CPU计算的线程。
+<ul>
+<li>算子可能有<code>INIT</code>子任务和<code>FINALIZE</code>子任务，可使用<code>GGML_OP_HAS_INIT[node-&gt;op]</code>和<code>GGML_OP_HAS_FINALIZE[node-&gt;op]</code>来判断。</li>
+<li>每个线程每次循环会先执行一遍<code>atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1)</code>。
+<ul>
+<li>最后一个执行到这里（返回值为1）的线程将会负责上一个节点的<code>FINALIZE</code>子任务（可能是收集结果等），然后分发新任务。分发新任务的过程包括：
+<ul>
+<li><code>++node_n</code>。</li>
+<li>等待<code>src[0]</code>， <code>src[1]</code>和<code>src[2]</code>完成。</li>
+<li>如果有<code>INIT</code>子任务，执行<code>INIT</code>子任务。</li>
+<li>如果<code>n_tasks == 1</code>，说明只有一份任务，直接当场自己执行了，不用交给其他线程。如果有<code>FINALIZE</code>子任务则把<code>FINALIZE</code>也执行了。然后回到<code>++node_n</code>的步骤。</li>
+<li><code>n_tasks</code>不是1，那么重置好<code>state-&gt;shared-&gt;n_active</code>为<code>n_threads</code>，设置好<code>state-&gt;shared-&gt;node_n</code>为新的<code>node_n</code>。</li>
+</ul>
+</li>
+<li><code>atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1) == 1</code>判定失败的线程会对<code>state-&gt;shared-&gt;node_n</code>进行等待，直到其出现变化（值不等于之前拿到的局部变量<code>node_n</code>了）。别忘了分发任务的结尾会设置新的<code>state-&gt;shared-&gt;node_n</code>，其影响的就是这里。</li>
+</ul>
+</li>
+<li>无论是否是负责分发任务的线程，都会尝试对当前任务进行计算。
+<ul>
+<li><code>if (node_n &gt;= cgraph-&gt;n_nodes) break;</code>：所有节点执行完毕，可以退出最外层的<code>while(true)</code>循环，任务停止。</li>
+<li>设置<code>ggml_compute_params</code>。这里由于负责执行CPU计算的线程是从<code>state-&gt;ith == 1</code>开始的，因此<code>ith</code>要减一。至于<code>nth</code>这里为什么是<code>n_tasks-1</code>，本人依然有疑问。有知道的可联系笔者或在评论区评论。</li>
+<li><code>state-&gt;ith &lt; n_tasks</code>的情况下，调用<code>ggml_compute_forward</code>执行分配给自己的计算任务。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c++">static thread_ret_t ggml_graph_compute_thread_hybrid(void * data) {
+    struct ggml_compute_state * state = (struct ggml_compute_state *) data;
+
+    const struct ggml_cgraph * cgraph = state-&gt;shared-&gt;cgraph;
+    const struct ggml_cplan  * cplan  = state-&gt;shared-&gt;cplan;
+
+    const int   n_threads   = state-&gt;shared-&gt;n_threads;
+
+    set_numa_thread_affinity(state-&gt;ith, n_threads);
+
+    // cpu_set_t mask;
+    // CPU_ZERO(&amp;mask);
+    // CPU_SET(state-&gt;ith * 2, &amp;mask);
+    // if (sched_setaffinity(0, sizeof(mask), &amp;mask) == -1) {
+    //     perror(&quot;sched_setaffinity&quot;);
+    // }
+
+    int node_n = -1;
+
+    while (true) {
+        if (cplan-&gt;abort_callback &amp;&amp; cplan-&gt;abort_callback(cplan-&gt;abort_callback_data)) {
+            state-&gt;shared-&gt;node_n += 1;
+            return (thread_ret_t) GGML_EXIT_ABORTED;
+        }
+        if (state-&gt;ith == 0)
+        {
+            // atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1);
+            node_n = -1;
+            // return 0;
+
+            while (1)
+            {
+                state-&gt;shared-&gt;perf_node_start_cycles  = ggml_perf_cycles();
+                state-&gt;shared-&gt;perf_node_start_time_us = ggml_perf_time_us();
+                node_n = node_n + 1;
+                if (node_n &gt;= cgraph-&gt;n_nodes)
+                    return 0;
+                struct ggml_tensor *node = cgraph-&gt;nodes[node_n];
+                if (node-&gt;backend == GGML_BACKEND_CPU)
+                    continue;
+                // uint64_t dbug = 0;
+                while (1)
+                {
+                    // dbug++;
+                    int status0 = atomic_load(&amp;node-&gt;src[0]-&gt;is_finish);
+                    int status1 = 1;
+                    int status2 = 1;
+                    if (node-&gt;src[1] != NULL)
+                        status1 = atomic_load(&amp;node-&gt;src[1]-&gt;is_finish);
+                    if (node-&gt;src[2] != NULL)
+                        status2 = atomic_load(&amp;node-&gt;src[2]-&gt;is_finish);
+                    // if (dbug &gt; 10000000) {
+                    //     printf(&quot;stuck %s thread %d\n&quot;, ggml_get_name(node), n_threads);
+                    //     int k;
+                    //     scanf(&quot;%d&quot;, &amp;k);
+                    // }
+                    if (status0 == 1 &amp;&amp; status1 == 1 &amp;&amp; status2 == 1)
+                    {
+                        break;
+                    }
+                    // else
+                    //     busy_wait_cycles(10);
+                }
+                struct ggml_compute_params params = {
+                    /*.type  =*/GGML_TASK_COMPUTE,
+                    /*.ith   =*/0,
+                    /*.nth   =*/1,
+                    /*.wsize =*/0,
+                    /*.wdata =*/0,
+                    /*.aic   =*/0,
+                };
+
+
+                // printf(&quot;GPU %s\n&quot;, ggml_get_name(node));
+                // cudaDeviceSynchronize();
+                ggml_compute_forward(&amp;params, node);
+                // cudaDeviceSynchronize();
+                // ggml_graph_compute_perf_stats_node_gpu(node, state-&gt;shared);
+                ggml_graph_compute_perf_stats_node_gpu(node, state-&gt;shared);
+                // if (strcmp(ggml_get_name(node), &quot;before&quot;) == 0)
+                //     printf(&quot;%ld\n&quot;, ggml_time_us());
+                atomic_store(&amp;node-&gt;is_finish, 1);
+            }
+        }
+        if (atomic_fetch_sub(&amp;state-&gt;shared-&gt;n_active, 1) == 1) {
+            // all other threads are finished and spinning
+            // do finalize and init here so we don't have synchronize again
+            struct ggml_compute_params params = {
+                /*.type  =*/ GGML_TASK_FINALIZE,
+                /*.ith   =*/ 0,
+                /*.nth   =*/ 0,
+                /*.wsize =*/ cplan-&gt;work_size,
+                /*.wdata =*/ cplan-&gt;work_data,
+                /*.aic   =*/ &amp;state-&gt;shared-&gt;aic,
+            };
+
+            if (node_n != -1) {
+                /* FINALIZE */
+                struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+                if (GGML_OP_HAS_FINALIZE[node-&gt;op]) {
+                    params.nth = ggml_get_n_tasks(node, n_threads);
+                    ggml_compute_forward(&amp;params, node);
+                }
+                ggml_graph_compute_perf_stats_node(node, state-&gt;shared);
+                atomic_store(&amp;node-&gt;is_finish, 1);
+            }
+
+            // distribute new work or execute it direct if 1T
+            while (++node_n &lt; cgraph-&gt;n_nodes) {
+                GGML_PRINT_DEBUG_5(&quot;%s: %d/%d\n&quot;, __func__, node_n, cgraph-&gt;n_nodes);
+
+                struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+                const int n_tasks = ggml_get_n_tasks(node, n_threads);
+
+                state-&gt;shared-&gt;perf_node_start_cycles  = ggml_perf_cycles();
+                state-&gt;shared-&gt;perf_node_start_time_us = ggml_perf_time_us();
+
+                params.nth = n_tasks;
+                if (node-&gt;backend == GGML_BACKEND_GPU)
+                    continue;
+                while(1)
+                {
+                    int status0 = atomic_load(&amp;node-&gt;src[0]-&gt;is_finish);
+                    int status1 = 1;
+                    int status2 = 1;
+                    if(node-&gt;src[1] != NULL)
+                        status1 = atomic_load(&amp;node-&gt;src[1]-&gt;is_finish);
+                    if(node-&gt;src[2] != NULL)
+                        status2 = atomic_load(&amp;node-&gt;src[2]-&gt;is_finish);
+                    if(status0 == 1 &amp;&amp; status1 == 1 &amp;&amp; status2 == 1)
+                        break;
+                    // else busy_wait_cycles(10);
+                }
+
+                /* INIT */
+                if (GGML_OP_HAS_INIT[node-&gt;op]) {
+                    params.type = GGML_TASK_INIT;
+                    ggml_compute_forward(&amp;params, node);
+                }
+
+                if (n_tasks == 1) {
+                    // TODO: maybe push node_n to the atomic but if other threads see n_tasks is 1,
+                    // they do something more efficient than spinning (?)
+                    params.type = GGML_TASK_COMPUTE;
+                    ggml_compute_forward(&amp;params, node);
+                    atomic_store(&amp;node-&gt;is_finish, 1);
+
+                    if (GGML_OP_HAS_FINALIZE[node-&gt;op]) {
+                        params.type = GGML_TASK_FINALIZE;
+                        ggml_compute_forward(&amp;params, node);
+                    }
+
+                    ggml_graph_compute_perf_stats_node(node, state-&gt;shared);
+                } else {
+                    break;
+                }
+
+                if (cplan-&gt;abort_callback &amp;&amp; cplan-&gt;abort_callback(cplan-&gt;abort_callback_data)) {
+                    break;
+                }
+            }
+
+            atomic_store(&amp;state-&gt;shared-&gt;n_active, n_threads);
+            atomic_store(&amp;state-&gt;shared-&gt;node_n,   node_n);
+        } else {
+            // wait for other threads to finish
+            const int last = node_n;
+            while (true) {
+                // TODO: this sched_yield can have significant impact on the performance - either positive or negative
+                //       depending on the workload and the operating system.
+                //       since it is not clear what is the best approach, it should potentially become user-configurable
+                //       ref: https://github.com/ggerganov/ggml/issues/291
+#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
+                sched_yield();
+#endif
+
+                node_n = atomic_load(&amp;state-&gt;shared-&gt;node_n);
+                if (node_n != last) break;
+            };
+        }
+
+        // check if we should stop
+        if (node_n &gt;= cgraph-&gt;n_nodes) break;
+
+        /* COMPUTE */
+        struct ggml_tensor * node = cgraph-&gt;nodes[node_n];
+        const int n_tasks = ggml_get_n_tasks(node, n_threads);
+
+        struct ggml_compute_params params = {
+            /*.type  =*/ GGML_TASK_COMPUTE,
+            /*.ith   =*/ state-&gt;ith-1,
+            /*.nth   =*/ n_tasks-1,
+            /*.wsize =*/ cplan-&gt;work_size,
+            /*.wdata =*/ cplan-&gt;work_data,
+            /*.aic   =*/ &amp;state-&gt;shared-&gt;aic,
+        };
+
+        if (state-&gt;ith &lt; n_tasks) {
+            ggml_compute_forward(&amp;params, node);
+        }
+    }
+
+    return GGML_EXIT_SUCCESS;
+}
+</code></pre>
+<p><code>ggml_compute_forward</code>会负责根据<code>tensor-&gt;op</code>去调用具体的算子。</p>
+<pre><code class="language-c++">static void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    GGML_ASSERT(params);
+
+    if (tensor-&gt;op == GGML_OP_NONE) {
+        return;
+    }
+
+#ifdef GGML_USE_CUBLAS
+    bool skip_cpu = ggml_cuda_compute_forward(params, tensor);
+    if (skip_cpu) {
+        return;
+    }
+    // Make sure src[0] (weight for binary ops) is on CPU to avoid any weight transfer
+    GGML_ASSERT((tensor-&gt;src[0] == NULL || tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_CPU) &amp;&amp; &quot;weight should be on the CPU to compute on the CPU&quot;);
+#endif // GGML_USE_CUBLAS
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_DUP:
+            {
+                ggml_compute_forward_dup(params, tensor-&gt;src[0], tensor);
+            } break;
+        case GGML_OP_ADD:
+            {
+                ggml_compute_forward_add(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_ADD1:
+            {
+                ggml_compute_forward_add1(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_ACC:
+            {
+                ggml_compute_forward_acc(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_SUB:
+            {
+                ggml_compute_forward_sub(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_MUL:
+            {
+                ggml_compute_forward_mul(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+        case GGML_OP_DIV:
+            {
+                ggml_compute_forward_div(params, tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+            } break;
+            // Other cases...
+            // -- snip --
+    }
+}
+</code></pre>
+<p>额外地，我们注意<code>ggml_compute_foward</code>的开头：如果使用了CUBLAS，那么就转而调用CUDA实现的算子（<code>ggml_cuda_compute_forward</code>）。</p>
+<pre><code class="language-c++">static void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    GGML_ASSERT(params);
+
+    if (tensor-&gt;op == GGML_OP_NONE) {
+        return;
+    }
+
+#ifdef GGML_USE_CUBLAS
+    bool skip_cpu = ggml_cuda_compute_forward(params, tensor);
+    if (skip_cpu) {
+        return;
+    }
+    // Make sure src[0] (weight for binary ops) is on CPU to avoid any weight transfer
+    GGML_ASSERT((tensor-&gt;src[0] == NULL || tensor-&gt;src[0]-&gt;backend == GGML_BACKEND_CPU) &amp;&amp; &quot;weight should be on the CPU to compute on the CPU&quot;);
+#endif // GGML_USE_CUBLAS
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_DUP:
+            {
+                ggml_compute_forward_dup(params, tensor-&gt;src[0], tensor);
+            } break;
+            // Other cases...
+            // -- snip --
+    }
+}
+</code></pre>
+<p>在<code>ggml_cuda_compute_forward</code>中，会根据<code>tensor-&gt;op</code>去调用具体的CUDA算子。</p>
+<pre><code class="language-c++">bool ggml_cuda_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor) {
+    if (!g_cublas_loaded) return false;
+
+    ggml_cuda_func_t func;
+    const bool src0_on_device = tensor-&gt;src[0] != nullptr &amp;&amp; (tensor-&gt;src[0]-&gt;backend != GGML_BACKEND_CPU);
+    const bool any_on_device = tensor-&gt;backend == GGML_BACKEND_GPU || src0_on_device
+        || (tensor-&gt;src[1] != nullptr &amp;&amp; tensor-&gt;src[1]-&gt;backend == GGML_BACKEND_GPU);
+
+    // when src0 (weights) is not on device, we compute on CPU with sparsity
+    if (!src0_on_device &amp;&amp; (tensor-&gt;op == GGML_OP_MUL_MAT_SPARSE || tensor-&gt;op == GGML_OP_AXPY)
+        || !any_on_device &amp;&amp; tensor-&gt;op != GGML_OP_MUL_MAT) {
+        return false;
+    }
+
+    if (tensor-&gt;op == GGML_OP_MUL_MAT) {
+        if (tensor-&gt;src[0]-&gt;ne[3] != tensor-&gt;src[1]-&gt;ne[3]) {
+#ifndef NDEBUG
+            fprintf(stderr, &quot;%s: cannot compute %s: src0-&gt;ne[3] = %d, src1-&gt;ne[3] = %d - fallback to CPU\n&quot;, __func__, tensor-&gt;name, tensor-&gt;src[0]-&gt;ne[3], tensor-&gt;src[1]-&gt;ne[3]);
+#endif
+            return false;
+        }
+    }
+
+    switch (tensor-&gt;op) {
+        case GGML_OP_REPEAT:
+            func = ggml_cuda_repeat;
+            break;
+        case GGML_OP_GET_ROWS:
+            func = ggml_cuda_get_rows;
+            break;
+        case GGML_OP_DUP:
+            func = ggml_cuda_dup;
+            break;
+        case GGML_OP_ADD:
+            func = ggml_cuda_add;
+            break;
+        case GGML_OP_MUL:
+            func = ggml_cuda_mul;
+            break;
+        case GGML_OP_UNARY:
+            switch (ggml_get_unary_op(tensor)) {
+                case GGML_UNARY_OP_GELU:
+                    func = ggml_cuda_gelu;
+                    break;
+                case GGML_UNARY_OP_SILU:
+                    func = ggml_cuda_silu;
+                    break;
+                case GGML_UNARY_OP_RELU:
+                    func = ggml_cuda_relu;
+                    break;
+                default:
+                    return false;
+            } break;
+        case GGML_OP_NORM:
+            func = ggml_cuda_norm;
+            break;
+        case GGML_OP_RMS_NORM:
+            func = ggml_cuda_rms_norm;
+            break;
+        case GGML_OP_MUL_MAT:
+            if (!any_on_device &amp;&amp; !ggml_cuda_can_mul_mat(tensor-&gt;src[0], tensor-&gt;src[1], tensor)) {
+                return false;
+            }
+            func = ggml_cuda_mul_mat;
+            break;
+        case GGML_OP_MUL_MAT_SPARSE:
+            if (!src0_on_device &amp;&amp; !ggml_cuda_can_mul_mat(tensor-&gt;src[0], tensor-&gt;src[1], tensor)) {
+                return false;
+            }
+            func = ggml_cuda_mul_mat_sparse;
+            break;
+        case GGML_OP_AXPY:
+            func = ggml_cuda_axpy;
+            break;
+        // Other cases...
+        // -- snip --
+        default:
+            return false;
+    }
+
+    if (params-&gt;ith != 0) {
+        return true;
+    }
+    if (params-&gt;type == GGML_TASK_INIT || params-&gt;type == GGML_TASK_FINALIZE) {
+        return true;
+    }
+    func(tensor-&gt;src[0], tensor-&gt;src[1], tensor);
+
+    // CUDA_CHECK(cudaDeviceSynchronize());
+
+    return true;
+}
+</code></pre>
+<p>以<code>ggml_cuda_mul_mat_sparse</code>为例，其会根据类型继续下调。</p>
+<pre><code class="language-c++">static void ggml_cuda_mul_mat_sparse(const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst) {
+    GGML_ASSERT(dst-&gt;src[2] != NULL &amp;&amp; &quot;dst-&gt;src[2] must be present for sparse matrix multiplication&quot;);
+    if (src1-&gt;ne[1] == 1 &amp;&amp; src0-&gt;ne[0] % GGML_CUDA_DMMV_X == 0) {
+        switch(src0-&gt;type) {
+            case GGML_TYPE_F16:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_dequantized, false);
+                break;
+            case GGML_TYPE_Q4_0:
+                ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_vec_sparse_q, true);
+                break;
+            default:
+                GGML_ASSERT(false &amp;&amp; &quot;unsupported type for sparse matrix multiplication&quot;);
+        }
+    } else {
+        ggml_cuda_op_mul_mat(src0, src1, dst, ggml_cuda_op_mul_mat_batch_sparse, false);
+    }
+}
+</code></pre>
+<p>至此，后续便能调用到具体负责计算的算子。模型加载以后，计算图的构建一直到算子的调用的大致流程也结束了。</p>
+<h2 id="支持-️">支持 ☕️</h2>
+<p>如果发现内容有纰漏或错误，可以通过邮箱hangyu.yuan@qq.com联系我或直接在下方评论告诉我，谢谢。<br>
+我的<a href="https://github.com/Yuan-Allen">GitHub主页</a>。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%9B%B8%E5%85%B3">相关</a></li>
+<li><a href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E6%9E%84%E5%BB%BA">计算图构建</a></li>
+<li><a href="#%E7%AE%97%E5%AD%90%E8%B0%83%E7%94%A8">算子调用</a></li>
+<li><a href="#%E6%94%AF%E6%8C%81-%EF%B8%8F">支持 ☕️</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-binary-tree/">
+              <h3 class="post-title">
+                LeetCode刷题记录（二叉树篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

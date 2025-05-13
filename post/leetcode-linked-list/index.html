@@ -1,0 +1,975 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode刷题记录（链表篇） | AllenY&#39;s blog</title>
+<link rel="shortcut icon" href="https://alleny.xyz/favicon.ico?v=1747120786321">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://alleny.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LeetCode刷题记录（链表篇） | AllenY&#39;s blog - Atom Feed" href="https://alleny.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HPLP8D1S43"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-HPLP8D1S43');
+</script>
+
+
+    <meta name="description" content="LeetCode刷题记录（链表篇），个人向。
+为了锻炼代码能力，会交替使用不同编程语言完成答案。
+
+[203] Remove Linked List Elements
+
+难度：Easy
+语言：Rust
+
+题目描述。
+基本的数据结构操作，按道..." />
+    <meta name="keywords" content="LeetCode" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://alleny.xyz">
+  <img class="avatar" src="https://alleny.xyz/images/avatar.png?v=1747120786321" alt="">
+  </a>
+  <h1 class="site-title">
+    AllenY&#39;s blog
+  </h1>
+  <p class="site-description">
+    🧑🏻‍💻🎮🍿🎹🗻
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          Home
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          Archive
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          Tags
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          About
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/Yuan-Allen" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+    
+      
+        <a href="https://weibo.com/u/6478080851" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LeetCode刷题记录（链表篇）
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-03-31
+              </span>
+              <span>
+                19 min read
+              </span>
+              
+                <a href="https://alleny.xyz/tag/leetcode/" class="post-tag">
+                  # LeetCode
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>LeetCode刷题记录（链表篇），个人向。<br>
+为了锻炼代码能力，会交替使用不同编程语言完成答案。</p>
+<!-- more -->
+<h2 id="203-remove-linked-list-elements">[203] Remove Linked List Elements</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Rust</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-linked-list-elements/description/">题目描述</a>。<br>
+基本的数据结构操作，按道理没有难度可言。问题是如果用Rust来写，难度就会暴增。</p>
+<pre><code class="language-rust">    pub fn remove_elements(head: Option&lt;Box&lt;ListNode&gt;&gt;, val: i32) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+        let mut dummy_head = Box::new(ListNode::new(0));
+        dummy_head.next = head;
+
+        let mut cur = dummy_head.as_mut();
+        while let Some(nxt) = cur.next.as_mut() {
+            if nxt.val == val {
+                cur.next = nxt.next.take();
+            } else {
+                cur = cur.next.as_mut().unwrap();
+            }
+        }
+
+        dummy_head.next
+    }
+</code></pre>
+<h2 id="707-design-linked-list">[707] Design Linked List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/design-linked-list/description/">题目描述</a>。<br>
+实现一个链表，可以是单向链表或双向链表。基本的数据结构实现，这居然是Medium？<br>
+虽然如此，还是需要注意一些细节，不能看错题目，例如<code>addAtIndex</code>是在指定节点之前而不是之后插入；以及当<code>index</code>等于<code>length</code>时需要在链表尾部插入。<br>
+本人这里实现的是双链表。相比题目要求实现的函数，额外增加实现了可复用函数<code>get_node</code>用来精简代码。实际上这里<code>addAtHead</code>和<code>addAtTail</code>函数还可以复用<code>addAtIndex</code>的代码，但是没有必要了，因为这两个函数本身就很简单，也不需要一些多余的条件判断，不复用可以提升一下性能。<br>
+此外，这里的实现还加了一个优化，即<code>get_node</code>的时候会判断一下目标是在链表前半段还是后半段，即从<code>head</code>遍历过去快还是从<code>tail</code>遍历过去快，充分榨干双向链表性能。</p>
+<pre><code class="language-c++">class MyLinkedList {
+ public:
+  struct Node {
+    int val;
+    Node* next;
+    Node* prev;
+    Node(int val) : val(val), next(nullptr), prev(nullptr) {}
+  };
+
+  Node* head;
+  Node* tail;
+  int length;
+
+  MyLinkedList() {
+    head = new Node(0);
+    tail = new Node(0);
+    length = 0;
+
+    head-&gt;next = tail;
+    tail-&gt;prev = head;
+  }
+
+  Node* get_node(int index) {
+    if (index &lt; 0 || index &gt;= length) {
+      return nullptr;
+    }
+
+    Node* curr = head-&gt;next;
+    if (index &lt; length / 2) {
+      for (int i = 0; i &lt; index; ++i) {
+        curr = curr-&gt;next;
+      }
+    } else {
+      // Opt: near to tail
+      curr = tail-&gt;prev;
+      for (int i = 0; i &lt; length - index - 1; ++i) {
+        curr = curr-&gt;prev;
+      }
+    }
+
+    return curr;
+  }
+
+  int get(int index) {
+    Node* node = get_node(index);
+
+    return node != nullptr ? node-&gt;val : -1;
+  }
+
+  void addAtHead(int val) {
+    Node* node = new Node(val);
+    head-&gt;next-&gt;prev = node;
+    node-&gt;next = head-&gt;next;
+    node-&gt;prev = head;
+    head-&gt;next = node;
+
+    length++;
+  }
+
+  void addAtTail(int val) {
+    Node* node = new Node(val);
+    tail-&gt;prev-&gt;next = node;
+    node-&gt;prev = tail-&gt;prev;
+    node-&gt;next = tail;
+    tail-&gt;prev = node;
+
+    length++;
+  }
+
+  void addAtIndex(int index, int val) {
+    Node* node = new Node(val);
+    Node* curr = tail;
+
+    if (index != length) {
+      curr = get_node(index);
+    }
+    if (curr == nullptr) {
+      return;
+    }
+
+    node-&gt;prev = curr-&gt;prev;
+    curr-&gt;prev-&gt;next = node;
+    node-&gt;next = curr;
+    curr-&gt;prev = node;
+    length++;
+  }
+
+  void deleteAtIndex(int index) {
+    Node* curr = get_node(index);
+    if (curr == nullptr) {
+      return;
+    }
+
+    curr-&gt;prev-&gt;next = curr-&gt;next;
+    curr-&gt;next-&gt;prev = curr-&gt;prev;
+    delete curr;
+    length--;
+  }
+};
+</code></pre>
+<h2 id="206-reverse-linked-list">[206] Reverse Linked List</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-linked-list/description/">题目描述</a>。<br>
+没有任何难度的极简题目，包含<code>return</code>一共只用八行代码。遍历链表，每次记录一下下一个节点（<code>succ</code>），然后翻转当前节点指针即可。</p>
+<pre><code class="language-python">    def reverseList(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        prev = None
+        curr = head
+
+        while curr is not None:
+            succ = curr.next
+            curr.next = prev
+            prev = curr
+            curr = succ
+
+        return prev
+</code></pre>
+<h2 id="24-swap-nodes-in-pairs">[24] Swap Nodes in Pairs</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/swap-nodes-in-pairs/description/">题目描述</a>。<br>
+题目不难，脑里想好每次循环时要做的操作即可。<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0024.%E4%B8%A4%E4%B8%A4%E4%BA%A4%E6%8D%A2%E9%93%BE%E8%A1%A8%E4%B8%AD%E7%9A%84%E8%8A%82%E7%82%B9.md">网上有解法</a>是把每次操作分为三个步骤。本人的解法只把操作分为两个步骤，缺点是每次要检查一下<code>curr-&gt;next</code>是否存在，即元素个数是否是奇数个。</p>
+<pre><code class="language-c++">  ListNode* swapPairs(ListNode* head) {
+    ListNode* dummy_head = new ListNode(0, head);
+    ListNode* prev = dummy_head;
+    ListNode* curr = head;
+    ListNode* next_pair = nullptr;
+    while (curr) {
+      if (!(curr-&gt;next)) {
+        prev-&gt;next = curr;
+        prev = curr;
+        break;
+      }
+      next_pair = curr-&gt;next-&gt;next;
+
+      curr-&gt;next-&gt;next = curr;
+      prev-&gt;next = curr-&gt;next;
+
+      prev = curr;
+      curr = next_pair;
+    }
+    prev-&gt;next = nullptr;
+
+    ListNode* result = dummy_head-&gt;next;
+    delete dummy_head;
+    return result;
+  }
+</code></pre>
+<h2 id="19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/remove-nth-node-from-end-of-list/description/">题目描述</a>。<br>
+小学生都会的最直观的想法就是先扫一遍得出size再遍历第二遍找要删除的node，但是要扫描两遍，不够优雅。网上的解法是使用快慢指针，一前一后保持距离，就可以找到倒数第N个node。这种解法看似只用了一次遍历，但每次循环从一次操作变成了两次操作，本质其实是一样的，看起来花里胡哨了而已（毫无含金量的Medium）。但循环变量更新和条件判断本身也是有开销的，快慢指针这种解法把两个循环拍扁合成一个循环，也不能说没有提升吧。<br>
+真正的只需要一次Walk的解法应该是使用哈希表把node存起来，但是这需要O(n)的空间复杂度，性价比貌似不是很高。</p>
+<pre><code class="language-python">    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -&gt; Optional[ListNode]:
+        dummy_head = ListNode(0, head)
+        fast = dummy_head
+        slow = dummy_head
+        for _ in range(0, n):
+            fast = fast.next
+            if fast is None:
+                # Actually this will not happen because 1 &lt;= n &lt;= sz
+                return None
+        fast = fast.next
+        while fast is not None:
+            slow = slow.next
+            fast = fast.next
+        slow.next = slow.next.next
+        return dummy_head.next
+</code></pre>
+<h2 id="160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</h2>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/description/">题目描述</a>。<br>
+题目要求O(m+n)的时间复杂度和O(1)的空间复杂度，因此哈希表之类的把节点存下来的解法是不能用的。一种容易想到的做法是先算一下两个链表的长度，然后把链表尾部对齐，从短链表的头部开始依次对比两个链表对应位置的节点是否相同（说人话就是把长链表开头超出的部分截断）。<br>
+网上也有一种<a href="https://leetcode.cn/problems/intersection-of-two-linked-lists/solutions/811625/xiang-jiao-lian-biao-by-leetcode-solutio-a8jn/">双指针的解法</a>，用了一点数学技巧，说实话真的到了面试笔试临时很难想出来。对齐链表的方法虽然代码长了一些但思路很简单，个人还是更推荐。</p>
+<pre><code class="language-c++">  ListNode *getIntersectionNode(ListNode *headA, ListNode *headB) {
+    int size_a = 0;
+    int size_b = 0;
+    int diff = 0;
+    ListNode *tmp_a = headA;
+    ListNode *tmp_b = headB;
+    while (tmp_a) {
+      tmp_a = tmp_a-&gt;next;
+      size_a++;
+    }
+    while (tmp_b) {
+      tmp_b = tmp_b-&gt;next;
+      size_b++;
+    }
+
+    tmp_a = headA;
+    tmp_b = headB;
+    diff = size_a - size_b;
+    while (diff &gt; 0) {
+      tmp_a = tmp_a-&gt;next;
+      --diff;
+    }
+    while (diff &lt; 0) {
+      tmp_b = tmp_b-&gt;next;
+      ++diff;
+    }
+    while (tmp_a &amp;&amp; tmp_b) {
+      if (tmp_a == tmp_b) {
+        return tmp_a;
+      }
+      tmp_a = tmp_a-&gt;next;
+      tmp_b = tmp_b-&gt;next;
+    }
+    return nullptr;
+  }
+</code></pre>
+<h2 id="142-linked-list-cycle-ii">[142] Linked List Cycle II</h2>
+<blockquote>
+<p>难度：Medium<br>
+语言：Python</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/linked-list-cycle-ii/description/">题目描述</a>。<br>
+较有难度的一道题。<br>
+图论中，环是只有首末顶点重复的非空路径。直观想法是判断遍历中是否会第二次经过同一个点，但由于题目要求O(1)的空间复杂度，我们显然并不能用哈希表之类的数据结构把见过的点都存下来。因此这道题只能用一些数学推断来解，而难度也源于此。<br>
+数学推导的具体过程可以参考<a href="https://github.com/youngyangyang04/leetcode-master/blob/master/problems/0142.%E7%8E%AF%E5%BD%A2%E9%93%BE%E8%A1%A8II.md">这篇解答</a>。简单来说，关键在于通过以下两点</p>
+<ul>
+<li>快指针走过的长度是慢指针的两倍</li>
+<li>把快指针和慢指针走过的长度都用<code>x</code>，<code>y</code>和<code>z</code>表示出来</li>
+</ul>
+<p>来共同解出从头节点到环入口的距离<code>x</code>。由于通过第一次快慢指针的相遇，<code>y</code>和<code>z</code>都已经是已知值，所以我们就可以成功找出<code>x</code>，并且发现<code>x</code>原来就等于<code>z</code>再加上若干圈环的长度。最后，同时从头结点和相遇节点出发，找出<code>x</code>对应位置的节点即可。</p>
+<pre><code class="language-python">    def detectCycle(self, head: Optional[ListNode]) -&gt; Optional[ListNode]:
+        slow = head
+        fast = head
+        while True:
+            if fast is None or fast.next is None:
+                return None
+            fast = fast.next.next
+            slow = slow.next  # No need to check slow
+            if slow == fast:
+                break
+        slow = head
+        while slow != fast:
+            slow = slow.next
+            fast = fast.next
+        return slow
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>涉及链表基本操作的题（如<a href="#203-remove-linked-list-elements">203</a>、<a href="#707-design-linked-list">707</a>、<a href="#206-reverse-linked-list">206</a>和<a href="#24-swap-nodes-in-pairs">24</a>）基本没有难度，要点就是加一个<code>dummy_head</code>可以大大减小代码的复杂程度（避免对头结点特殊情况的判断）。<br>
+涉及算法的题目则都会要求O(1)的空间复杂度，也就是我们不能把节点都存下来。在链表有限的遍历方式下，大多数题目都会使用双指针来解，通过推导以及利用多个指针之间的关系来达成我们想要的目的，例如</p>
+<ul>
+<li><a href="#19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</a><br>
+两个指针间的距离保持固定，因此前一个指针就是倒数第N个节点。</li>
+<li><a href="#160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</a><br>
+两个指针从不同链表开始交错遍历，到相交节点走过的距离相同。</li>
+<li><a href="#142-linked-list-cycle-ii">[142] Linked List Cycle II</a>
+<ul>
+<li>两个指针走过的距离有两倍的关系，可以列方程把<code>x</code>用已知的<code>y</code>和<code>z</code>表示。</li>
+<li>两个指针走过的距离相同，来找到<code>x</code>对应的节点。</li>
+</ul>
+</li>
+</ul>
+<h2 id="补充">补充</h2>
+<h3 id="234-palindrome-linked-list">[234] Palindrome Linked List</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/palindrome-linked-list/description/">题目描述</a>。<br>
+难点在于<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的时间复杂度和<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度。<br>
+这里我们先使用快慢指针（快指针走两步，慢指针走一步）的方式找到链表中间位置（其实先遍历一遍得到链表长度再直接走到中间也是一样的）。然后我们翻转链表的后半部分，再同时遍历前半和后半部分看是否一样即可。<br>
+该算法过程修改了原链表。虽然不恢复链表也能通过测试，但我们还是通过<code>slow-&gt;next = reverseList(reversedHead);</code>的方式恢复了链表。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool isPalindrome(ListNode *head) {
+        ListNode *fast = head;
+        ListNode *slow = head;
+        bool result = true;
+        while (fast-&gt;next &amp;&amp; fast-&gt;next-&gt;next) {
+            slow = slow-&gt;next;
+            fast = fast-&gt;next-&gt;next;
+        }
+
+        ListNode *reversedHead = reverseList(slow-&gt;next);
+
+        ListNode *p1 = head;
+        ListNode *p2 = reversedHead;
+        while (p2) {
+            if (p1-&gt;val != p2-&gt;val) {
+                result = false;
+            }
+            p1 = p1-&gt;next;
+            p2 = p2-&gt;next;
+        }
+
+        // Optional: recover the list
+        slow-&gt;next = reverseList(reversedHead);
+
+        return result;
+    }
+
+    ListNode *reverseList(ListNode *head) {
+        ListNode *cur = head;
+        ListNode *pre = nullptr;
+        while (cur) {
+            ListNode *succ = cur-&gt;next;
+            cur-&gt;next = pre;
+            pre = cur;
+            cur = succ;
+        }
+        return pre;
+    }
+};
+</code></pre>
+<h3 id="141-linked-list-cycle">[141] Linked List Cycle</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/linked-list-cycle/description/">题目描述</a>。<br>
+相当于<a href="#142-linked-list-cycle-ii">[142] Linked List Cycle II</a>的前置题目。这里不需要找到环的入口，只需要判断是否存在环即可。我们使用快慢指针看是否能相遇即可。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    bool hasCycle(ListNode *head) {
+        ListNode *fast = head;
+        ListNode *slow = head;
+        while (fast &amp;&amp; fast-&gt;next) {
+            fast = fast-&gt;next-&gt;next;
+            slow = slow-&gt;next;
+            if (fast == slow) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+</code></pre>
+<h3 id="21-merge-two-sorted-lists">[21] Merge Two Sorted Lists</h3>
+<blockquote>
+<p>难度：Easy<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/merge-two-sorted-lists/description/">题目描述</a>。<br>
+类似归并排序，每次选两个链表里面大的那个节点作为后继即可。<br>
+这里用<code>dummy</code>节点简化了头结点判断，又用了<code>succ</code>作为<code>p1</code>或<code>p2</code>的引用来减少重复代码。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    ListNode *mergeTwoLists(ListNode *list1, ListNode *list2) {
+        ListNode *p1 = list1;
+        ListNode *p2 = list2;
+        ListNode *dummy = new ListNode(0);
+        ListNode *cur = dummy;
+        while (p1 &amp;&amp; p2) {
+            ListNode *&amp;succ = p1-&gt;val &lt; p2-&gt;val ? p1 : p2;
+            cur-&gt;next = succ;
+            cur = succ;
+            succ = succ-&gt;next;
+        }
+        cur-&gt;next = p1 ? p1 : p2;
+        ListNode *result = dummy-&gt;next;
+        delete dummy;
+        return result;
+    }
+};
+</code></pre>
+<h3 id="2-add-two-numbers">[2] Add Two Numbers</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/add-two-numbers/description/">题目描述</a>。<br>
+链表已经倒序，那么就很方便，按位相加<code>num1 + num2 + carry</code>，得到下一位的数字<code>sum % 10</code>和<code>carry = sum / 10</code>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    ListNode *addTwoNumbers(ListNode *l1, ListNode *l2) {
+        ListNode *dummy = new ListNode(0);
+        ListNode *cur = dummy;
+        int carry = 0;
+        while (l1 || l2 || carry) {
+            int num1 = l1 ? l1-&gt;val : 0;
+            int num2 = l2 ? l2-&gt;val : 0;
+            int sum = num1 + num2 + carry;
+            cur-&gt;next = new ListNode(sum % 10);
+            carry = sum / 10;
+            if (l1) {
+                l1 = l1-&gt;next;
+            }
+            if (l2) {
+                l2 = l2-&gt;next;
+            }
+            cur = cur-&gt;next;
+        }
+        ListNode *result = dummy-&gt;next;
+        delete dummy;
+        return result;
+    }
+};
+</code></pre>
+<h3 id="25-reverse-nodes-in-k-group">[25] Reverse Nodes in k-Group</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/reverse-nodes-in-k-group/description/">题目描述</a>。<br>
+每次找到当前组的开头<code>curHead</code>和下一组的开头<code>nextHead</code>，然后一组一组翻转即可。<br>
+问题在于，翻转后我们还需要把当前组重新与前后组连上。因此我们用<code>pre</code>记录上一组的结尾，翻转后手动把<code>pre</code>连上当前组翻转后的开头。我们又把<code>nextHead</code>传给翻转函数，使当前组的旧开头即新结尾连上<code>nextHead</code>。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    ListNode *reverseKGroup(ListNode *head, int k) {
+        ListNode *pre = nullptr;
+        ListNode *curHead = head;
+        ListNode *nextHead = curHead;
+        ListNode *newHead = head;
+        while (curHead) {
+            for (int i = 0; i &lt; k; ++i) {
+                if (!nextHead) {
+                    return newHead;
+                }
+                nextHead = nextHead-&gt;next;
+            }
+            (pre ? pre-&gt;next : newHead) = reverseOneList(curHead, nextHead);
+            pre = curHead; // curHead become tail now
+            curHead = nextHead;
+        }
+        return newHead;
+    }
+
+    ListNode *reverseOneList(ListNode *head, ListNode *end) {
+        ListNode *cur = head;
+        ListNode *pre = end;
+        while (cur != end) {
+            ListNode *succ = cur-&gt;next;
+            cur-&gt;next = pre;
+            pre = cur;
+            cur = succ;
+        }
+        return pre;
+    }
+};
+</code></pre>
+<h3 id="138-copy-list-with-random-pointer">[138] Copy List with Random Pointer</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/copy-list-with-random-pointer/description/">题目描述</a>。<br>
+三次遍历。</p>
+<ul>
+<li>第一次遍历把复制的节点插到原节点后面变成<code>A --&gt; A' --&gt; B --&gt; B' --&gt; C --&gt; C'</code>。</li>
+<li>第二次遍历用来填<code>random</code>。<code>A'</code>的<code>random</code>就是<code>A</code>的<code>random</code>的<code>next</code>。</li>
+<li>第三次遍历用来把<code>A' --&gt; B' --&gt; C'</code>拆出来。</li>
+</ul>
+<pre><code class="language-c++">class Solution {
+  public:
+    Node *copyRandomList(Node *head) {
+        if (!head) {
+            return nullptr;
+        }
+
+        // A --&gt; A' --&gt; B --&gt; B' --&gt; C --&gt; C'
+        Node *cur = head;
+        while (cur) {
+            Node *nxt = cur-&gt;next;
+            cur-&gt;next = new Node(cur-&gt;val);
+            cur-&gt;next-&gt;next = nxt;
+            cur = nxt;
+        }
+
+        // Set random pointers for A', B' and C'
+        cur = head;
+        while (cur) {
+            cur-&gt;next-&gt;random = cur-&gt;random ? cur-&gt;random-&gt;next : nullptr;
+            cur = cur-&gt;next-&gt;next;
+        }
+
+        // Extract the new list
+        cur = head;
+        Node *newHead = head-&gt;next;
+        while (cur) {
+            Node *nxt = cur-&gt;next-&gt;next;
+            cur-&gt;next-&gt;next = nxt ? nxt-&gt;next : nullptr;
+            cur-&gt;next = nxt;
+            cur = nxt;
+        }
+        return newHead;
+    }
+};
+</code></pre>
+<h3 id="148-sort-list">[148] Sort List</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/sort-list/description/">题目描述</a>。<br>
+较有难度的一道题。难度在于，为了同时达到<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mi>n</mi><mi>l</mi><mi>o</mi><mi>g</mi><mi>n</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">O(nlogn)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">n</span><span class="mclose">)</span></span></span></span>的时间复杂度和<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>的空间复杂度，我们考虑使用自底向上（迭代法）的归并排序。而这样的代码实现在链表上显然是比较复杂的，很容易出错。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    ListNode *sortList(ListNode *head) {
+        if (!head) {
+            return nullptr;
+        }
+
+        ListNode *dummy = new ListNode(0, head);
+
+        // Get the length of the list
+        ListNode *cur = head;
+        int length = 0;
+        while (cur) {
+            ++length;
+            cur = cur-&gt;next;
+        }
+
+        // Merge Sort
+        for (int i = 1; i &lt; length; i &lt;&lt;= 1) {
+            ListNode *pre = dummy;
+            cur = dummy-&gt;next;
+            while (cur) {
+                // 1. Get head1
+                ListNode *head1 = cur;
+
+                // 2. Get head2
+                for (int j = 1; j &lt; i &amp;&amp; cur-&gt;next; ++j) {
+                    cur = cur-&gt;next;
+                }
+                // Now cur is the tail of list1.
+                // cur-&gt;next is head2.
+                ListNode *head2 = cur-&gt;next;
+                cur-&gt;next = nullptr;
+                cur = head2;
+
+                // 3. Get next cur
+                for (int j = 1; j &lt; i &amp;&amp; cur; ++j) {
+                    cur = cur-&gt;next;
+                }
+                ListNode *nxt = nullptr;
+                if (cur) {
+                    nxt = cur-&gt;next;
+                    cur-&gt;next = nullptr;
+                }
+
+                // 4. Merge
+                pre-&gt;next = merge(head1, head2);
+
+                // 5. Set next pre and cur
+                while (pre-&gt;next) {
+                    pre = pre-&gt;next;
+                }
+                cur = nxt;
+            }
+        }
+
+        ListNode *result = dummy-&gt;next;
+        delete dummy;
+        return result;
+    }
+
+    ListNode *merge(ListNode *head1, ListNode *head2) {
+        ListNode *dummy = new ListNode(0);
+        ListNode *pre = dummy;
+        while (head1 &amp;&amp; head2) {
+            ListNode *&amp;choosen = head1-&gt;val &lt; head2-&gt;val ? head1 : head2;
+            pre-&gt;next = choosen;
+            pre = choosen;
+            choosen = choosen-&gt;next;
+        }
+        pre-&gt;next = head1 ? head1 : head2;
+        ListNode *head = dummy-&gt;next;
+        delete dummy;
+        return head;
+    }
+};
+</code></pre>
+<h3 id="23-merge-k-sorted-lists">[23] Merge k Sorted Lists</h3>
+<blockquote>
+<p>难度：Hard<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/merge-k-sorted-lists/description/">题目描述</a>。<br>
+相比<a href="#21-merge-two-sorted-lists">[21] Merge Two Sorted Lists</a>只是把两个链表扩展成了k个链表。<br>
+简单的想法是我们每次从k个链表里面取值最小的那个节点即可。这里则使用优先级队列进一步优化了这个从k个里面找最小节点的过程。</p>
+<pre><code class="language-c++">class Solution {
+  public:
+    ListNode *mergeKLists(vector&lt;ListNode *&gt; &amp;lists) {
+        auto cmp = [](const ListNode *a, const ListNode *b) {
+            return a-&gt;val &gt; b-&gt;val;
+        };
+
+        ListNode *dummy = new ListNode(0);
+        ListNode *pre = dummy;
+        priority_queue&lt;ListNode *, vector&lt;ListNode *&gt;, decltype(cmp)&gt; q;
+
+        for (ListNode *head : lists) {
+            if (head) {
+                q.push(head);
+            }
+        }
+        while (!q.empty()) {
+            ListNode *node = q.top();
+            q.pop();
+            pre-&gt;next = node;
+            pre = node;
+            if (node-&gt;next) {
+                q.push(node-&gt;next);
+            }
+        }
+        ListNode *result = dummy-&gt;next;
+        delete dummy;
+        return result;
+    }
+};
+</code></pre>
+<h3 id="146-lru-cache">[146] LRU Cache</h3>
+<blockquote>
+<p>难度：Medium<br>
+语言：C++</p>
+</blockquote>
+<p><a href="https://leetcode.cn/problems/lru-cache/description/">题目描述</a>。<br>
+使用哈希表+双向链表即可，哈希表指向双向链表中的节点。<br>
+哈希表负责完成<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>查找，双向链表负责完成<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>O</mi><mo>(</mo><mn>1</mn><mo>)</mo></mrow><annotation encoding="application/x-tex">O(1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord">1</span><span class="mclose">)</span></span></span></span>移动（插入或删除）。</p>
+<pre><code class="language-c++">class LRUCache {
+    struct ListNode {
+        int key;
+        int val;
+        ListNode *prev;
+        ListNode *succ;
+
+        ListNode(int key, int val)
+            : key(key), val(val), prev(nullptr), succ(nullptr) {};
+        ListNode(int key, int val, ListNode *prev, ListNode *succ)
+            : key(key), val(val), prev(prev), succ(succ) {};
+    };
+
+    ListNode *dummyHead;
+    ListNode *dummyTail;
+    unordered_map&lt;int, ListNode *&gt; umap;
+    int capacity;
+    int size;
+
+  public:
+    LRUCache(int capacity) : capacity(capacity) {
+        dummyHead = new ListNode(-1, 0);
+        dummyTail = new ListNode(-1, 0);
+        dummyHead-&gt;succ = dummyTail;
+        dummyTail-&gt;prev = dummyHead;
+
+        size = 0;
+    }
+
+    ListNode *getNode(int key) {
+        auto iter = umap.find(key);
+        if (iter == umap.end()) {
+            return nullptr;
+        }
+        ListNode *node = iter-&gt;second;
+        node-&gt;succ-&gt;prev = node-&gt;prev;
+        node-&gt;prev-&gt;succ = node-&gt;succ;
+
+        node-&gt;succ = dummyHead-&gt;succ;
+        node-&gt;prev = dummyHead;
+        dummyHead-&gt;succ-&gt;prev = node;
+        dummyHead-&gt;succ = node;
+        return node;
+    }
+
+    int get(int key) {
+        ListNode *node = getNode(key);
+        return node ? node-&gt;val : -1;
+    }
+
+    void put(int key, int value) {
+        ListNode *node = getNode(key);
+        if (!node) {
+            node = new ListNode(key, value, dummyHead, dummyHead-&gt;succ);
+            dummyHead-&gt;succ-&gt;prev = node;
+            dummyHead-&gt;succ = node;
+            size += 1;
+            umap[key] = node;
+
+            if (size &gt; capacity) {
+                node = dummyTail-&gt;prev;
+                node-&gt;prev-&gt;succ = dummyTail;
+                dummyTail-&gt;prev = node-&gt;prev;
+                umap.erase(node-&gt;key);
+                delete node;
+                size -= 1;
+            }
+        } else {
+            node-&gt;val = value;
+        }
+    }
+};
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#203-remove-linked-list-elements">[203] Remove Linked List Elements</a></li>
+<li><a href="#707-design-linked-list">[707] Design Linked List</a></li>
+<li><a href="#206-reverse-linked-list">[206] Reverse Linked List</a></li>
+<li><a href="#24-swap-nodes-in-pairs">[24] Swap Nodes in Pairs</a></li>
+<li><a href="#19-remove-nth-node-from-end-of-list">[19] Remove Nth Node From End of List</a></li>
+<li><a href="#160-intersection-of-two-linked-lists">[160] Intersection of Two Linked Lists</a></li>
+<li><a href="#142-linked-list-cycle-ii">[142] Linked List Cycle II</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E8%A1%A5%E5%85%85">补充</a>
+<ul>
+<li><a href="#234-palindrome-linked-list">[234] Palindrome Linked List</a></li>
+<li><a href="#141-linked-list-cycle">[141] Linked List Cycle</a></li>
+<li><a href="#21-merge-two-sorted-lists">[21] Merge Two Sorted Lists</a></li>
+<li><a href="#2-add-two-numbers">[2] Add Two Numbers</a></li>
+<li><a href="#25-reverse-nodes-in-k-group">[25] Reverse Nodes in k-Group</a></li>
+<li><a href="#138-copy-list-with-random-pointer">[138] Copy List with Random Pointer</a></li>
+<li><a href="#148-sort-list">[148] Sort List</a></li>
+<li><a href="#23-merge-k-sorted-lists">[23] Merge k Sorted Lists</a></li>
+<li><a href="#146-lru-cache">[146] LRU Cache</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://alleny.xyz/post/leetcode-array/">
+              <h3 class="post-title">
+                LeetCode刷题记录（数组篇）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+
+          
+            <link rel="stylesheet" href="https://unpkg.com/disqusjs@1.1/dist/disqusjs.css">
+<script src="https://unpkg.com/disqusjs@1.1/dist/disqus.js"></script>
+
+<div id="disqus_thread"></div>
+
+<script>
+
+var options = {
+  shortname: 'alleny-blog',
+  apikey: '2kPJh2tQ0rWB7n0QOhvb9TLbm946tHMWCixW2qGF9j8tfMBgZoNPfvLpDoxZTZpD',
+}
+if ('https://disqus.hangyu-yuan.workers.dev/api/') {
+  options.api = 'https://disqus.hangyu-yuan.workers.dev/api/'
+}
+var dsqjs = new DisqusJS(options)
+
+</script>
+
+          
+        
+
+        <div class="site-footer">
+  Copyright © 2023-2025 Allen Yuan. All rights reserved.
+  <a class="rss" href="https://alleny.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
